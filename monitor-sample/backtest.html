@@ -364,15 +364,19 @@ main.bt-main{padding:4px 24px 28px}
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const isNum=v=>typeof v==="number"&&Number.isFinite(v);
 
-const SUP={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","-":"⁻"};
-const sci=v=>{const e=Math.floor(Math.log10(Math.abs(v))), m=Math.abs(v)/Math.pow(10,e); return (v<0?"−":"")+m.toFixed(1)+"×10"+String(e).split("").map(c=>SUP[c]||c).join("");};
+const sci=v=>{const a=Math.abs(v), e=Math.floor(Math.log10(a)), m=a/Math.pow(10,e), r=Math.round(m*10)/10;
+  return (v<0?"−":"")+(r===1?"":(r>=10?"10":r.toFixed(1))+"×")+"10の"+(r>=10?e+1:e)+"乗";};
+const JPU=[[1e16,"京"],[1e12,"兆"],[1e8,"億"],[1e4,"万"]];
+const big=v=>{const a=Math.abs(v); if(a<1e4) return null; if(a>=1e20) return sci(v);
+  for(const [u,n] of JPU) if(a>=u){const x=a/u; return (v<0?"−":"")+x.toLocaleString("ja-JP",{maximumFractionDigits:x<10?1:0})+n;} return null;};
+const fmtX=m=>isNum(m)?((big(m)||m.toLocaleString("ja-JP",{maximumFractionDigits:m<10?1:0}))+"倍"):"—";
 
 const nf=(v,d=0)=>Number(v).toLocaleString("ja-JP",{minimumFractionDigits:d,maximumFractionDigits:d});
-const fmtPct=(v,d=1,sign=true)=>isNum(v)?(Math.abs(v)>=1e7?((sign&&v>0?"+":"")+sci(v)+"%"):((sign&&v>0?"+":"")+nf(v,d)+"%")):"—";
+const fmtPct=(v,d=1,sign=true)=>isNum(v)?(Math.abs(v)>=1e7?((sign&&v>0?"+":"")+big(v)+"%"):((sign&&v>0?"+":"")+nf(v,d)+"%")):"—";
 const fmtNum=(v,d=2)=>isNum(v)?nf(v,d):"—";
 
 const fmtDD=v=>isNum(v)?"−"+nf(Math.abs(v),1)+"%":"—";
-const fmtYen=v=>isNum(v)?(Math.abs(v)>=1e13?sci(v)+"円":Math.round(v).toLocaleString("ja-JP")+"円"):"—";
+const fmtYen=v=>isNum(v)?(Math.abs(v)>=1e8?big(v)+"円":Math.round(v).toLocaleString("ja-JP")+"円"):"—";
 const fmtHours=h=>{if(!isNum(h))return "—";const m=Math.round(h*60);const d=Math.floor(m/1440),hh=Math.floor(m%1440/60),mm=m%60;return (d?d+"日":"")+(hh||d?hh+"時間":"")+mm+"分";};
 const ymd=t=>{const d=new Date(t*1000);return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0");};
 let DATA=null, CUR=null, MODE="comp", UNIT="pct", SCALE="lin", SERIES=null;
@@ -482,6 +486,8 @@ function drawEquity(){
   const logOK=SCALE==="log"&&MODE==="comp";
   const tr=v=>logOK?Math.log(UNIT==="yen"?v:(v/100+1)):v;
   let lo=Math.min(...ys), hi=Math.max(...ys); if(hi===lo) hi=lo+1;
+
+  PAD.r=(UNIT==="yen"?hi>=1e8:hi>=1e6)?118:78;
   const x0=S.x[0], x1=S.x[S.x.length-1];
   const X=t=>PAD.l+(t-x0)/(x1-x0)*(w-PAD.l-PAD.r);
   const tlo=tr(lo), thi=tr(hi);
@@ -497,7 +503,7 @@ function drawEquity(){
   else{const st=niceStep(hi-lo,6); for(let v=Math.ceil(lo/st)*st; v<=hi+1e-9; v+=st) ticks.push(v);}
   g.textAlign="left"; g.textBaseline="middle";
   for(const v of ticks){const y=Y(v); g.beginPath(); g.moveTo(PAD.l,y); g.lineTo(w-PAD.r,y); g.stroke();
-    g.fillText(UNIT==="yen"?(Math.abs(v)>=1e13?sci(v)+"円":Math.round(v/10000).toLocaleString("ja-JP")+"万円"):(Math.abs(v)>=1e7?sci(v/100+1)+"倍":(v>0?"+":"")+(Math.abs(v)>=100?nf(v,0):nf(v,1))+"%"), w-PAD.r+6, y);}
+    g.fillText(UNIT==="yen"?(Math.abs(v)>=1e8?big(v)+"円":Math.round(v/10000).toLocaleString("ja-JP")+"万円"):(Math.abs(v)>=1e6?fmtX(v/100+1):(v>0?"+":"")+(Math.abs(v)>=100?nf(v,0):nf(v,1))+"%"), w-PAD.r+6, y);}
 
   g.textAlign="center"; g.textBaseline="top";
   const y0=new Date(x0*1000).getUTCFullYear(), y1=new Date(x1*1000).getUTCFullYear(), every=(y1-y0)>12?2:1;
@@ -532,6 +538,16 @@ function hover(ev){
   let lo=0, hi=SERIES.x.length-1; while(lo<hi){const mid=(lo+hi)>>1; if(SERIES.x[mid]<t) lo=mid+1; else hi=mid;}
   const i=Math.max(0,Math.min(SERIES.x.length-1,lo)), dd=(MODE==="comp"?SERIES.ddc:SERIES.dds)[i];
   const v=(MODE==="comp"?SERIES.comp:SERIES.simple)[i];
+  if(isPort(CUR)){
+
+    const xs=SERIES.x, ys=MODE==="comp"?SERIES.comp:SERIES.simple, yr=new Date(xs[i]*1000).getUTCFullYear();
+    let j=i; while(j>0&&new Date(xs[j-1]*1000).getUTCFullYear()===yr) j--;
+    const v0=j>0?ys[j-1]:ys[0], yp=MODE==="comp"?(v/v0-1)*100:(v-v0)*100;
+    tip.innerHTML=`<b>${ymd(xs[i])}</b><br>`+(MODE==="comp"
+      ?`残高 ${fmtYen(DATA.initial_balance*v)}（始めの ${fmtX(v)}）`
+      :`始めから ${fmtPct((v-1)*100,0)}（残高 ${fmtYen(DATA.initial_balance*v)}）`)+
+      `<br>${yr}年の初めから ${fmtPct(yp,1)}<br>山からの落ち込み −${dd.toFixed(1)}%`;
+  } else
   tip.innerHTML=`${ymd(SERIES.x[i])}<br>${fmtPct((v-1)*100,1)}・${fmtYen(DATA.initial_balance*v)}<br>山からの落ち込み −${dd.toFixed(1)}%`;
   tip.style.display="block"; const tx=Math.min(px+12, rect.width-tip.offsetWidth-4); tip.style.left=tx+"px"; tip.style.top="8px";
 }
