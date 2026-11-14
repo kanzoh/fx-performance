@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+
+(function(){
+  var FROZEN=1794573000000, _D=Date;
+  function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
+    return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
+  FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
+  window.Date=FD;
+  var PAGES={"/": "index.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/study": "study.html", "/analysis": "analysis.html", "/verdict": "verdict.html"};
+  var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=(typeof input==="string")?input:(input&&input.url)||"";
+    var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
+    if(!m) return _fetch(input,init);
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+    if(method!=="GET"){
+      return Promise.resolve(new Response(JSON.stringify({ok:false,error:"公開用サンプルのため操作できません"}),
+        {status:200,headers:{"Content-Type":"application/json"}}));
+    }
+    return _fetch(here+"api/"+m[1].replace(/\//g,"_")+".json",{cache:"no-cache"});
+  };
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("a[href]"); if(!a) return;
+    var h=a.getAttribute("href"); if(!h||h.charAt(0)!=="/"||h.indexOf("//")===0) return;
+    var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
+    if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
+  },true);
+  document.addEventListener("submit",function(e){ e.preventDefault(); alert("公開用サンプルのため操作できません"); },true);
+  document.addEventListener("DOMContentLoaded",function(){
+    var b=document.createElement("div");
+    b.textContent="公開用サンプル：数字はすべて作りものです（実在の口座・EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。";
+    b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
+    document.body.insertBefore(b,document.body.firstChild);
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ポートフォリオモニター｜EA分析</title>
+<link rel="stylesheet" href="static/style.css">
+<link rel="stylesheet" href="static/ui2.css">
+<style>
+a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+
+body.u2 .u-h h2{font-size:1.35rem}
+.mut{color:var(--u-muted)!important}
+.st-badge{display:inline-block;padding:3px 12px;border-radius:999px;font-weight:850;font-size:.95rem}
+.st-badge.wip{background:var(--u-amber-soft);color:var(--u-amber)}
+.st-badge.done{background:var(--u-up-soft);color:var(--u-up)}
+
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.25fr) minmax(0,.9fr);gap:28px;align-items:center}
+.hero .q{font-size:1.05rem;font-weight:800;color:var(--u-ink2);margin:0 0 6px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hero .a{font-size:2rem;font-weight:900;line-height:1.3;margin:0;color:var(--u-ink)}
+.hero .a em{font-style:normal;color:var(--tone,var(--u-ink))}
+.hero .sc{font-size:.98rem;font-weight:650;color:var(--u-ink2);margin:8px 0 0;line-height:1.6}
+.cmp{display:grid;grid-template-columns:auto 1fr;gap:12px 14px;align-items:center}
+.cmp .k{font-size:1rem;font-weight:850;color:var(--u-ink2);white-space:nowrap}
+.cmp .tr{position:relative;height:34px;border-radius:7px;background:#f1f5f9}
+.cmp .tr i{position:absolute;top:0;bottom:0;left:0;border-radius:7px}
+.cmp .tr i.live{background:var(--u-up)}.cmp .tr i.live.n{background:var(--u-down)}
+.cmp .tr i.bt{background:#5b7fb8}
+.cmp .tr b{position:absolute;top:50%;transform:translateY(-50%);font-size:1.35rem;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+.facts .k{font-size:.92rem;font-weight:800;color:var(--u-ink2)}
+.facts .v{font-size:1.6rem;font-weight:900;line-height:1.2;font-variant-numeric:tabular-nums}
+.facts .v small{font-size:.95rem;font-weight:750;color:var(--u-muted);margin-left:4px}
+.facts .wide{grid-column:1/-1}
+
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.cc{border:1px solid var(--u-line);border-top:6px solid var(--t,#94a3b8);border-radius:9px;padding:12px 15px 14px;background:var(--u-surface);min-width:0;display:flex;flex-direction:column}
+.cc.good{--t:var(--u-up)}.cc.bad{--t:var(--u-down)}.cc.warn{--t:var(--u-amber)}.cc.info{--t:var(--u-blue)}
+.cc .lab{font-size:.9rem;font-weight:900;color:var(--t)}
+.cc h3{margin:3px 0 10px;font-size:1.18rem;font-weight:900;line-height:1.45;color:var(--u-ink)}
+.cc .vs{display:flex;gap:18px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.cc .vs .k{font-size:.88rem;font-weight:800;color:var(--u-muted)}
+.cc .vs .v{font-size:1.6rem;font-weight:900;font-variant-numeric:tabular-nums;line-height:1.15}
+.cc .vs .v small{font-size:.85rem;font-weight:750;color:var(--u-muted);margin-left:2px}
+.cc p{margin:4px 0 0;font-size:.97rem;line-height:1.7;color:var(--u-ink2)}
+.empty{padding:14px 16px;border:1px dashed var(--u-line);border-radius:9px;color:var(--u-muted);font-weight:750;font-size:1rem;background:#f8fafc}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.chips button{all:unset;cursor:pointer;padding:6px 13px;border-radius:999px;font-weight:800;font-size:.95rem;border:1px solid var(--u-line);background:#fff;color:var(--u-ink2)}
+.chips button:hover{background:var(--u-head)}
+.chips button[aria-pressed="true"]{background:var(--u-ink);color:#fff;border-color:var(--u-ink)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.95rem;font-weight:750;color:var(--u-ink2);margin:0 0 6px}
+.legend i{display:inline-block;width:24px;height:12px;border-radius:3px;vertical-align:middle;margin-right:6px}
+.pb{display:grid;grid-template-columns:minmax(130px,200px) minmax(0,1fr) auto;gap:2px 14px;align-items:center}
+.pb .nm{font-weight:900;font-size:1.05rem;line-height:1.3;min-width:0}
+.pb .nm small{display:block;font-size:.88rem;font-weight:700;color:var(--u-muted)}
+.pb .track{position:relative;margin:4px 74px}
+.pb .zero{position:absolute;top:-2px;bottom:-2px;width:2px;background:#94a3b8}
+.pb .bar{position:relative;height:17px;margin:4px 0}
+.pb .bar i{position:absolute;top:0;bottom:0;border-radius:3px}
+.pb .bar.live i.p{background:var(--u-up)}.pb .bar.live i.n{background:var(--u-down)}
+.pb .bar.bt i{background:#5b7fb8}
+.pb .bar span{position:absolute;top:50%;transform:translateY(-50%);font-size:.92rem;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pb .sep{grid-column:1/-1;border-top:1px solid var(--u-line-soft);margin:3px 0}
+.zt{display:inline-block;padding:3px 10px;border-radius:7px;font-weight:900;font-size:.92rem;white-space:nowrap}
+.zt.lo2{background:rgba(180,35,24,.2);color:#7a1610}.zt.lo1{background:rgba(180,35,24,.09);color:#b42318}
+.zt.ok{background:#eef2f6;color:#4b5563}.zt.hi1{background:rgba(21,128,61,.12);color:#15803d}
+
+.is{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:11px 0;border-bottom:1px solid var(--u-line-soft)}
+.is:first-child{padding-top:2px}.is:last-child{border-bottom:0}
+.is .lv{grid-row:1/span 3;align-self:start;display:inline-block;min-width:44px;text-align:center;padding:3px 0;border-radius:7px;font-size:.88rem;font-weight:900}
+.lv.high{background:rgba(180,35,24,.14);color:#b42318}.lv.mid{background:var(--u-amber-soft);color:var(--u-amber)}.lv.low{background:#eef2f6;color:#4b5563}
+.is h3{margin:0;font-size:1.08rem;font-weight:900;line-height:1.5}
+.is p{margin:0;font-size:.97rem;line-height:1.7;color:var(--u-ink2)}
+.eas-chips{display:flex;gap:10px;flex-wrap:wrap}
+
+.pr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.pr{border:1px solid var(--u-line);border-radius:9px;padding:13px 16px;background:var(--u-surface)}
+.pr .num{display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;border-radius:50%;background:var(--u-ink);color:#fff;font-weight:900;margin-right:10px}
+.pr h3{display:flex;align-items:center;margin:0 0 8px;font-size:1.15rem;font-weight:900;line-height:1.45}
+.pr p{margin:0;font-size:.98rem;line-height:1.75;color:var(--u-ink2)}
+.pr .stt{display:inline-block;margin-top:10px;padding:3px 11px;border-radius:999px;font-size:.88rem;font-weight:900;background:var(--u-blue-soft);color:var(--u-blue)}
+
+.twin{display:grid;grid-template-columns:1fr;gap:0 22px;overflow-x:auto}
+.twin.two{grid-template-columns:1fr 1fr}
+table.ea-tbl{font-size:1rem}
+.ea-tbl th{font-size:.9rem!important;text-align:center!important;cursor:pointer;line-height:1.25;white-space:nowrap}
+.ea-tbl th:hover{text-decoration:underline}
+.ea-tbl th small{display:block;font-size:.78rem;font-weight:750;color:var(--u-muted)}
+.ea-tbl td{text-align:center!important;padding:8px 8px!important}
+.ea-tbl td:first-child,.ea-tbl th:first-child{text-align:left!important}
+.ea-tbl td .s{color:var(--u-muted);font-weight:650;font-size:.9rem}
+.nm2{display:flex;flex-direction:column;line-height:1.2}
+.nm2 b{font-size:1.02rem}
+.nm2 small{font-size:.8rem;font-weight:800;color:var(--c)}
+.ea-tbl tr.out td{background:#fafafa}
+.ea-tbl tr.out .nm2 b{color:var(--u-muted)}
+.pc{display:inline-flex;align-items:center;gap:7px}
+.pc .bx{position:relative;display:inline-block;width:64px;height:10px;border-radius:5px;background:linear-gradient(90deg,rgba(180,35,24,.4) 0 10%,rgba(180,35,24,.16) 10% 25%,#e5e7eb 25% 75%,rgba(21,128,61,.16) 75% 90%,rgba(21,128,61,.4) 90% 100%)}
+.pc .bx i{position:absolute;top:-3px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:#111827}
+.pc b{min-width:38px;text-align:right}
+.vd{display:inline-block;min-width:62px;padding:3px 8px;border-radius:7px;font-weight:900;font-size:.9rem;white-space:nowrap}
+.vd.lo2{background:rgba(180,35,24,.2);color:#7a1610}.vd.lo1{background:rgba(180,35,24,.09);color:#b42318}
+.vd.ok{background:#eef2f6;color:#4b5563}.vd.hi1{background:rgba(21,128,61,.12);color:#15803d}.vd.hi2{background:rgba(21,128,61,.24);color:#14532d}
+.vd-sm{display:none}
+.vd.na{background:transparent;color:var(--u-muted);font-weight:750}
+.out-card{background:#f8fafc!important}
+.out-note{margin:0 0 10px;font-size:1rem;font-weight:700;line-height:1.7;color:var(--u-ink2)}
+.out-strip{display:flex;flex-wrap:wrap;gap:10px 34px;align-items:baseline;margin:0 0 10px}
+.out-strip .k{font-size:.92rem;font-weight:800;color:var(--u-ink2);margin-right:8px}
+.out-strip .v{font-size:1.35rem;font-weight:900;font-variant-numeric:tabular-nums}
+.out-strip .v small{font-size:.9rem;font-weight:750;color:var(--u-muted);margin-left:3px}
+.notes{margin:0;padding-left:1.3em;columns:2 520px;column-gap:36px}
+.notes li{font-size:.95rem;line-height:1.75;color:var(--u-ink2);break-inside:avoid}
+
+@media (max-width:1280px){.hero{grid-template-columns:1fr 1fr}.hero .facts{grid-column:1/-1;grid-template-columns:repeat(4,1fr)}}
+@media (max-width:760px){
+  .hero{grid-template-columns:1fr;gap:16px}.hero .a{font-size:1.6rem}.hero .facts{grid-template-columns:1fr 1fr}
+  .pb{grid-template-columns:1fr}.pb .track{margin:2px 70px}
+  .ea-tbl .hide-sm{display:none}
+  .vd-sm{display:inline-block;margin-top:4px;align-self:flex-start;font-size:.82rem}
+  .ea-tbl td,.ea-tbl th{padding:7px 5px!important}.vd{min-width:0;padding:3px 6px}.ea-tbl td .s{font-size:.85rem}
+}
+.rc{display:grid;grid-template-columns:1fr;gap:14px}
+.rc-tbl td,.rc-tbl th{text-align:center!important}.rc-tbl td:first-child,.rc-tbl th:first-child{text-align:left!important}
+.rc-tbl tr.tot td{font-weight:900;border-top:2px solid var(--u-line)}
+.rc-find{margin:0;padding-left:1.3em}.rc-find li{font-size:1.05rem;line-height:1.8;color:var(--u-ink);margin-bottom:6px}
+@media (max-width:1100px){.rc{grid-template-columns:1fr}}
+
+body.u2{color:#111827}
+body.u2 .u-note{font-size:1rem!important;color:#1f2937!important;font-weight:650!important;line-height:1.7}
+body.u2 .u-h .u-lead{font-size:1rem!important;color:#1f2937!important;font-weight:750!important}
+.mut,.s{color:#374151!important}
+.hero .q{font-size:1.12rem;color:#1f2937}
+.hero .sc{font-size:1.05rem;color:#1f2937;font-weight:700}
+.facts .k,.cmp .k{font-size:1rem;color:#1f2937}
+.facts .v small,.cc .vs .v small{color:#374151}
+.cc .lab{font-size:.98rem}
+.cc .vs .k{font-size:.95rem;color:#374151}
+.cc p,.is p,.pr p{font-size:1.04rem;color:#1f2937;line-height:1.75}
+.pb .nm small{font-size:.97rem;color:#1f2937}
+.pb .bar span{font-size:1rem}
+.legend{font-size:1rem;color:#1f2937}
+.zt,.vd{font-size:.97rem}
+table.ea-tbl,table.rc-tbl{font-size:1.06rem}
+.ea-tbl th,.rc-tbl th{font-size:.98rem!important;color:#111827!important}
+.ea-tbl th small{font-size:.86rem;color:#374151}
+.ea-tbl td .s{font-size:.98rem;font-weight:700}
+.nm2 b{font-size:1.08rem}.nm2 small{font-size:.9rem}
+.notes li{font-size:1.02rem;color:#1f2937}
+
+.twin.two .ea-tbl td,.twin.two .ea-tbl th{padding:8px 5px!important}
+.twin.two .pc .bx{width:46px}
+.twin.two .vd{min-width:0}
+.twin.two{gap:0 16px}
+.out-strip .k{font-size:1rem;color:#1f2937}
+.empty{color:#374151;font-size:1.02rem}
+.chips button{font-size:1rem;color:#1f2937}
+
+body.u2 main .u-card{background:#fdfbf6!important}
+
+.hero>div{background:#f4efe5;border:1px solid #bcc8d6;border-radius:10px;padding:12px 16px;align-self:stretch}
+.hero>div:first-child{background:#e6eef8;border-color:#a9bedb}
+.cmp .tr{background:#dbe3ec}
+.facts>div{background:#fdfbf6;border:1px solid #c6d0dc;border-radius:8px;padding:6px 10px}
+
+body.u2 .cc{background:#f7f3ea!important;box-shadow:0 0 0 1px #aebccc!important}
+body.u2 .cc.good{background:#e6f2ea!important}
+body.u2 .cc.bad{background:#f8e9e7!important}
+body.u2 .cc.warn{background:#faf0de!important}
+body.u2 .cc.info{background:#e7eef9!important}
+
+body.u2 #gbars{background:#f4efe5;border:1px solid #c6d0dc;border-radius:10px;padding:10px 14px}
+.pb .sep{border-top-color:#c6d0dc!important}
+.chips button{background:#f7f3ea!important;border-color:#b6c3d1!important}
+.chips button[aria-pressed="true"]{background:#1f2937!important;color:#fff!important}
+
+body.u2 .is{background:#f7f3ea;border:1px solid #c6d0dc;border-left:6px solid var(--lvc,#94a3b8);border-radius:9px;padding:10px 14px!important;margin:0 0 10px}
+body.u2 .is.lv-high{--lvc:#b42318;background:#f8ecea}
+body.u2 .is.lv-mid{--lvc:#b45309;background:#faf2e3}
+body.u2 .is.lv-low{--lvc:#64748b;background:#f7f3ea}
+body.u2 .is:last-child{margin-bottom:0}
+
+body.u2 .pr{background:#e7eef9!important;box-shadow:0 0 0 1px #a9bedb!important}
+.pr .stt{background:#d3e1f5!important}
+
+body.u2 .ea-tbl td,body.u2 .rc-tbl td{background:#fdfbf6}
+body.u2 .ea-tbl tbody tr:nth-child(even) td,body.u2 .rc-tbl tbody tr:nth-child(even) td{background:#f1ebdf}
+body.u2 .ea-tbl tbody tr:hover td,body.u2 .rc-tbl tbody tr:hover td{background:#ebe3d4}
+body.u2 .ea-tbl th,body.u2 .rc-tbl th{background:#d9e1ea!important}
+.rc-find{background:#f4efe5;border:1px solid #c6d0dc;border-radius:9px;padding:10px 14px 10px 32px!important}
+
+body.u2 main .u-card.out-card{background:#e6eaef!important}
+body.u2 .out-card .ea-tbl td{background:#eceff3}
+body.u2 .out-card .ea-tbl tbody tr:nth-child(even) td{background:#e0e5eb}
+.out-note{background:#dfe4ea;border-left:5px solid #64748b;border-radius:6px;padding:8px 12px}
+
+body.u2 .notes{background:#f4efe5;border:1px solid #c6d0dc;border-radius:9px;padding:10px 14px 10px 32px}
+
+.ea-tbl td .s,.rc-tbl td .s{display:inline-block;min-width:4.4em;text-align:left}
+</style>
+<link rel="stylesheet" href="static/readable.css">
+<script src="static/tablealign.js" defer></script>
+</head>
+<body class="u2">
+<header class="page-header">
+  <div>
+    <h1>ポートフォリオモニター</h1>
+    <div class="subtitle">EA別リアルタイム監視</div>
+  </div>
+  <div id="status" class="status-pill status-live">読み込み中</div>
+</header>
+
+<nav class="tab-bar" aria-label="表示切替">
+  <a class="tab-button" href="index.html#top">トップ</a>
+  <a class="tab-button" href="index.html#ea">EA別</a>
+  <a class="tab-button" href="analysis.html">市場分析</a>
+  <a class="tab-button active" href="study.html" aria-current="page">EA分析</a>
+  <a class="tab-button" href="verdict.html">EAの見極め</a>
+  <a class="tab-button" href="backtest.html">詳細データ</a>
+  <a class="tab-button" href="ranking.html">ランキング</a>
+</nav>
+
+<main class="u-wrap">
+<p class="u-note" id="err" hidden></p>
+<div class="u-grid">
+  
+  <section class="u-card s12" aria-label="答え">
+    <div class="hero">
+      <div>
+        <p class="q">実弾は BT の見込みどおりか <span class="st-badge" id="st"></span></p>
+        <p class="a" id="ans"></p>
+        <p class="sc" id="scope"></p>
+      </div>
+      <div>
+        <div class="cmp" id="cmp"></div>
+        <p class="u-note" style="margin-top:8px">1件あたりの R（決済1件で口座の何R増えたか）。BT は実弾と同じ本・同じ件数で重ねた見込み。</p>
+      </div>
+      <div class="facts" id="facts"></div>
+    </div>
+  </section>
+
+  
+  <section class="u-card s12" aria-label="分かったこと">
+    <div class="u-h"><h2>分かったこと</h2><span class="u-lead">研究の部屋のまとめ</span><div class="u-right"><span class="u-lead" id="asof"></span></div></div>
+    <div class="cc-grid" id="concl"></div>
+  </section>
+
+  
+  <section class="u-card s6 u-fill" aria-label="群ごとの比較">
+    <div class="u-h"><h2>どこで差が出たか</h2><span class="u-lead">切り口を選ぶ</span></div>
+    <div class="chips" id="gsel" role="group" aria-label="切り口"></div>
+    <div class="legend"><span><i style="background:var(--u-up)"></i>実弾の1件R（マイナスは赤）</span><span><i style="background:#5b7fb8"></i>BT の見込み</span></div>
+    <div class="pb" id="gbars"></div>
+    <p class="u-note">右の札は、BT どおりならこの差がどのくらい珍しいか（z・同じ日にそろって動く分を割り引いた値）。−2 より下は偶然では出にくい下振れ。（ ）は同じ日数で BT なら何件建てたか。</p>
+  </section>
+  <section class="u-card s6 u-fill" aria-label="問題点">
+    <div class="u-h"><h2>問題点</h2><span class="u-lead" id="is-n"></span></div>
+    <div id="issues"></div>
+  </section>
+
+  
+  <section class="u-card s12" aria-label="提案">
+    <div class="u-h"><h2>提案：質の高い EA を量産するために</h2><span class="u-lead">Codex と合議した案。採るかどうかはユーザーの判断</span></div>
+    <div class="pr-grid" id="props"></div>
+  </section>
+
+  
+  <section class="u-card s12" id="rc-card" aria-label="実弾の期間の照合" hidden>
+    <div class="u-h"><h2 id="rc-title">実弾の期間の照合</h2></div>
+    <div class="rc">
+      <div class="u-tbl-wrap"><table class="u-tbl rc-tbl" id="rc-tbl"></table></div>
+      <ul class="rc-find" id="rc-find"></ul>
+    </div>
+    <p class="u-note" id="rc-how"></p>
+  </section>
+
+  
+  <section class="u-card s12" aria-label="本ごとの表">
+    <div class="u-h">
+      <h2>今の顔ぶれの実弾と BT の見込み</h2>
+      <span class="u-lead" id="ea-n"></span>
+      <div class="u-right">
+
+        <div class="u-seg" role="group" id="ssel"><button type="button" data-s="pair" aria-pressed="true">ペア順</button><button type="button" data-s="pct" aria-pressed="false">下振れ順</button><button type="button" data-s="n" aria-pressed="false">件数順</button></div>
+      </div>
+    </div>
+    <div class="twin" id="twin"></div>
+    <p class="u-note">各欄は「実弾 ／ BT なら」。BT の中の位置＝実弾の R 合計が、同じ日数の BT の窓を並べたとき下から何%か（赤い帯は下の10%・25%、緑は上の25%・10%）。4件以下は数字が大きくぶれるので見立てに色を付けていません。見出しを押すとその欄で並べ替えます。円は出していません。</p>
+  </section>
+
+  
+  <section class="u-card s12 out-card" id="out-card" aria-label="外した本" hidden>
+    <div class="u-h"><h2>外した本</h2><span class="u-lead">別枠：上の数字（今の顔ぶれ）には入れていません</span><div class="u-right"><span class="u-lead" id="out-n"></span></div></div>
+    <p class="out-note" id="out-note" hidden></p>
+    <div class="out-strip" id="out-strip"></div>
+    <div class="twin" id="twin-out"></div>
+  </section>
+
+  <section class="u-card s12" id="notes-card" aria-label="数字の読み方" hidden>
+    <div class="u-h"><h2>数字の読み方</h2></div>
+    <ul class="notes" id="notes"></ul>
+  </section>
+</div>
+</main>
+
+<script>
+(function () {
+"use strict";
+var D = null, F = "cur", S = "pair", SK = null, SD = 1, G = null;
+var $ = function (id) { return document.getElementById(id); };
+function esc(s) { return String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function nz(v) { return v !== null && v !== undefined && !isNaN(v); }
+function sg(v, d) { if (!nz(v)) return "—"; var s = Math.abs(v).toFixed(d === undefined ? 2 : d); return (v > 0 ? "+" : v < 0 ? "−" : "") + s; }
+function cl(v) { return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
+function pc(v) { return nz(v) ? Math.round(v * 100) + "%" : "—"; }
+var ORDER = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURJPY", "GBPJPY"];
+function plab(p) { return p === "XAUUSD" ? "XAU/USD（金）" : p.slice(0, 3) + "/" + p.slice(3); }
+function pi(p) { var i = ORDER.indexOf(p); return i < 0 ? "x" : i; }
+function ptag(p) { return "<span class='ptag' style='--c:var(--pc-" + pi(p) + ")'><i></i>" + esc(plab(p)) + "</span>"; }
+function eachip(n) { var e = (D.eas || []).filter(function (x) { return x.ea === n; })[0]; return "<span class='ptag' style='--c:var(--pc-" + (e ? pi(e.sym) : "x") + ")'><i></i>" + esc(n) + "</span>"; }
+function zz(o) { return o ? (nz(o.z_adj) ? o.z_adj : o.z) : null; }
+function zcls(z) { return !nz(z) ? "ok" : z <= -2 ? "lo2" : z <= -1 ? "lo1" : z >= 1 ? "hi1" : "ok"; }
+function ztag(z) { return String(ztext(z)).replace(/（z [^）]*）$/, ""); }
+function ztext(z) { return !nz(z) ? "" : z <= -2 ? "下振れ（z " + sg(z) + "）" : z <= -1 ? "やや下（z " + sg(z) + "）" : z >= 1 ? "上振れ（z " + sg(z) + "）" : "見込みどおり（z " + sg(z) + "）"; }
+var FEW = 5;
+function vcls(p, n) { if (!nz(p) || !n || n < FEW) return "na"; return p < 10 ? "lo2" : p < 25 ? "lo1" : p > 90 ? "hi2" : p > 75 ? "hi1" : "ok"; }
+function vtext(p, n) { if (!n) return "建てていない"; if (!nz(p)) return "—"; if (n < FEW) return "件数が少ない"; return p < 10 ? "大きく下振れ" : p < 25 ? "下振れ" : p > 90 ? "大きく上振れ" : p > 75 ? "上振れ" : "見込みの中"; }
+
+function agg(rows) {
+  var n = 0, R = 0, ne = 0, bw = 0;
+  rows.forEach(function (r) { n += r.n || 0; R += r.R || 0; ne += r.n_exp || 0; if (nz(r.bt_r1)) bw += r.bt_r1 * (r.n || 0); });
+  return { eas: rows.length, n: n, n_exp: ne, R: R, live_r1: n ? R / n : null, bt_r1: n ? bw / n : null };
+}
+function curRows() { return (D.eas || []).filter(function (r) { return r.cur; }); }
+function outRows() { return (D.eas || []).filter(function (r) { return !r.cur; }); }
+
+function drawHero() {
+  var done = D.status === "確定", s = D.summary || {}, cr = curRows();
+
+  if (cr.length && s.eas !== cr.length) s = agg(cr);
+  $("st").className = "st-badge " + (done ? "done" : "wip");
+  $("st").textContent = done ? "確定版" : "途中の数字";
+  $("status").textContent = "EA分析・" + (done ? "確定版" : "途中");
+  $("asof").textContent = D.as_of ? "実弾の書き出し " + D.as_of + " まで" : "";
+  var lv = s.live_r1, bt = s.bt_r1, ratio = (nz(lv) && nz(bt) && bt > 0) ? lv / bt : null;
+  var tone = !nz(ratio) ? "var(--u-ink)" : ratio >= 0.8 ? "var(--u-up)" : ratio >= 0.5 ? "var(--u-amber)" : "var(--u-down)";
+  $("ans").style.setProperty("--tone", tone);
+  $("ans").innerHTML = !nz(ratio) ? "—" : lv < 0 ? "実弾は <em>マイナス</em>（BT はプラス）" :
+    "実弾の稼ぎは BT の見込みの <em>" + Math.round(ratio * 100) + "%</em>";
+
+  $("scope").textContent = (D.summary && D.summary.eas === s.eas) ? (D.scope || "") :
+    "今の顔ぶれ " + s.eas + "本・実弾の決済 " + s.n + "件を、統一基準K の台帳の見込みと突き合わせた（外した本は下の別枠）";
+  var mx = Math.max(Math.abs(lv || 0), Math.abs(bt || 0), 0.01);
+  function row(k, v, kind) {
+    var w = Math.max(1.5, Math.abs(v || 0) / mx * (window.matchMedia("(max-width:760px)").matches ? 50 : 72));
+    return "<span class='k'>" + k + "</span><div class='tr'><i class='" + kind + (v < 0 ? " n" : "") + "' style='width:" + w + "%'></i><b class='" + (kind === "live" ? cl(v) : "") + "' style='left:calc(" + w + "% + 10px)'>" + sg(v, 3) + "R<small style='font-size:.85rem;font-weight:750;color:var(--u-muted)'>/件</small></b></div>";
+  }
+  $("cmp").innerHTML = row("実弾", lv, "live") + row("BT の見込み", bt, "bt");
+  $("facts").innerHTML =
+    "<div><div class='k'>今の顔ぶれ</div><div class='v'>" + (s.eas || "—") + "<small>本</small></div></div>" +
+    "<div><div class='k'>実弾の決済</div><div class='v'>" + (s.n || "—") + "<small>件</small></div></div>" +
+    "<div><div class='k'>実弾の R 合計</div><div class='v " + cl(s.R) + "'>" + sg(s.R) + "<small>R</small></div></div>" +
+    "<div><div class='k'>偶然か</div><div class='v'><span class='zt " + zcls(zz(s)) + "' style='font-size:1rem'>" + esc(ztag(zz(s))) + "</span></div></div>";
+}
+
+function drawConcl() {
+  var c = D.conclusions || [];
+  if (!c.length) { $("concl").innerHTML = "<div class='empty'>研究の部屋でまとめています。確定したらここに出ます。</div>"; return; }
+  var LAB = { good: "良い点", bad: "問題", warn: "注意", info: "分かったこと" };
+  var n = c.length; $("concl").style.gridTemplateColumns = window.innerWidth >= 1500 && n <= 5 ? "repeat(" + n + ",minmax(0,1fr))" : "";
+  $("concl").innerHTML = c.map(function (x) {
+    var t = x.tone || "info", u = x.unit || "R", dg = x.digits === undefined ? 2 : x.digits;
+    var vs = nz(x.live) ? "<div class='vs'><div><div class='k'>" + esc(x.live_label || "実弾") + "</div><div class='v " + cl(x.live) + "'>" + sg(x.live, dg) + "<small>" + esc(u) + "</small></div></div>" +
+      (nz(x.bt) ? "<div><div class='k'>" + esc(x.bt_label || "BT の見込み") + "</div><div class='v'>" + sg(x.bt, dg) + "<small>" + esc(u) + "</small></div></div>" : "") + "</div>" : "";
+    return "<article class='cc " + esc(t) + "'><span class='lab'>" + esc(x.label || LAB[t] || "") + "</span><h3>" + esc(x.title) + "</h3>" + vs + (x.note ? "<p>" + esc(x.note) + "</p>" : "") + "</article>";
+  }).join("");
+}
+
+function drawGroupSel() {
+  var gs = (D.groups || []).filter(function (g) { return g.key !== "全部" && g.key !== "今いる/外した"; });
+  if (!G || !gs.some(function (g) { return g.key === G; })) G = gs.length ? (gs.some(function (g) { return g.key === "銘柄"; }) ? "銘柄" : gs[0].key) : null;
+  $("gsel").innerHTML = gs.map(function (g) { return "<button type='button' data-g='" + esc(g.key) + "' aria-pressed='" + (g.key === G) + "'>" + esc(g.key) + "</button>"; }).join("");
+}
+function drawGroups() {
+  var g = (D.groups || []).filter(function (x) { return x.key === G; })[0];
+  if (!g) { $("gbars").innerHTML = "<div class='empty' style='grid-column:1/-1'>群の数字はまだありません。</div>"; return; }
+  var rows = g.rows.slice();
+  function oi(n) { var i = ORDER.indexOf(n); return i < 0 ? 99 : i; }
+  if (rows.some(function (r) { return ORDER.indexOf(r.name) >= 0; })) rows.sort(function (a, b) { return oi(a.name) - oi(b.name); });
+  var mx = 0.05; rows.forEach(function (r) { mx = Math.max(mx, Math.abs(r.live_r1 || 0), Math.abs(r.bt_r1 || 0)); });
+  var hasNeg = rows.some(function (r) { return (r.live_r1 || 0) < 0 || (r.bt_r1 || 0) < 0; });
+  var lo = hasNeg ? -mx : 0, span = mx - lo, z0 = (0 - lo) / span * 100;
+  function bar(v, kind) {
+    if (!nz(v)) return "<div class='bar " + kind + "'></div>";
+    var a = Math.min(z0, (v - lo) / span * 100), b = Math.max(z0, (v - lo) / span * 100);
+    var pos = v >= 0 ? "left:calc(" + b + "% + 7px)" : "right:calc(" + (100 - a) + "% + 7px)";
+    return "<div class='bar " + kind + "'><i class='" + (v >= 0 ? "p" : "n") + "' style='left:" + a + "%;width:" + Math.max(0.6, b - a) + "%'></i><span class='" + (kind === "live" ? cl(v) : "mut") + "' style='" + pos + "'>" + sg(v, 3) + "</span></div>";
+  }
+  $("gbars").innerHTML = rows.map(function (r, i) {
+    var nm = ORDER.indexOf(r.name) >= 0 ? ptag(r.name) : esc(r.name);
+    return (i ? "<div class='sep'></div>" : "") +
+      "<div class='nm'>" + nm + "<small>" + (r.eas || "—") + "本・" + r.n + "件（" + (nz(r.n_exp) ? Math.round(r.n_exp) : "—") + "）・勝率 " + pc(r.win) + "</small></div>" +
+      "<div class='track'><div class='zero' style='left:" + z0 + "%'></div>" + bar(r.live_r1, "live") + bar(r.bt_r1, "bt") + "</div>" +
+      "<div><span class='zt " + zcls(zz(r)) + "'>" + esc(ztext(zz(r))) + "</span></div>";
+  }).join("");
+}
+
+function drawIssues() {
+  var a = D.issues || [];
+  $("is-n").textContent = a.length ? a.length + "件（重い順）" : "";
+  if (!a.length) { $("issues").innerHTML = "<div class='empty'>研究の部屋で調べています。</div>"; return; }
+  var LV = { high: "重い", mid: "中", low: "軽い" }, RK = { high: 0, mid: 1, low: 2 };
+  a = a.slice().sort(function (x, y) { return (RK[x.level] === undefined ? 1 : RK[x.level]) - (RK[y.level] === undefined ? 1 : RK[y.level]); });
+  $("issues").innerHTML = a.map(function (x) {
+    var lv = x.level || "mid";
+    return "<div class='is lv-" + esc(lv) + "'><span class='lv " + esc(lv) + "'>" + esc(LV[lv] || lv) + "</span><h3>" + esc(x.title) + "</h3>" + (x.body ? "<p>" + esc(x.body) + "</p>" : "") +
+      (x.eas && x.eas.length ? "<div class='eas-chips'>" + x.eas.map(eachip).join("") + "</div>" : "") + "</div>";
+  }).join("");
+}
+
+function drawProps() {
+  var a = D.proposals || [];
+  if (!a.length) { $("props").innerHTML = "<div class='empty'>Codex と合議してから載せます（11-13 の取り決め）。</div>"; return; }
+  $("props").innerHTML = a.map(function (x, i) {
+    return "<article class='pr'><h3><span class='num'>" + (i + 1) + "</span>" + esc(String(x.title || "").replace(/^\s*\d+[.．、)]\s*/, "")) + "</h3>" + (x.body ? "<p>" + esc(x.body) + "</p>" : "") + (x.status ? "<span class='stt'>" + esc(x.status) + "</span>" : "") + "</article>";
+  }).join("");
+}
+
+var COLS = [
+  ["ea", "EA", ""], ["n", "件数", "実弾 ／ BT"], ["R", "R 合計", "実弾 ／ BT", "hide-sm"], ["r1", "1件R", "実弾 ／ BT"],
+  ["win", "勝率", "実弾", "hide-sm"], ["pct_R", "BT の中の位置", "下から", "hide-sm"], ["vd", "見立て", "", "hide-sm"]
+];
+function sortRows(rows) {
+  function pr(r) { var i = ORDER.indexOf(r.sym); return i < 0 ? 99 : i; }
+  rows.sort(function (a, b) {
+    if (SK) {
+      var x = SK === "vd" ? a.pct_R : a[SK], y = SK === "vd" ? b.pct_R : b[SK];
+      if (SK === "ea") { x = String(a.ea); y = String(b.ea); }
+      if (x === y) return 0; if (!nz(x) && SK !== "ea") return 1; if (!nz(y) && SK !== "ea") return -1; return (x < y ? -1 : 1) * SD;
+    }
+    if (S === "pct") return ((a.n >= FEW && nz(a.pct_R) ? a.pct_R : a.n ? 500 : 999) - (b.n >= FEW && nz(b.pct_R) ? b.pct_R : b.n ? 500 : 999)) || (pr(a) - pr(b));
+    if (S === "n") return (b.n - a.n) || (pr(a) - pr(b));
+    return (pr(a) - pr(b)) || (b.cur - a.cur) || String(a.ea).localeCompare(String(b.ea));
+  });
+  return rows;
+}
+function tableHtml(rows) {
+  var h = "<table class='u-tbl ea-tbl'><thead><tr>" + COLS.map(function (c) {
+    return "<th data-k='" + c[0] + "'" + (c[3] ? " class='" + c[3] + "'" : "") + ">" + c[1] + (SK === c[0] ? (SD > 0 ? " ▲" : " ▼") : "") + (c[2] ? "<small>" + c[2] + "</small>" : "") + "</th>";
+  }).join("") + "</tr></thead><tbody>";
+  rows.forEach(function (r) {
+    var p = r.pct_R, sym = r.sym === "XAUUSD" ? "金" : r.sym.slice(0, 3) + "/" + r.sym.slice(3);
+    h += "<tr class='" + (r.cur ? "" : "out") + "'>" +
+      "<td><span class='nm2' style='--c:var(--pc-" + pi(r.sym) + ")'><b>" + esc(r.ea) + "</b><small>● " + esc(sym) + "</small><span class='vd vd-sm " + vcls(p, r.n) + "'>" + vtext(p, r.n) + "</span></span></td>" +
+      "<td><b>" + r.n + "</b> <span class='s'>／ " + (nz(r.n_exp) ? r.n_exp.toFixed(1) : "—") + "</span></td>" +
+      "<td class='hide-sm'><b class='" + cl(r.R) + "'>" + sg(r.R) + "</b> <span class='s'>／ " + sg(r.R_exp) + "</span></td>" +
+      "<td><b class='" + cl(r.r1) + "'>" + (r.n ? sg(r.r1, 2) : "—") + "</b> <span class='s'>／ " + sg(r.bt_r1, 2) + "</span></td>" +
+      "<td class='hide-sm'>" + (r.n ? pc(r.win) : "—") + "</td>" +
+      "<td class='hide-sm'>" + (r.n && nz(p) ? "<span class='pc'><span class='bx'><i style='left:" + Math.max(0, Math.min(100, p)) + "%'></i></span><b>" + Math.round(p) + "%</b></span>" : "—") + "</td>" +
+      "<td class='hide-sm'><span class='vd " + vcls(p, r.n) + "'>" + vtext(p, r.n) + "</span></td></tr>";
+  });
+  return h + "</tbody></table>";
+}
+function drawTable() {
+  var all = D.eas || [];
+  var rows = sortRows(all.filter(function (r) { return r.cur; }));
+  var nc = all.filter(function (r) { return r.cur; }).length;
+  $("ea-n").textContent = "今の顔ぶれ " + nc + "本";
+  var two = $("twin").clientWidth >= 1460 && rows.length > 8;
+  $("twin").className = "twin" + (two ? " two" : "");
+  if (two) { var k = Math.ceil(rows.length / 2); $("twin").innerHTML = tableHtml(rows.slice(0, k)) + tableHtml(rows.slice(k)); }
+  else $("twin").innerHTML = tableHtml(rows);
+}
+
+function drawOut() {
+  var rows = sortRows(outRows());
+  $("out-card").hidden = !rows.length;
+  if (!rows.length) return;
+  var s = D.removed_summary && D.removed_summary.eas === rows.length ? D.removed_summary : agg(rows);
+  $("out-n").textContent = rows.length + "本";
+  $("out-note").hidden = !D.removed_note; $("out-note").textContent = D.removed_note || "";
+  $("out-strip").innerHTML =
+    "<span><span class='k'>実弾の決済</span><span class='v'>" + s.n + "<small>件</small></span></span>" +
+    "<span><span class='k'>1件R</span><span class='v " + cl(s.live_r1) + "'>" + sg(s.live_r1, 3) + "</span></span>" +
+    "<span><span class='k'>R 合計</span><span class='v " + cl(s.R) + "'>" + sg(s.R) + "</span></span>" +
+    (nz(zz(s)) ? "<span><span class='k'>偶然か</span><span class='zt " + zcls(zz(s)) + "'>" + esc(ztag(zz(s))) + "</span></span>" : "");
+  var two = $("twin-out").clientWidth >= 1460 && rows.length > 8;
+  $("twin-out").className = "twin" + (two ? " two" : "");
+  if (two) { var k = Math.ceil(rows.length / 2); $("twin-out").innerHTML = tableHtml(rows.slice(0, k)) + tableHtml(rows.slice(k)); }
+  else $("twin-out").innerHTML = tableHtml(rows);
+}
+function drawRecon() {
+  var r = D.recon;
+  $("rc-card").hidden = !(r && r.rows && r.rows.length);
+  if ($("rc-card").hidden) return;
+  $("rc-title").textContent = r.title || "実弾の期間の照合";
+  var h = "<thead><tr><th>EA</th><th>実弾の件数</th><th>試験の件数</th><th>同じ時刻・向きで建った</th><th>決済も同じ時刻</th><th>その R の差（平均）</th><th>R 合計<br><small>実弾 ／ 試験</small></th></tr></thead><tbody>";
+  r.rows.forEach(function (x) {
+    h += "<tr><td><span class='nm2' style='--c:var(--pc-" + pi(x.sym) + ")'><b>" + esc(x.ea) + "</b><small>● " + esc(x.sym === "XAUUSD" ? "金" : x.sym.slice(0, 3) + "/" + x.sym.slice(3)) + "</small></span></td>" +
+      "<td><b>" + x.live_n + "</b></td><td>" + x.bt_n + "</td>" +
+      "<td><b>" + x.matched + "</b> <span class='s'>（" + (x.live_n ? Math.round(x.matched / x.live_n * 100) : "—") + "%）</span></td>" +
+      "<td>" + x.same_exit + "</td><td>" + (nz(x.mean_abs_dR) ? x.mean_abs_dR.toFixed(2) + "R" : "—") + "</td>" +
+      "<td><b class='" + cl(x.live_R) + "'>" + sg(x.live_R) + "</b> <span class='s'>／ " + sg(x.bt_R) + "</span></td></tr>";
+  });
+  var t = r.total;
+  if (t) h += "<tr class='tot'><td>合計</td><td>" + t.live_n + "</td><td>" + t.bt_n + "</td><td>" + t.matched + " <span class='s'>（" + (t.live_n ? Math.round(t.matched / t.live_n * 100) : "—") + "%）</span></td><td></td><td></td><td></td></tr>";
+  $("rc-tbl").innerHTML = h + "</tbody>";
+  $("rc-find").innerHTML = (r.findings || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("");
+  $("rc-how").textContent = (r.how || "") + (r.files ? "　1件ずつの表：" + r.files : "");
+}
+function drawNotes() { var a = D.notes || []; $("notes").innerHTML = a.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join(""); $("notes-card").hidden = !a.length; }
+function drawAll() { if (!D) return; drawHero(); drawConcl(); drawGroupSel(); drawGroups(); drawIssues(); drawProps(); drawRecon(); drawTable(); drawOut(); drawNotes(); }
+
+$("gsel").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; G = b.dataset.g; drawGroupSel(); drawGroups(); });
+
+$("ssel").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; S = b.dataset.s; SK = null; this.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); drawTable(); drawOut(); });
+function onSort(e) { var th = e.target.closest("th[data-k]"); if (!th) return; var k = th.dataset.k; if (SK === k) SD = -SD; else { SK = k; SD = (k === "ea" || k === "pct_R" || k === "vd") ? 1 : -1; } drawTable(); drawOut(); }
+$("twin").addEventListener("click", onSort); $("twin-out").addEventListener("click", onSort);
+
+function load() {
+  fetch("/api/ea-study?_=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); })
+    .then(function (j) { D = j; $("err").hidden = true; drawAll(); })
+    .catch(function (e) { $("err").textContent = e.message; $("err").hidden = false; $("status").textContent = "EA分析・データ待ち"; });
+}
+var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
+document.addEventListener("visibilitychange", function () { if (!document.hidden) load(); });
+load(); setInterval(load, 10 * 60 * 1000);
+})();
+</script>
+</body>
+</html>

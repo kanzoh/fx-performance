@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+
+(function(){
+  var FROZEN=1794573000000, _D=Date;
+  function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
+    return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
+  FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
+  window.Date=FD;
+  var PAGES={"/": "index.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/study": "study.html", "/analysis": "analysis.html", "/verdict": "verdict.html"};
+  var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=(typeof input==="string")?input:(input&&input.url)||"";
+    var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
+    if(!m) return _fetch(input,init);
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+    if(method!=="GET"){
+      return Promise.resolve(new Response(JSON.stringify({ok:false,error:"公開用サンプルのため操作できません"}),
+        {status:200,headers:{"Content-Type":"application/json"}}));
+    }
+    return _fetch(here+"api/"+m[1].replace(/\//g,"_")+".json",{cache:"no-cache"});
+  };
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("a[href]"); if(!a) return;
+    var h=a.getAttribute("href"); if(!h||h.charAt(0)!=="/"||h.indexOf("//")===0) return;
+    var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
+    if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
+  },true);
+  document.addEventListener("submit",function(e){ e.preventDefault(); alert("公開用サンプルのため操作できません"); },true);
+  document.addEventListener("DOMContentLoaded",function(){
+    var b=document.createElement("div");
+    b.textContent="公開用サンプル：数字はすべて作りものです（実在の口座・EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。";
+    b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
+    document.body.insertBefore(b,document.body.firstChild);
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ポートフォリオモニター｜市場分析</title>
+<link rel="stylesheet" href="static/style.css">
+<link rel="stylesheet" href="static/ui2.css">
+<style>
+a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+
+.mk-tbl td,.mk-tbl th{text-align:center}
+.mk-tbl td:first-child,.mk-tbl th:first-child{text-align:left}
+.mk-tbl tbody tr{cursor:pointer}
+.mk-tbl tbody tr.sel td{background:rgba(37,99,235,.10)!important}
+.tr{display:inline-block;min-width:74px;padding:2px 8px;border-radius:6px;font-weight:800;font-size:.9rem;white-space:nowrap}
+.tr.s2{background:rgba(21,128,61,.22);color:#14532d}.tr.s1{background:rgba(21,128,61,.10);color:#15803d}
+.tr.s0{background:#eef2f6;color:#4b5563}.tr.s-1{background:rgba(180,35,24,.10);color:#b42318}.tr.s-2{background:rgba(180,35,24,.22);color:#7a1610}
+.env{font-weight:800}
+.mk-tbl td.env{text-align:left}
+.vol{display:inline-block;min-width:54px;padding:2px 8px;border-radius:6px;font-weight:800;font-size:.9rem}
+.vol.lo{background:#eef2f6;color:#4b5563}.vol.mid{background:#f3f6fa;color:#111827}.vol.hi{background:#fef3c7;color:#92400e}.vol.vhi{background:#fde2c8;color:#9a3412}
+.posbar{position:relative;display:inline-block;width:90px;height:10px;border-radius:5px;background:#e5e7eb;vertical-align:middle}
+.posbar i{position:absolute;top:-3px;width:4px;height:16px;border-radius:2px;background:#111827}
+.rep p{margin:0 0 9px;line-height:1.7;font-size:1rem}
+.lv-tbl td,.lv-tbl th{padding:6px 10px}
+.ea-row{padding:8px 0;border-bottom:1px solid var(--u-line-soft)}
+.ea-row:last-child{border-bottom:0}
+.ea-row b{font-size:1rem}
+.ea-row p{margin:3px 0 0;font-size:.9rem;color:var(--u-ink2);line-height:1.6}
+.pair-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.pair-tabs button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;font-weight:800;font-size:.95rem;border:1px solid var(--u-line);background:#fff;color:var(--c)}
+.pair-tabs button[aria-pressed="true"]{background:var(--c);color:#fff;border-color:var(--c)}
+.heat td,.heat th{width:12.5%;font-weight:700;text-align:center!important}
+.mk-chart{position:relative;width:100%}
+.mk-chart svg{display:block;width:100%;height:auto}
+.mk-chart .tick{font-size:12px;fill:var(--u-muted)}
+.mk-chart .lvl{font-size:11.5px;font-weight:700}
+.upd{font-size:.95rem;font-weight:700;color:var(--u-ink2)}
+.upd b{color:var(--u-ink)}
+
+.fit{display:inline-block;min-width:58px;text-align:center;padding:2px 8px;border-radius:6px;font-weight:900;font-size:.92rem;white-space:nowrap}
+.fit-good{background:rgba(21,128,61,.18);color:#14532d}.fit-bad{background:rgba(180,35,24,.16);color:#7a1610}
+.fit-same{background:#dde4ec;color:#1f2937}.fit-few{background:#e3e9f0;color:#374151}
+
+.fit-warn{background:rgba(217,119,6,.2);color:#7a3d00}
+td.cope .fit{white-space:nowrap;padding:2px 6px}
+.mk-tbl td.envx{white-space:nowrap;text-align:left!important;font-weight:700}
+.fit-n{font-weight:900}.fit-s{color:#374151;font-weight:650;font-size:.92rem}
+.fit-line{margin-top:5px;font-size:.98rem;line-height:1.6}
+.mk-tbl td.fitc{text-align:left!important;white-space:nowrap}
+
+body.u2 #t-all.mk-tbl td.env{white-space:nowrap!important;min-width:0!important;max-width:none!important;width:1%}
+.env-sub{display:block;font-size:.84rem;font-weight:700;color:#374151;line-height:1.3}
+
+.fit-cnt{display:inline-block;min-width:4.6em;text-align:left}
+
+.btv{color:#34548c!important;font-weight:850}
+.btdot{display:inline-block;width:12px;height:12px;border-radius:3px;background:#5b7fb8;margin-right:6px;vertical-align:-1px}
+
+.cal-tbl tr.past td{opacity:.55}
+.cal-tbl tr.next td{background:rgba(37,99,235,.12)!important}
+.cal-tbl tr.hi td.cal-ja{font-weight:900}
+.cal-st{letter-spacing:1px;font-weight:900}
+.cal-st.i3{color:#b42318}.cal-st.i2{color:#b45309}.cal-st.i1{color:#6b7280}.cal-st.i0{color:#1e53ad}
+.cal-sw{font-weight:800;cursor:pointer;white-space:nowrap}
+.cal-sw input{vertical-align:-2px;margin-right:4px}
+.cal-warn{color:#9a3412;font-weight:900}
+
+.evb{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:6px;font-size:.86em;font-weight:900;white-space:nowrap;vertical-align:1px;border:1px solid}
+.evb.i3{color:#fff;background:#b42318;border-color:#b42318}
+.evb.i2{color:#7c2d12;background:#fde7c7;border-color:#c2410c}
+.evb.done{color:#6b7280;background:#efeae0;border-color:#c8c0b0}
+
+.evb{display:table;margin:4px 0 0 0}
+</style>
+<link rel="stylesheet" href="static/readable.css">
+<script src="static/tablealign.js" defer></script>
+</head>
+<body class="u2">
+<header class="page-header">
+  <div>
+    <h1>ポートフォリオモニター</h1>
+    <div class="subtitle">EA別リアルタイム監視</div>
+  </div>
+  <div id="status" class="status-pill status-live">読み込み中</div>
+</header>
+
+<nav class="tab-bar" aria-label="表示切替">
+  <a class="tab-button" href="index.html#top">トップ</a>
+  <a class="tab-button" href="index.html#ea">EA別</a>
+  <a class="tab-button active" href="analysis.html" aria-current="page">市場分析</a>
+  <a class="tab-button" href="study.html">EA分析</a>
+  <a class="tab-button" href="verdict.html">EAの見極め</a>
+  <a class="tab-button" href="backtest.html">詳細データ</a>
+  <a class="tab-button" href="ranking.html">ランキング</a>
+</nav>
+
+<main class="u-wrap">
+<p class="u-note" id="err" hidden></p>
+<div class="u-grid">
+  
+  <section class="u-card s12" aria-label="市場環境の一覧">
+    <div class="u-h">
+      <h2>運用中の通貨ペアの市場環境</h2>
+      <span class="upd" id="upd"></span>
+      <div class="u-right"><span class="u-lead" id="sess"></span></div>
+    </div>
+    <div class="u-tbl-wrap"><table class="u-tbl mk-tbl" id="t-all"></table></div>
+    <p class="u-note">流れ＝終値と EMA50・EMA200 の並びと EMA50 の傾き（ADX14 が25以上なら「強い」）。値動き＝日足 ATR14 が過去1年で下から何%か。位置＝20日間の高値〜安値の中のどこか。行を押すと下にそのペアの分析が出ます。1時間足が確定するたびに更新します。</p>
+  </section>
+
+  
+  <section class="u-card s12" aria-label="今日の経済指標">
+    <div class="u-h">
+      <h2>今日の経済指標</h2>
+      <span class="u-lead" id="cal-lead"></span>
+      <div class="u-right"><label class="cal-sw"><input type="checkbox" id="cal-low"> 重要度★1も出す（<span id="cal-low-n">0</span>件）</label></div>
+    </div>
+    <div class="u-tbl-wrap"><table class="u-tbl cal-tbl" id="t-cal"></table></div>
+    <p class="u-note" id="cal-note"></p>
+  </section>
+
+  
+  <section class="u-card s8 u-fill" aria-label="1時間足チャート">
+    <div class="u-h">
+      <h2 id="c-title">1時間足</h2>
+      <span class="u-lead">直近120本・EMA20（青）・EMA50（橙）・前日と前週の高値安値（点線）</span>
+      <div class="u-right"><div class="pair-tabs" id="ptabs"></div></div>
+    </div>
+    <div class="u-chart-area" id="c-area"><div class="mk-chart" id="chart"></div></div>
+  </section>
+  <div class="s4 u-stack">
+    <section class="u-card" aria-label="分析レポート">
+      <div class="u-h"><h2 id="r-title">分析レポート</h2></div>
+      <div class="rep" id="report"></div>
+    </section>
+    <section class="u-card" aria-label="時間足ごとの流れ">
+      <div class="u-h"><h2>時間足ごとの流れ</h2></div>
+      <div class="u-tbl-wrap"><table class="u-tbl lv-tbl" id="t-tf"></table></div>
+    </section>
+    <section class="u-card" aria-label="節目">
+      <div class="u-h"><h2>節目までの距離</h2><span class="u-lead">日足 ATR の倍数（＋は上）</span></div>
+      <div class="u-tbl-wrap"><table class="u-tbl lv-tbl" id="t-lv"></table></div>
+    </section>
+  </div>
+
+  
+  <section class="u-card s4" aria-label="このペアで動いている EA">
+    <div class="u-h"><h2 id="e-title">このペアで動いている EA</h2></div>
+    <div id="eas"></div>
+  </section>
+  <section class="u-card s3" aria-label="通貨の強弱">
+    <div class="u-h"><h2>通貨の強弱</h2>
+      <div class="u-right"><div class="u-seg" role="group"><button type="button" data-sw="strength24" aria-pressed="true">24時間</button><button type="button" data-sw="strength5" aria-pressed="false">5日</button></div></div></div>
+    <div class="mk-chart" id="str"></div>
+    <p class="u-note">その通貨を含むペアの変化率の平均（相手側なら符号を反対に）。XAU は金。</p>
+  </section>
+  <section class="u-card s5" aria-label="相関">
+    <div class="u-h"><h2>1時間足の値動きの相関</h2><span class="u-lead" id="corr-n"></span></div>
+    <div class="u-tbl-wrap"><table class="u-tbl heat" id="t-corr"></table></div>
+    <p class="u-note">1に近いほど同じ向き、−1に近いほど逆向きに動いています（金＝XAU/USD・EU＝EUR/USD・GU＝GBP/USD・UJ＝USD/JPY・AU＝AUD/USD・EJ＝EUR/JPY・GJ＝GBP/JPY）。</p>
+  </section>
+</div>
+</main>
+
+<script>
+(function () {
+"use strict";
+var $ = function (id) { return document.getElementById(id); };
+var ORDER = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURJPY", "GBPJPY"];
+function pidx(p) { var i = ORDER.indexOf(p); return i < 0 ? "x" : i; }
+function pv(p) { return "--c:var(--pc-" + pidx(p) + ")"; }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function sg(v, d) { if (v === null || v === undefined) return "—"; return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d === undefined ? 2 : d); }
+function cls(v) { return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
+function jst(u) { var d = new Date((u + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + "/" + d.getUTCDate() + " " + ("0" + d.getUTCHours()).slice(-2) + ":" + ("0" + d.getUTCMinutes()).slice(-2); }
+function trTag(t) { if (!t) return "<span class='tr s0'>—</span>"; return "<span class='tr s" + t.state + "'>" + esc(t.text) + "</span>"; }
+function volTag(p) { if (p === null || p === undefined) return "—"; var c = p >= 90 ? "vhi" : p >= 70 ? "hi" : p < 30 ? "lo" : "mid"; return "<span class='vol " + c + "'>" + p + "%</span>"; }
+function posBar(p) { if (p === null || p === undefined) return "—"; return "<span class='posbar' title='" + p + "%'><i style='left:calc(" + p + "% - 2px)'></i></span> <span class='pp'>" + p + "%</span>"; }
+var D = null, SEL = null, SW = "strength24";
+try { SEL = localStorage.getItem("mk_sel"); SW = localStorage.getItem("mk_sw") || SW; } catch (e) {}
+
+function drawAll() {
+  if (!D) return;
+  var P = D.pairs; if (!SEL || !P.some(function (r) { return r.pair === SEL; })) SEL = P[0].pair;
+  $("upd").innerHTML = "1時間足 <b>" + jst(D.h1_bar_utc) + "</b> まで（日本時間）・書き出し " + jst(D.written_utc);
+  $("sess").textContent = "いまの時間帯：" + D.sessions.join("・");
+  $("status").textContent = "市場分析・" + jst(D.written_utc) + " 時点";
+  var h = "<thead><tr><th>通貨ペア</th><th>現在の<br>市場環境</th><th>日足</th><th>4時間足</th><th>1時間足</th><th>値動き</th><th>今日/平均</th><th>20日の<br>位置</th><th>RSI<br>1時間足</th><th>24時間</th><th>5日</th><th title='実取引で、このペアの EA が市場環境の変動に対応できているか（実弾の合計がプラスか。5件未満は判断材料不足）'>EAの<br>対応状況</th><th>実弾の合計R<br>（件数）</th><th title='実弾を建てた日の日足の流れ'>経験した<br>環境</th></tr></thead><tbody>";
+  P.forEach(function (r) {
+    h += "<tr data-p='" + r.pair + "'" + (r.pair === SEL ? " class='sel'" : "") + "><td><span class='ptag' style='" + pv(r.pair) + "'><i></i>" + esc(r.label) + "</span></td>" +
+      "<td class='env'>" + envCell(r.env) + "</td><td>" + trTag(r.tf.D1) + "</td><td>" + trTag(r.tf.H4) + "</td><td>" + trTag(r.tf.H1) + "</td>" +
+      "<td>" + volTag(r.atr_pct) + "</td><td>" + (r.today_pct === null ? "—" : r.today_pct + "%") + "</td><td style='text-align:left'>" + posBar(r.pos20) + "</td>" +
+      "<td>" + (r.tf.H1 && r.tf.H1.rsi !== null ? r.tf.H1.rsi.toFixed(0) : "—") + "</td>" +
+      "<td class='" + cls(r.ch24) + "'>" + sg(r.ch24) + "%</td><td class='" + cls(r.ch5) + "'>" + sg(r.ch5) + "%</td>" + fitCell(r) + "</tr>";
+  });
+  $("t-all").innerHTML = h + "</tbody>";
+  Array.prototype.forEach.call(document.querySelectorAll("#t-all tbody tr"), function (tr) { tr.onclick = function () { SEL = tr.getAttribute("data-p"); save(); drawAll(); }; });
+  $("ptabs").innerHTML = P.map(function (r) { return "<button type='button' style='" + pv(r.pair) + "' data-p='" + r.pair + "' aria-pressed='" + (r.pair === SEL) + "'>" + esc(r.label.replace("（金）", "")) + "</button>"; }).join("");
+  Array.prototype.forEach.call(document.querySelectorAll("#ptabs button"), function (b) { b.onclick = function () { SEL = b.getAttribute("data-p"); save(); drawAll(); }; });
+  var r = P.filter(function (x) { return x.pair === SEL; })[0];
+  $("c-title").textContent = r.label + " の1時間足";
+  $("r-title").textContent = r.label + " の分析レポート";
+  $("report").innerHTML = "<p><b class='env'>" + esc(r.env) + "</b></p>" + r.report.map(function (s) { return "<p>" + esc(s) + "</p>"; }).join("");
+  var tfh = "<thead><tr><th>時間足</th><th>流れ</th><th>ADX</th><th>RSI</th><th>EMA50 より</th></tr></thead><tbody>";
+  [["日足", "D1"], ["4時間足", "H4"], ["1時間足", "H1"]].forEach(function (x) {
+    var t = r.tf[x[1]]; if (!t) { tfh += "<tr><td>" + x[0] + "</td><td colspan=4>—</td></tr>"; return; }
+    tfh += "<tr><td>" + x[0] + "</td><td>" + trTag(t) + "</td><td>" + (t.adx === null ? "—" : t.adx.toFixed(0)) + "</td><td>" + (t.rsi === null ? "—" : t.rsi.toFixed(0)) + "</td><td>" + (t.above50 ? "上" : "下") + "</td></tr>";
+  });
+  $("t-tf").innerHTML = tfh + "</tbody>";
+  var f = function (v) { return v === null || v === undefined ? "—" : (+v).toFixed(r.digits); };
+  $("t-lv").innerHTML = "<thead><tr><th>節目</th><th>値</th><th>距離</th></tr></thead><tbody>" +
+    [["前週高値", r.prev_week[0], r.dist.pw_hi], ["前日高値", r.prev_day[0], r.dist.pd_hi], ["いま", r.price, 0], ["前日安値", r.prev_day[1], r.dist.pd_lo], ["前週安値", r.prev_week[1], r.dist.pw_lo]]
+      .map(function (x) { return "<tr><td>" + x[0] + "</td><td>" + f(x[1]) + "</td><td class='" + cls(x[2]) + "'>" + (x[0] === "いま" ? "—" : sg(x[2])) + "</td></tr>"; }).join("") + "</tbody>";
+  $("e-title").textContent = r.label + " で動いている EA（" + r.eas.length + "本）";
+  $("eas").innerHTML = (r.fit ? "<p class='u-note' style='margin:0 0 6px'>EAの対応状況：市場環境が変わっても崩れずに稼げているかを、実弾の全部の取引で見る。5件以上で合計がプラスなら対応できている、0以下なら対応できていない。5件未満は判断材料不足。経験した環境は、実弾を建てた日の日足の流れ（上昇・下降・もみ合い）ごとの件数と R。R は残高比。BT の見込みは今の環境（" + esc(r.fit.label) + "）での参考。</p>" : "") +
+    (r.eas.length ? r.eas.map(function (e) { return "<div class='ea-row'><b>" + esc(e.name) + "</b>" + fitEA(r, e.name) + (e.summary ? "<p>" + esc(e.summary) + "</p>" : "") + "</div>"; }).join("") : "<p class='u-note'>このペアの EA はありません</p>");
+  drawStrength(); drawCorr(); drawChart(r);
+}
+
+var LIVE = {};
+function loadLive() {
+  fetch("/api/perf-data?_=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) { if (!j) return; LIVE = {}; (j.eas || []).forEach(function (e) { LIVE[e.key || e.name] = e; }); if (D) drawAll(); })
+    .catch(function () {});
+}
+var FT = { good: ["fit-good", "得意"], bad: ["fit-bad", "苦手"], same: ["fit-same", "ふつう"], few: ["fit-few", "件数不足"] };
+function fitTag(j) { if (!j) return "—"; var t = FT[j.tag] || FT.same; return "<span class='fit " + t[0] + "'>" + t[1] + "</span>"; }
+var CUR_ENV_HIST = null;
+function fitCell(r) {
+  CUR_ENV_HIST = r.env_hist || null;
+
+  var a = liveAll(pairEANames(r)), j = copeJudge(a);
+  return "<td class='cope'>" + liveTag(j) + "</td><td>" + (a.n ? "<b class='" + cls(a.s) + "'>" + sg(a.s) + "R</b><span class='fit-s fit-cnt'>（" + a.n + "件）</span>" : "—") + "</td>" +
+    "<td class='envx'>" + (a.n ? envList(a, false) : "—") + "</td>";
+}
+function fitEA(r, name) {
+  CUR_ENV_HIST = r.env_hist || null;
+
+  var f = r.fit, j = f && (f.eas || []).filter(function (x) { return x.name === name; })[0];
+  var a = liveAll([name]), cj = copeJudge(a);
+  var le = "<div class='fit-line'>" + liveTag(cj) + " 実弾 " + (a.n ? "<b class='" + cls(a.s) + "'>" + sg(a.s) + "R</b><span class='fit-s'>（" + a.n + "件）</span>" : "<span class='fit-s'>まだ決済なし</span>") + "</div>" +
+    (a.n ? "<div class='fit-line fit-s'>経験した環境：" + envList(a, true) + "</div>" : "");
+  var bt = j ? "<div class='fit-line fit-s'><span class='btdot'></span>BT の見込み（今の環境・" + esc(f.label) + "）<b class='btv'>" + (j.r1 === null ? "—" : sg(j.r1)) + "R/件</b>（" + j.n + "件）・全期間 <b class='btv'>" + sg(j.r1_all) + "R/件</b></div>" : "";
+  return le + bt;
+}
+
+var ENV_JA = { up: "上昇", down: "下降", range: "もみ合い" };
+function pairEANames(r) { return (r.eas || []).map(function (e) { return e.name; }); }
+function liveAll(names) {
+  var o = { n: 0, s: 0, env: {} }, rows = {};
+  names.forEach(function (nm) {
+    var L = LIVE[nm]; if (!L || !L.live_tr) return;
+    L.live_tr.forEach(function (x) {
+      o.n++; o.s += x[1];
+      var e = CUR_ENV_HIST && CUR_ENV_HIST[x[0]], k = e && ENV_JA[e[0]] ? e[0] : "other";
+      var b = o.env[k] || (o.env[k] = { n: 0, s: 0 }); b.n++; b.s += x[1];
+    });
+  });
+  return o;
+}
+function copeJudge(a) {
+  if (!a.n) return { tag: "none" };
+  if (a.n < 5) return { tag: "few" };
+  return { tag: a.s > 0 ? "ok" : "under" };
+}
+function envList(a, detail) {
+  return ["up", "down", "range", "other"].filter(function (k) { return a.env[k]; }).map(function (k) {
+    var b = a.env[k], nm = k === "other" ? "不明" : ENV_JA[k];
+    return detail ? nm + " " + b.n + "件 <b class='" + cls(b.s) + "'>" + sg(b.s) + "R</b>" : "<span title='" + b.n + "件 " + sg(b.s) + "R'>" + nm + "</span>";
+  }).join(detail ? "・" : "・");
+}
+
+function liveEnv(r, names) {
+  var f = r.fit; if (!f || !f.key || !r.env_hist) return null;
+  var n = 0, s = 0;
+  names.forEach(function (nm) {
+    var L = LIVE[nm]; if (!L || !L.live_tr) return;
+    L.live_tr.forEach(function (x) {
+      var e = r.env_hist[x[0]]; if (!e) return;
+      if (e[0] === f.key[0] && (f.key[1] === null || e[1] === f.key[1])) { n++; s += x[1]; }
+    });
+  });
+  return { n: n, r1: n ? s / n : null };
+}
+function liveJudge(lv, bt) {
+  if (!lv || !bt) return null;
+  if (!lv.n) return { tag: "none" };
+  if (lv.n < 5 || !bt.sd) return { tag: "few" };
+
+  var z = (lv.r1 - bt.r1) / (bt.sd / Math.sqrt(lv.n));
+  return { tag: z <= -2 ? "under" : lv.r1 > 0 ? "ok" : "watch", z: z };
+}
+var LT = { ok: ["fit-good", "対応できている"], under: ["fit-bad", "対応できていない"], few: ["fit-few", "判断材料不足"], none: ["fit-few", "実弾なし"] };
+function liveTag(j) { if (!j) return "—"; var t = LT[j.tag]; return "<span class='fit " + t[0] + "'>" + t[1] + "</span>"; }
+function pairNames(r) { return (r.fit && r.fit.eas || []).map(function (e) { return e.name; }); }
+function btPair(r) {
+
+  var es = r.fit && r.fit.eas || [], n = 0, s = 0, ss = 0;
+  es.forEach(function (e) { if (e.r1 === null || !e.n) return; n += e.n; s += e.r1 * e.n; ss += ((e.sd || 0) * (e.sd || 0) + e.r1 * e.r1) * e.n; });
+  if (!n) return null;
+  var m = s / n; return { r1: m, sd: Math.sqrt(Math.max(ss / n - m * m, 1e-9)), n: n };
+}
+
+function envCell(t) { t = String(t || ""); var i = t.indexOf("（"); return i > 0 ? esc(t.slice(0, i)) + "<span class='env-sub'>" + esc(t.slice(i)) + "</span>" : esc(t); }
+function save() { try { localStorage.setItem("mk_sel", SEL); localStorage.setItem("mk_sw", SW); } catch (e) {} }
+
+var NS = "http://www.w3.org/2000/svg";
+function el(n, a, p) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+function nice(lo, hi, n) { var sp = hi - lo || 1, st = Math.pow(10, Math.floor(Math.log10(sp / n))), er = sp / n / st; if (er >= 7.5) st *= 10; else if (er >= 3.5) st *= 5; else if (er >= 1.5) st *= 2; var t = [], v = Math.ceil(lo / st) * st; for (; v <= hi + 1e-12; v += st) t.push(v); return t; }
+function drawChart(r) {
+  var host = $("chart"), area = $("c-area"), C = r.chart, n = C.t.length;
+  host.innerHTML = "";
+  var side = area.closest(".u-card").nextElementSibling, W = host.clientWidth || 800;
+  var H = (window.innerWidth > 1280 && side) ? Math.max(360, area.clientHeight - 4) : Math.max(320, Math.min(480, W * 0.55));
+  var ml = 8, mr = 74, mt = 10, mb = 24;
+  var lo = Math.min.apply(null, C.l), hi = Math.max.apply(null, C.h);
+  C.levels.forEach(function (lv) { if (lv.v !== null && lv.v !== undefined && lv.v > lo - (hi - lo) * 0.25 && lv.v < hi + (hi - lo) * 0.25) { lo = Math.min(lo, lv.v); hi = Math.max(hi, lv.v); } });
+  var pad = (hi - lo) * 0.04; lo -= pad; hi += pad;
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": r.label + " 1時間足" }, host);
+  var cw = (W - ml - mr) / n, X = function (i) { return ml + cw * (i + 0.5); }, Y = function (v) { return mt + (H - mt - mb) * (hi - v) / (hi - lo); };
+  nice(lo, hi, 6).forEach(function (v) {
+    el("line", { x1: ml, x2: W - mr, y1: Y(v), y2: Y(v), stroke: "var(--u-grid)", "stroke-width": 1 }, svg);
+    var t = el("text", { x: W - mr + 6, y: Y(v) + 4, "class": "tick" }, svg); t.textContent = v.toFixed(r.digits);
+  });
+  var lastDay = null;
+  for (var i = 0; i < n; i++) {
+    var d = new Date((C.t[i] + 9 * 3600) * 1000), day = d.getUTCDate();
+    if (day !== lastDay && d.getUTCHours() < 1) { el("line", { x1: X(i) - cw / 2, x2: X(i) - cw / 2, y1: mt, y2: H - mb, stroke: "var(--u-grid)", "stroke-width": 1 }, svg); }
+    if (day !== lastDay && i > 0 && d.getUTCHours() < 1) { var tx = el("text", { x: X(i), y: H - 6, "text-anchor": "middle", "class": "tick" }, svg); tx.textContent = (d.getUTCMonth() + 1) + "/" + day; }
+    lastDay = day;
+  }
+  C.levels.forEach(function (lv, k) {
+    if (lv.v === null || lv.v === undefined || lv.v < lo || lv.v > hi) return;
+    var col = lv.name.indexOf("高値") >= 0 ? "#15803d" : "#b42318";
+    el("line", { x1: ml, x2: W - mr, y1: Y(lv.v), y2: Y(lv.v), stroke: col, "stroke-width": 1, "stroke-dasharray": lv.name.indexOf("前週") >= 0 ? "7 4" : "3 3", opacity: .75 }, svg);
+    var t = el("text", { x: ml + 4, y: Y(lv.v) - 3, "class": "lvl", fill: col }, svg); t.textContent = lv.name;
+  });
+  var bw = Math.max(1, cw * 0.62);
+  for (var j = 0; j < n; j++) {
+    var up = C.c[j] >= C.o[j], col = up ? "#15803d" : "#b42318";
+    el("line", { x1: X(j), x2: X(j), y1: Y(C.h[j]), y2: Y(C.l[j]), stroke: col, "stroke-width": 1 }, svg);
+    var top = Y(Math.max(C.o[j], C.c[j])), bot = Y(Math.min(C.o[j], C.c[j]));
+    el("rect", { x: X(j) - bw / 2, y: top, width: bw, height: Math.max(1, bot - top), fill: up ? "#15803d" : "#b42318" }, svg);
+  }
+  var line = function (arr, col) { el("polyline", { points: arr.map(function (v, i) { return X(i).toFixed(1) + "," + Y(v).toFixed(1); }).join(" "), fill: "none", stroke: col, "stroke-width": 1.6 }, svg); };
+  line(C.e20, "#2563eb"); line(C.e50, "#d97706");
+  var last = C.c[n - 1], ly = Y(last);
+  el("rect", { x: W - mr + 2, y: ly - 9, width: mr - 4, height: 18, rx: 3, fill: "#111827" }, svg);
+  var lt = el("text", { x: W - mr + 6, y: ly + 4, "class": "tick", style: "fill:#fff;font-weight:700" }, svg); lt.textContent = last.toFixed(r.digits);
+  var tp = document.createElement("div"); tp.className = "tip"; host.appendChild(tp);
+  var cross = el("line", { y1: mt, y2: H - mb, stroke: "var(--u-axis)", opacity: 0 }, svg);
+  svg.addEventListener("mousemove", function (ev) {
+    var rc = svg.getBoundingClientRect(), sx = (ev.clientX - rc.left) * W / rc.width, i = Math.floor((sx - ml) / cw); if (i < 0 || i >= n) return;
+    cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", 1);
+    tp.innerHTML = "<div class='t'>" + jst(C.t[i]) + "（日本時間）</div>始 " + C.o[i].toFixed(r.digits) + "　高 " + C.h[i].toFixed(r.digits) + "<br>安 " + C.l[i].toFixed(r.digits) + "　終 <b>" + C.c[i].toFixed(r.digits) + "</b>";
+    tp.style.opacity = 1; var x = X(i) * rc.width / W + 12; if (x + 190 > rc.width) x -= 210; tp.style.left = x + "px"; tp.style.top = "8px";
+  });
+  svg.addEventListener("mouseleave", function () { cross.setAttribute("opacity", 0); tp.style.opacity = 0; });
+}
+function drawStrength() {
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sw]"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-sw") === SW)); b.onclick = function () { SW = b.getAttribute("data-sw"); save(); drawStrength(); }; });
+  var rows = D[SW] || [], host = $("str"), W = host.clientWidth || 400, rh = 30, H = rows.length * rh + 22, ml = 52, mr = 60;
+  host.innerHTML = ""; if (!rows.length) return;
+  var mx = Math.max.apply(null, rows.map(function (x) { return Math.abs(x[1]); })) || 1;
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H }, host), Z = ml + (W - ml - mr) / 2, S = (W - ml - mr) / 2 / mx;
+  el("line", { x1: Z, x2: Z, y1: 0, y2: H - 20, stroke: "var(--u-axis)" }, svg);
+  rows.forEach(function (x, i) {
+    var y = i * rh + 6, v = x[1], w = Math.abs(v) * S;
+    var t = el("text", { x: ml - 8, y: y + 14, "text-anchor": "end", "class": "tick", style: "fill:var(--u-ink);font-weight:800;font-size:13px" }, svg); t.textContent = x[0];
+    el("rect", { x: v >= 0 ? Z : Z - w, y: y + 2, width: Math.max(2, w), height: 16, rx: 3, fill: v >= 0 ? "#15803d" : "#b42318" }, svg);
+    var vt = el("text", { x: v >= 0 ? Z + w + 5 : Z + 5, y: y + 14, "text-anchor": "start", "class": "tick", style: "font-weight:700;fill:var(--u-ink2)" }, svg); vt.textContent = sg(v) + "%";
+  });
+}
+function drawCorr() {
+  var c = D.corr; $("corr-n").textContent = "直近 " + c.n + " 本";
+  var SHORT = { XAUUSD: "金", EURUSD: "EU", GBPUSD: "GU", USDJPY: "UJ", AUDUSD: "AU", EURJPY: "EJ", GBPJPY: "GJ" };
+  var short = function (p) { return SHORT[p] || p; };
+  var h = "<thead><tr><th></th>" + c.names.map(function (p) { return "<th>" + esc(short(p)) + "</th>"; }).join("") + "</tr></thead><tbody>";
+  c.names.forEach(function (a, i) {
+    h += "<tr><td><b>" + esc(short(a)) + "</b></td>" + c.m[i].map(function (v, j) {
+      if (i === j) return "<td style='background:#f3f4f6'>—</td>";
+      if (v === null) return "<td>—</td>";
+      var al = Math.min(.55, Math.abs(v) * .6); var bg = v >= 0 ? "rgba(21,128,61," + al.toFixed(2) + ")" : "rgba(180,35,24," + al.toFixed(2) + ")";
+      return "<td style='background:" + bg + "'>" + v.toFixed(2) + "</td>"; }).join("") + "</tr>";
+  });
+  $("t-corr").innerHTML = h + "</tbody>";
+}
+
+var CUR_JA = { USD: "米ドル", EUR: "ユーロ", GBP: "ポンド", JPY: "円", AUD: "豪ドル", CNY: "人民元", All: "全体" };
+function calLow() { try { return localStorage.getItem("cal_low") === "1"; } catch (e) { return false; } }
+function drawCal() {
+  var c = D && D.calendar, t = $("t-cal"); if (!t) return;
+  var box = $("cal-low"); if (box) box.checked = calLow();
+  if (!c) { t.innerHTML = ""; $("cal-lead").textContent = ""; $("cal-note").innerHTML = "<span class='cal-warn'>経済指標はまだ取り込めていません（毎朝1回取り込みます）。</span>"; return; }
+  var now = Date.now() / 1000, low = calLow(), all = c.events || [];
+  var ev = all.filter(function (e) { return low || e.imp !== 1; });
+  $("cal-low-n").textContent = all.filter(function (e) { return e.imp === 1; }).length;
+  var d = c.day.split("-"); $("cal-lead").textContent = (+d[1]) + "月" + (+d[2]) + "日（日本時間の朝6時から翌朝6時まで）";
+  var nextI = -1; ev.forEach(function (e, i) { if (nextI < 0 && e.t >= now) nextI = i; });
+  var h = "<thead><tr><th>時刻</th><th>通貨</th><th>重要度</th><th>指標</th><th>予想</th><th>前回</th></tr></thead><tbody>";
+  if (!ev.length) h += "<tr><td colspan='6'>" + (all.length ? "重要度★2以上の指標はありません（★1 は右上で出せます）" : "今日は対象の指標がありません") + "</td></tr>";
+  ev.forEach(function (e, i) {
+    var st = e.imp === 0 ? "休場" : new Array(e.imp + 1).join("★");
+    h += "<tr class='" + (e.t < now ? "past" : "") + (i === nextI ? " next" : "") + (e.imp >= 3 ? " hi" : "") + "' title='" + esc(e.en) + "'>" +
+      "<td>" + e.jst.slice(11) + "</td><td>" + (CUR_JA[e.cur] || esc(e.cur)) + "</td><td><span class='cal-st i" + e.imp + "'>" + st + "</span></td>" +
+      "<td class='cal-ja'>" + esc(e.ja) + "</td><td>" + (e.forecast ? esc(e.forecast) : "—") + "</td><td>" + (e.previous ? esc(e.previous) : "—") + "</td></tr>";
+  });
+  t.innerHTML = h + "</tbody>";
+  var f = c.fetched_utc ? new Date(c.fetched_utc * 1000) : null, old = !f || now - c.fetched_utc > 30 * 3600;
+  $("cal-note").innerHTML = (old ? "<span class='cal-warn'>今日の分を取り込めていません（最後の取り込み " + (f ? (f.getMonth() + 1) + "/" + f.getDate() + " " + ("0" + f.getHours()).slice(-2) + ":" + ("0" + f.getMinutes()).slice(-2) : "—") + "）。</span>" : "") +
+    "出どころ：" + esc(c.source || "ForexFactory") + "（毎朝1回取り込み" + (f && !old ? "・" + ("0" + f.getHours()).slice(-2) + ":" + ("0" + f.getMinutes()).slice(-2) : "") + "）。予想と前回だけで、結果は入りません。" +
+    "★★★＝相場が大きく動きやすい・★★＝やや動く。過ぎた指標は薄く、次の指標は青で示します。指標名にマウスを当てると英語の名前が出ます。身内向けのページだけに出し、公開ページには出しません。";
+}
+
+function pairEvBadge(pair) {
+  var c = D && D.calendar; if (!c || !c.events) return "";
+  var cur = [pair.slice(0, 3), pair.slice(3, 6)]; if (cur.indexOf("AUD") >= 0) cur.push("CNY");
+  var ev = c.events.filter(function (e) { return e.imp >= 2 && cur.indexOf(e.cur) >= 0; }); if (!ev.length) return "";
+  var now = Date.now() / 1000, up = ev.filter(function (e) { return e.t >= now; });
+  var tip = ev.map(function (e) { return e.jst.slice(11) + " " + (e.imp >= 3 ? "★★★" : "★★") + " " + e.ja; }).join("\n");
+  if (!up.length) return "<span class='evb done' title='" + esc(tip) + "'>指標 済</span>";
+  var top = Math.max.apply(null, up.map(function (e) { return e.imp; }));
+  return "<span class='evb i" + (top >= 3 ? 3 : 2) + "' title='" + esc(tip) + "'>" + (top >= 3 ? "重要指標 " : "指標 ") + up[0].jst.slice(11) + "</span>";
+}
+function load() {
+  fetch("/api/market-env?_=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); })
+    .then(function (j) { D = j; $("err").hidden = true; drawAll(); try { drawCal(); } catch (e) {   } if (!Object.keys(LIVE).length) loadLive(); })
+    .catch(function (e) { $("err").textContent = e.message; $("err").hidden = false; $("status").textContent = "市場分析・データ待ち"; });
+}
+var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
+document.addEventListener("visibilitychange", function () { if (!document.hidden) load(); });
+var cb = $("cal-low"); if (cb) cb.addEventListener("change", function () { try { localStorage.setItem("cal_low", cb.checked ? "1" : "0"); } catch (e) {   } drawCal(); });
+setInterval(function () { try { drawCal(); if (D) drawAll(); } catch (e) {   } }, 60 * 1000);
+load(); setInterval(load, 5 * 60 * 1000);
+})();
+</script>
+</body>
+</html>

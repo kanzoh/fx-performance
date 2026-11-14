@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+
+(function(){
+  var FROZEN=1794573000000, _D=Date;
+  function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
+    return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
+  FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
+  window.Date=FD;
+  var PAGES={"/": "index.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/study": "study.html", "/analysis": "analysis.html", "/verdict": "verdict.html"};
+  var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=(typeof input==="string")?input:(input&&input.url)||"";
+    var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
+    if(!m) return _fetch(input,init);
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+    if(method!=="GET"){
+      return Promise.resolve(new Response(JSON.stringify({ok:false,error:"公開用サンプルのため操作できません"}),
+        {status:200,headers:{"Content-Type":"application/json"}}));
+    }
+    return _fetch(here+"api/"+m[1].replace(/\//g,"_")+".json",{cache:"no-cache"});
+  };
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("a[href]"); if(!a) return;
+    var h=a.getAttribute("href"); if(!h||h.charAt(0)!=="/"||h.indexOf("//")===0) return;
+    var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
+    if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
+  },true);
+  document.addEventListener("submit",function(e){ e.preventDefault(); alert("公開用サンプルのため操作できません"); },true);
+  document.addEventListener("DOMContentLoaded",function(){
+    var b=document.createElement("div");
+    b.textContent="公開用サンプル：数字はすべて作りものです（実在の口座・EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。";
+    b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
+    document.body.insertBefore(b,document.body.firstChild);
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ポートフォリオモニター｜詳細データ</title>
+<link rel="stylesheet" href="static/style.css">
+<link rel="stylesheet" href="static/ui2.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>#u-cmp{margin:0 0 12px}#u-cmp-table td,#u-cmp-table th{padding:5px 10px}#u-cmp-table td:nth-child(2),#u-cmp-table td:nth-child(3){min-width:120px}</style>
+<style>
+a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.ea-picker{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.ea-chip{display:inline-flex;align-items:baseline;gap:6px;padding:6px 11px;border:1px solid var(--chip-border,var(--line-strong));border-radius:999px;background:var(--chip-bg,#fff);font:inherit;font-weight:850;font-size:1rem;color:var(--chip-text,var(--text));cursor:pointer}
+.ea-chip small{font-size:.8rem;font-weight:800;color:var(--chip-text,var(--muted));opacity:.75}
+.ea-chip:hover{border-color:var(--chip-text,var(--blue))}
+
+.ea-chip[aria-pressed="true"]{background:var(--chip-text,var(--blue));border-color:var(--chip-text,var(--blue));color:#fff}
+.ea-chip[aria-pressed="true"] small{color:#fff;opacity:.85}
+.ea-select{display:none;margin:0 0 14px;padding:8px 10px;font:inherit;font-weight:800;border:1px solid var(--line-strong);border-radius:8px;background:#fff}
+@media (max-width:900px){.ea-picker{display:none}.ea-select{display:block;width:100%}}
+.bt-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.bt-chart-panel{border-top:4px solid var(--blue)}
+
+.month-two{align-items:stretch!important}
+
+.eq-two{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px;align-items:stretch}
+.eq-two.only{grid-template-columns:minmax(0,1fr)}
+
+.eq-card{background:#fffdf8;border:1px solid #a89f8e;border-radius:10px;padding:12px 14px 14px;box-shadow:0 1px 4px rgba(15,23,42,.10)}
+.eq-card-h{margin:0 0 10px;padding:0 0 7px;border-bottom:2px solid #d3c8b3;font-size:1.12rem;font-weight:900;color:#14213d}
+.eq-side{display:flex;flex-direction:column;gap:16px}
+.eq-side .eq-card:last-child{flex:1}
+.eq-main .toggles{margin-top:0}
+.eq-side .kv-table td.kv-num{white-space:nowrap}
+.eqdd-tbl{border-collapse:collapse;width:100%}
+.eqdd-tbl tbody tr{cursor:pointer}
+.eqdd-tbl tbody tr:hover td{background:rgba(37,99,235,.08)!important}
+.eqdd-tbl tbody tr.on td{background:rgba(37,99,235,.16)!important}
+.eqdd-tbl td{font-variant-numeric:tabular-nums;white-space:nowrap}
+.eqdd-tbl .dd-deep{color:#9b1c1c;font-weight:900}
+.eqdd-tbl .dd-open{color:#9a3412;font-weight:900}
+@media (max-width:1450px){.eq-two{grid-template-columns:minmax(0,1fr)}.eq-side{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+@media (max-width:900px){.eq-side{grid-template-columns:minmax(0,1fr)}}
+.bt-month-panel{border-top:4px solid var(--teal)}
+.bt-stats-panel{border-top:4px solid var(--violet)}
+.bt-report-panel{border-top:4px solid var(--amber)}
+.bt-mech-panel{border-top:4px solid var(--green);margin:16px 0 0}
+.mech-summary{margin:0 0 10px;font-size:1.05rem;font-weight:850;line-height:1.6;color:var(--text)}
+.mech-block h3{margin:12px 0 4px;font-size:1rem;font-weight:900;color:var(--text)}
+.mech-block h3:first-child{margin-top:0}
+.mech-block ul{margin:0;padding-left:1.3em}
+.mech-block li{margin:3px 0;font-size:.98rem;font-weight:750;line-height:1.6;color:var(--text)}
+.mech-block h3.key{color:#166534}
+.mech-warn{margin:8px 0 0;padding:8px 12px;border-radius:6px;background:var(--panel-amber);border:1px solid var(--border-amber);color:#7a2e0e;font-weight:800}
+.mech-none{margin:0;font-weight:800;color:var(--muted)}
+
+.mech-wrap{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,4fr);gap:14px;align-items:start}
+.mech-cards{display:contents}
+.mech-card-side{grid-column:5}
+@media (max-width:1400px){.mech-wrap{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,2fr)}
+  .mech-card-side{grid-column:3}}
+@media (max-width:900px){.mech-wrap{grid-template-columns:minmax(0,1fr)}
+  .mech-card-side{grid-column:auto}}
+.mech-card{border:1px solid #dde4ec;border-radius:10px;background:#fff;overflow:hidden}
+.mech-card>h3{margin:0;padding:9px 13px;background:#f7f9fc;border-bottom:1px solid #e6ebf1;
+  font-size:1rem;font-weight:900;color:var(--text);display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.mech-card>h3 .mech-count{font-size:.82rem;font-weight:800;color:var(--muted);white-space:nowrap}
+.mech-card>ul{margin:0;padding:10px 14px 12px 30px}
+.mech-card>ul>li{margin:4px 0;font-size:.98rem;font-weight:750;line-height:1.6;color:var(--text)}
+
+.mech-wrap>.mech-card:not(.mech-card-side):not(.span-all)>ul{padding:9px 10px 11px 24px}
+.mech-wrap>.mech-card:not(.mech-card-side):not(.span-all)>ul>li{font-size:.92rem;line-height:1.55;margin:3px 0}
+.mech-wrap>.mech-card:not(.mech-card-side):not(.span-all)>h3{padding:8px 10px;font-size:.94rem}
+.mech-card>p{margin:0;padding:11px 14px}
+.mech-card.key{border-color:#fdba74}
+.mech-card.key>h3{background:#fff7ed;border-bottom-color:#fed7aa;color:#9a3412}
+.mech-card.span-all{grid-column:1/-1}
+.mech-card.span-all>p.mech-summary{margin:0;padding:12px 14px}
+.mech-card-wide{margin-top:14px}
+.mech-card-wide>.kv-table,.mech-card-side>.kv-table{border:0;border-top:1px solid #e6ebf1}
+
+.mech-card-side>.kv-table th:first-child{white-space:nowrap}
+.toggles{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:0 0 10px}
+
+.dd-cap{margin:12px 2px 3px;font-size:.84rem;font-weight:850;color:#b42318}
+.zoom-ctl{display:flex;align-items:center;gap:8px;margin-left:auto;white-space:nowrap}
+.zoom-ctl label{font-size:.84rem;font-weight:850;color:var(--muted)}
+.zoom-ctl{border-radius:8px}
+.zoom-ctl:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.zoom-ctl .zoom-arrow{min-width:30px;padding:3px 8px;font-size:.9rem;line-height:1;color:#2563eb;border-color:#c7d2e4}
+.zoom-ctl .zoom-arrow:hover:not(:disabled){background:#eff6ff}
+.zoom-ctl .zoom-arrow:disabled{color:#c3cad6;border-color:#e3e9f0;cursor:default;background:#fafbfd}
+.zoom-ctl output{font-size:.84rem;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;min-width:3.8em;text-align:right}
+.zoom-ctl button{border:1px solid var(--line-strong);background:#fff;border-radius:6px;padding:2px 9px;
+  font-size:.8rem;font-weight:850;color:var(--muted);cursor:pointer}
+.zoom-ctl button:hover{background:#f7f9fc;color:var(--text)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{padding:6px 12px;border:0;background:#fff;font:inherit;font-weight:850;font-size:.95rem;color:var(--muted);cursor:pointer}
+.seg button + button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--blue-soft);color:var(--blue)}
+.seg button:disabled{color:#b5bdc9;cursor:not-allowed}
+.chart-wrap{position:relative;width:100%}
+.chart-wrap canvas{display:block;width:100%}
+.chart-tip{position:absolute;pointer-events:none;padding:6px 9px;border:1px solid var(--line-strong);border-radius:6px;background:rgba(255,255,255,.96);box-shadow:0 2px 8px rgba(15,23,42,.12);font-size:.88rem;font-weight:800;color:var(--text);white-space:nowrap;display:none}
+.src-note{margin:8px 0 0;font-size:.9rem;font-weight:750;color:var(--muted);line-height:1.55}
+.src-note b{color:var(--text)}
+.month-table{border-collapse:separate;border-spacing:2px;font-variant-numeric:tabular-nums}
+.month-table th{padding:4px 6px;font-size:.85rem;font-weight:900;color:var(--muted);background:transparent}
+.month-table td{min-width:52px;padding:5px 6px;text-align:right;font-size:.86rem;font-weight:800;border-radius:4px;white-space:nowrap}
+
+.bt-month-panel .month-table td{min-width:40px;padding:4px 4px;font-size:.82rem}
+.bt-month-panel .month-table th{padding:3px 4px;font-size:.8rem}
+.month-table td.year{background:#f4f6fa!important;font-weight:900}
+.month-table td.none{color:#b5bdc9;background:#f8fafc}
+.kv-table{border-collapse:collapse;width:100%}
+.kv-table th,.kv-table td{padding:7px 10px;border-bottom:1px solid #e6ebf1;font-size:1rem;text-align:left;vertical-align:top}
+.kv-table th{width:46%;font-weight:800;color:var(--muted);background:transparent}
+.kv-table td{font-weight:850;color:var(--text);font-variant-numeric:tabular-nums}
+.kv-table td small{display:block;font-size:.82rem;font-weight:750;color:var(--muted)}
+
+.kv-table{border:1px solid #d7dee8;table-layout:auto}
+.kv-table th,.kv-table td{border:1px solid #e3e9f0;font-size:1.02rem;padding:8px 12px;line-height:1.35;vertical-align:top}
+.kv-table th{width:1%;white-space:nowrap;background:#f7f9fc;text-align:left}
+.kv-table td.kv-num{width:1%;white-space:nowrap;text-align:right;font-size:1.1rem;font-weight:850;font-variant-numeric:tabular-nums}
+.kv-table td.kv-memo{width:100%;font-size:.92rem;font-weight:750;color:var(--muted);white-space:normal}
+.kv-table tr:nth-child(even) td{background:#fcfdff}
+.kv-table thead th{font-size:.86rem;font-weight:900;color:var(--muted)}
+@media (max-width:1000px){.kv-table th{white-space:normal}}
+.bt-two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+
+.month-two{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
+.month-two.only{grid-template-columns:minmax(0,1fr)}
+.month-side-h{margin:0 0 8px;font-size:1.12rem;font-weight:900;color:var(--text)}
+.month-side .kv-table td.kv-num{white-space:nowrap}
+.ms-lo{color:#b42318!important}.ms-hi{color:#15803d!important}
+@media (max-width:1420px){.month-two{grid-template-columns:minmax(0,1fr)}}
+
+#u-cmp > .cmp-eq{align-self:stretch}
+
+#u-cmp-table{table-layout:auto;width:100%}
+#u-cmp-table th,#u-cmp-table td{white-space:nowrap;padding-left:10px!important;padding-right:12px!important}
+#u-cmp-table .memo{white-space:normal;width:100%;text-align:left!important;color:#1f2937;font-weight:600;line-height:1.5}
+@media (max-width:1500px){.bt-two-col{grid-template-columns:minmax(0,1fr)}}
+.bt-empty{padding:18px;text-align:center;font-weight:850;color:var(--red)}
+.metrics-grid .metric-value small{font-size:.8rem;font-weight:800;color:var(--muted);margin-left:4px}
+.pos{color:var(--green)}.neg{color:var(--red)}
+
+main.bt-main{padding:4px 24px 28px}
+.bt-main .metrics-grid{padding:0 0 4px}
+.bt-metrics-note{margin:6px 0 16px}
+.metric-label .kl{word-break:keep-all}
+@media (max-width:900px){main.bt-main{padding:4px 14px 24px}}
+</style>
+<link rel="stylesheet" href="static/readable.css">
+<script src="static/tablealign.js" defer></script>
+</head>
+<body class="u2">
+<header class="page-header">
+  <div>
+    <h1>ポートフォリオモニター</h1>
+    <div class="subtitle">EA別リアルタイム監視</div>
+  </div>
+  <div id="status" class="status-pill status-live">読み込み中</div>
+</header>
+
+<nav class="tab-bar" aria-label="表示切替">
+  <a class="tab-button" href="index.html#top">トップ</a>
+  <a class="tab-button" href="index.html#ea">EA別</a>
+  <a class="tab-button" href="analysis.html">市場分析</a>
+  <a class="tab-button" href="study.html">EA分析</a>
+  <a class="tab-button" href="verdict.html">EAの見極め</a>
+  <a class="tab-button active" href="backtest.html" aria-current="page">詳細データ</a>
+  <a class="tab-button" href="ranking.html">ランキング</a>
+</nav>
+
+<main class="bt-main">
+  
+  <div class="toggles" style="margin:0 0 10px">
+    <div class="seg" role="group" aria-label="見るもの">
+      <button type="button" data-src="bt" aria-pressed="true">バックテスト</button>
+      <button type="button" data-src="fwd" aria-pressed="false">フォワード（実口座）</button>
+    </div>
+    <span class="src-note" id="src-note" style="margin:0"></span>
+    
+    <div class="zoom-ctl" id="zoom-ctl" tabindex="0" role="group" aria-label="画面全体の表示倍率（左右の矢印で調整）">
+      <label>表示倍率</label>
+      <button type="button" class="zoom-arrow" id="zoom-down" aria-label="小さくする" title="小さくする（←）">◀</button>
+      <output id="zoom-out" aria-live="polite">×1.00</output>
+      <button type="button" class="zoom-arrow" id="zoom-up" aria-label="大きくする" title="大きくする（→）">▶</button>
+      <button type="button" id="zoom-reset" title="1.00倍に戻す">戻す</button>
+    </div>
+  </div>
+
+  <div class="ea-picker" id="picker" role="group" aria-label="EA を選ぶ"></div>
+  <select class="ea-select" id="picker-select" aria-label="EA を選ぶ"></select>
+
+  <section class="metrics-grid" aria-label="選んだ EA の要約" id="metrics"></section>
+  <p class="src-note bt-metrics-note" id="metrics-note"></p>
+  
+  <section class="u-grid" id="u-cmp" hidden>
+    <section class="u-card s8 cmp-eq">
+      <div class="u-h"><h2 id="u-cmp-title">バックテストと実運用の比べ</h2></div>
+      <div class="u-tbl-wrap"><table class="u-tbl" id="u-cmp-table"></table></div>
+    </section>
+    <section class="u-card s4 cmp-eq">
+      <div class="u-h"><h2>同じ回数のバックテストとの見比べ</h2></div>
+      <div class="u-lead" id="u-cmp-verdict" style="margin-bottom:6px"></div>
+      <div class="u-chart" id="u-cmp-fan"></div>
+      <p class="u-note" id="u-cmp-note"></p>
+    </section>
+  </section>
+
+
+  <div class="bt-grid">
+    
+    <section class="panel bt-chart-panel">
+      <div class="section-title"><h2 id="chart-title">資産曲線</h2><span id="chart-sub"></span></div>
+      <div class="eq-two" id="eq-two">
+        <div class="eq-main eq-card">
+          <h3 class="eq-card-h">資産曲線と決済ベースの落ち込み</h3>
+      <div class="toggles" id="chart-toggles">
+        <div class="seg" role="group" aria-label="増え方">
+          <button type="button" data-mode="comp" aria-pressed="true">複利</button>
+          <button type="button" data-mode="simple" aria-pressed="false">単利</button>
+        </div>
+        <div class="seg" role="group" aria-label="単位">
+          <button type="button" data-unit="pct" aria-pressed="true">%</button>
+          <button type="button" data-unit="yen" aria-pressed="false">円</button>
+        </div>
+        <div class="seg" role="group" aria-label="目盛り">
+          <button type="button" data-scale="lin" aria-pressed="true">ふつうの目盛り</button>
+          <button type="button" data-scale="log" aria-pressed="false">対数目盛り</button>
+        </div>
+      </div>
+      <div class="chart-wrap" id="eq-wrap"><canvas id="eq-canvas" height="430" aria-label="資産曲線"></canvas><div class="chart-tip" id="eq-tip"></div></div>
+      <p class="dd-cap" id="dd-cap">決済ベースの落ち込み（含み損は入らない）</p>
+      <div class="chart-wrap" id="dd-wrap"><canvas id="dd-canvas" height="170" aria-label="決済ベースの落ち込み"></canvas></div>
+      <p class="src-note" id="chart-note"></p>
+        </div>
+        <div class="eq-side" id="eq-side">
+          <div class="eq-card">
+            <h3 class="eq-card-h">曲線の読みどころ</h3>
+            <table class="kv-table" id="eq-facts"></table>
+          </div>
+          <div class="eq-card">
+            <h3 class="eq-card-h">大きな落ち込み 上位5</h3>
+            <table class="kv-table eqdd-tbl" id="eq-dds"></table>
+            <p class="src-note" id="eq-side-note"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel bt-month-panel">
+      <div class="section-title"><h2>年と月の成績</h2><span id="month-sub"></span></div>
+      <div class="month-two" id="month-two">
+        <div class="month-left eq-card">
+          <h3 class="eq-card-h">月ごと・年ごとの損益率</h3>
+          <div class="table-wrap"><table class="month-table" id="month-table"></table></div>
+          <p class="src-note">複利で、<b>その月（その年）の初めの残高に対する%</b>。円の額で並べると、残高が増えた後半だけが大きく見えるため%にしている。取引の無い月は空欄。
+        件数は決済した取引の数。<b>※ は判定期間の端で途中の月・年</b>（「最悪の月」と年ごとの件数の最少・最多には入れない）。</p>
+        </div>
+        <div class="month-side eq-card" id="month-side-box">
+          <h3 class="eq-card-h">この本の負けの続き方と、今の実弾の位置</h3>
+          <table class="kv-table" id="month-side"></table>
+          <p class="src-note" id="month-side-note"></p>
+        </div>
+      </div>
+    </section>
+
+    
+    <div class="bt-two-col">
+      <section class="panel bt-stats-panel">
+        <div class="section-title"><h2 id="stats-title">台帳からの成績</h2><span id="stats-sub">判定期間・手数料込み</span></div>
+        <table class="kv-table" id="stats-table"></table>
+        <p class="src-note" id="stats-note"></p>
+      </section>
+      <section class="panel bt-report-panel" id="report-panel">
+        <div class="section-title"><h2>MT5 報告書の値（そのまま）</h2><span>報告書の窓</span></div>
+        <table class="kv-table" id="report-table"></table>
+        <p class="src-note" id="report-note"></p>
+      </section>
+    </div>
+  </div>
+
+  
+  <section class="panel bt-mech-panel" id="mech-panel" aria-label="EAの仕組み">
+    <div class="section-title"><h2 id="mech-title">EAの仕組み</h2><span id="mech-sub"></span></div>
+    
+    <div class="mech-wrap">
+      <div class="mech-cards" id="mech-rules"></div>
+      <div class="mech-card mech-card-side">
+        <h3 id="mech-exits-title">実際の決済（バックテストの約定から）</h3>
+        <table class="kv-table" id="mech-exits"></table>
+      </div>
+    </div>
+    <p class="src-note" id="mech-note"></p>
+  </section>
+</main>
+
+<script>
+
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isNum=v=>typeof v==="number"&&Number.isFinite(v);
+const fmtPct=(v,d=1,sign=true)=>isNum(v)?((sign&&v>0?"+":"")+v.toFixed(d)+"%"):"—";
+const fmtNum=(v,d=2)=>isNum(v)?v.toFixed(d):"—";
+
+const fmtDD=v=>isNum(v)?"−"+Math.abs(v).toFixed(1)+"%":"—";
+const fmtYen=v=>isNum(v)?Math.round(v).toLocaleString("ja-JP")+"円":"—";
+const fmtHours=h=>{if(!isNum(h))return "—";const m=Math.round(h*60);const d=Math.floor(m/1440),hh=Math.floor(m%1440/60),mm=m%60;return (d?d+"日":"")+(hh||d?hh+"時間":"")+mm+"分";};
+const ymd=t=>{const d=new Date(t*1000);return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0");};
+let DATA=null, CUR=null, MODE="comp", UNIT="pct", SCALE="lin", SERIES=null;
+
+let BT=null, FWD=null, SRC="bt";
+
+const ZOOM_KEY="pm.backtest.pageZoom", ZOOM_MIN=0.6, ZOOM_MAX=2.0, ZOOM_STEP=0.1;
+let ZOOM=1;
+try{ const v=parseFloat(localStorage.getItem(ZOOM_KEY)); if(isFinite(v)&&v>=ZOOM_MIN&&v<=ZOOM_MAX) ZOOM=v; }catch(e){}
+function applyZoom(v,save){
+  ZOOM=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,isFinite(v)?v:1));
+  const o=document.getElementById("zoom-out");
+  if(o) o.textContent="×"+ZOOM.toFixed(2);
+
+  const dn=document.getElementById("zoom-down"), up=document.getElementById("zoom-up");
+  if(dn) dn.disabled=(ZOOM<=ZOOM_MIN+1e-9);
+  if(up) up.disabled=(ZOOM>=ZOOM_MAX-1e-9);
+  if(save){ try{ localStorage.setItem(ZOOM_KEY,String(ZOOM)); }catch(e){} }
+
+  try{ document.documentElement.style.zoom=(ZOOM===1?"":String(ZOOM)); }catch(e){}
+  setTimeout(drawAll,0);
+}
+const isFwd=()=>!!(DATA&&DATA.forward);
+
+function setStatus(text,cls){const st=document.getElementById("status");st.textContent=text;st.className="status-pill "+cls;}
+function fail(reason){
+  DATA=null; CUR=null; SERIES=null;
+  setStatus("表示しない: "+reason,"status-error");
+  for(const id of ["picker","picker-select","metrics","metrics-note","month-table","stats-table","report-table","report-note","stats-note","chart-sub","month-sub","mech-rules","mech-exits","mech-note","mech-sub"]) document.getElementById(id).innerHTML="";
+  document.getElementById("chart-note").innerHTML=`<span class="bt-empty">${esc(reason)}</span>`;
+  for(const id of ["eq-canvas","dd-canvas"]){const c=document.getElementById(id);c.getContext("2d").clearRect(0,0,c.width,c.height);}
+  try{renderEqSide(null);}catch(_){}
+}
+
+function checkShape(j){
+  if(!j||typeof j!=="object") return "中身の形が違います";
+  if(j.error) return String(j.error);
+  if(j.schema_version!==3) return "データの版が違います（ページとデータを一緒に配る）";
+  if(typeof j.baseline_id!=="string"||!j.baseline_id) return "見極めの台の版（baseline_id）が欠けています";
+  if(!Array.isArray(j.eas)||!j.eas.length) return "EA がありません";
+  if(!isNum(j.live_risk_percent)||j.live_risk_percent<=0||!isNum(j.initial_balance)||j.initial_balance<=0) return "リスク%・初期残高が欠けています";
+
+  const fwd=j.forward===true;
+  for(const e of j.eas){
+    if(!e||typeof e.name!=="string"||!e.trades||!Array.isArray(e.trades.t)||!Array.isArray(e.trades.r)) return "EA の形が違います";
+    if(e.trades.t.length!==e.trades.r.length||(!fwd&&e.trades.t.length<2)) return `取引の列が壊れています（${e.name}）`;
+    if(!e.trades.t.every(isNum)||!e.trades.r.every(isNum)) return `取引の列に数でない値があります（${e.name}）`;
+    if(!e.stats) return `成績が欠けています（${e.name}）`;
+    if(!fwd&&!isNum(e.stats.max_dd_pct)) return `成績が欠けています（${e.name}）`;
+    if(!fwd&&(!isNum(e.report_risk_percent)||!Number.isInteger(e.stats.lot_cap_trades)||!isNum(e.stats.lot_cap))) return `報告書のリスク%・ロット上限が欠けています（${e.name}）`;
+    if(!e.yearly_trades||typeof e.yearly_trades!=="object"||!Array.isArray(e.partial_months)||!Array.isArray(e.partial_years)) return `年ごとの件数・途中の月が欠けています（${e.name}）`;
+    if(!fwd&&(!isNum(e.stats.straightness_trade)||typeof e.report_fee_included!=="boolean")) return `直線度・報告書の手数料の扱いが欠けています（${e.name}）`;
+    if(!e.exits||!e.exits.kinds||typeof e.exits.kinds!=="object"||typeof e.exits.unit!=="string") return `実際の決済の内訳が欠けています（${e.name}）`;
+    if(e.mechanism!=null&&(typeof e.mechanism!=="object"||!Array.isArray(e.mechanism.exit)||typeof e.mechanism.source!=="string"||!Array.isArray(e.mechanism.inputs_changed))) return `仕組みの説明の形が違います（${e.name}）`;
+  }
+  return null;
+}
+async function getJson(url,ms){
+  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),ms);
+  try{const r=await fetch(url,{credentials:"same-origin",signal:ac.signal});
+    if(!r.ok){let why=""; try{why=(await r.json()).error||"";}catch(e){} throw new Error(why?`${why}・HTTP ${r.status}`:`HTTP ${r.status}`);}
+    return await r.json();}
+  finally{clearTimeout(t)}
+}
+
+function buildSeries(e){
+  const f=DATA.live_risk_percent/100, t=e.trades.t, r=e.trades.r, n=r.length;
+  const x=new Array(n+1), comp=new Array(n+1), simple=new Array(n+1), ddc=new Array(n+1), dds=new Array(n+1);
+  const start=Date.parse(e.judge_period[0]+"T00:00:00Z")/1000;
+  x[0]=Math.min(start,t[0]); comp[0]=1; simple[0]=1; ddc[0]=0; dds[0]=0;
+  let pc=1, ps=1;
+  for(let i=0;i<n;i++){
+    x[i+1]=t[i]; comp[i+1]=comp[i]*(1+f*r[i]); simple[i+1]=simple[i]+f*r[i];
+    pc=Math.max(pc,comp[i+1]); ps=Math.max(ps,simple[i+1]);
+    ddc[i+1]=(1-comp[i+1]/pc)*100; dds[i+1]=ps>0?(1-simple[i+1]/ps)*100:0;
+  }
+  return {x,comp,simple,ddc,dds,maxddc:Math.max(...ddc),maxdds:Math.max(...dds)};
+}
+
+function valueOf(v){return UNIT==="yen"?DATA.initial_balance*v:(v-1)*100;}
+function niceStep(span,count){const raw=span/count;const p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
+
+const CH_BASE={};
+function setupCanvas(c){
+  if(CH_BASE[c.id]==null) CH_BASE[c.id]=(+c.getAttribute("height"))||340;
+  const dpr=window.devicePixelRatio||1, w=c.parentElement.clientWidth, h=CH_BASE[c.id];
+  c.style.height=h+"px"; c.width=Math.max(1,Math.round(w*dpr)); c.height=Math.round(h*dpr);
+  const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h); return {g,w,h};
+}
+
+const PAD={l:14,r:78,t:12,b:26};
+function drawEquity(){
+  const c=document.getElementById("eq-canvas"), {g,w,h}=setupCanvas(c), S=SERIES;
+  const ys=(MODE==="comp"?S.comp:S.simple).map(valueOf);
+  const logOK=SCALE==="log"&&MODE==="comp";
+  const tr=v=>logOK?Math.log(UNIT==="yen"?v:(v/100+1)):v;
+  let lo=Math.min(...ys), hi=Math.max(...ys); if(hi===lo) hi=lo+1;
+  const x0=S.x[0], x1=S.x[S.x.length-1];
+  const X=t=>PAD.l+(t-x0)/(x1-x0)*(w-PAD.l-PAD.r);
+  const tlo=tr(lo), thi=tr(hi);
+  const Y=v=>PAD.t+(1-(tr(v)-tlo)/(thi-tlo||1))*(h-PAD.t-PAD.b);
+  g.font="700 12px system-ui, sans-serif"; g.fillStyle="#374151"; g.strokeStyle="#e6ebf1"; g.lineWidth=1;
+
+  const ticks=[];
+  if(logOK){let v=lo;const k=Math.pow(10,Math.floor(Math.log10(UNIT==="yen"?lo:lo/100+1)));
+    for(const m of [1,2,5,10,20,50,100,200,500,1000,2000,5000]){const base=m*k; const vv=UNIT==="yen"?base:(base-1)*100; if(vv>=lo&&vv<=hi) ticks.push(vv);} if(ticks.length<2){ticks.push(lo,hi);} }
+  else{const st=niceStep(hi-lo,6); for(let v=Math.ceil(lo/st)*st; v<=hi+1e-9; v+=st) ticks.push(v);}
+  g.textAlign="left"; g.textBaseline="middle";
+  for(const v of ticks){const y=Y(v); g.beginPath(); g.moveTo(PAD.l,y); g.lineTo(w-PAD.r,y); g.stroke();
+    g.fillText(UNIT==="yen"?(Math.round(v/10000).toLocaleString("ja-JP")+"万円"):((v>0?"+":"")+(Math.abs(v)>=100?v.toFixed(0):v.toFixed(1))+"%"), w-PAD.r+6, y);}
+
+  g.textAlign="center"; g.textBaseline="top";
+  const y0=new Date(x0*1000).getUTCFullYear(), y1=new Date(x1*1000).getUTCFullYear(), every=(y1-y0)>12?2:1;
+  for(let yr=y0+1; yr<=y1; yr++){ if((yr-y0)%every) continue; const t=Date.UTC(yr,0,1)/1000; const x=X(t);
+    g.beginPath(); g.moveTo(x,PAD.t); g.lineTo(x,h-PAD.b); g.stroke(); g.fillText(String(yr),x,h-PAD.b+6);}
+
+  const base=UNIT==="yen"?DATA.initial_balance:0; if(base>=lo&&base<=hi){g.strokeStyle="#94a3b8"; g.setLineDash([4,4]); g.beginPath(); g.moveTo(PAD.l,Y(base)); g.lineTo(w-PAD.r,Y(base)); g.stroke(); g.setLineDash([]);}
+
+  if(EQ_HL){const a=Math.max(x0,EQ_HL[0]), b=Math.min(x1,EQ_HL[1]); g.fillStyle="rgba(180,35,24,.13)"; g.fillRect(X(a),PAD.t,Math.max(2,X(b)-X(a)),h-PAD.t-PAD.b);}
+
+  g.strokeStyle="#2563eb"; g.lineWidth=1.6; g.beginPath();
+  for(let i=0;i<ys.length;i++){const x=X(S.x[i]), y=Y(ys[i]); if(i) g.lineTo(x,y); else g.moveTo(x,y);} g.stroke();
+  c._map={X,Y,ys,x0,x1,w,h};
+}
+function drawDD(){
+  const c=document.getElementById("dd-canvas"), {g,w,h}=setupCanvas(c), S=SERIES;
+  const dd=MODE==="comp"?S.ddc:S.dds, mx=Math.max(1,Math.max(...dd)), x0=S.x[0], x1=S.x[S.x.length-1];
+  const X=t=>PAD.l+(t-x0)/(x1-x0)*(w-PAD.l-PAD.r), Y=v=>PAD.t+v/mx*(h-PAD.t-PAD.b);
+  g.font="700 12px system-ui, sans-serif"; g.fillStyle="#374151"; g.strokeStyle="#e6ebf1"; g.lineWidth=1;
+  const st=niceStep(mx,3); g.textAlign="left"; g.textBaseline="middle";
+  for(let v=0; v<=mx+1e-9; v+=st){const y=Y(v); g.beginPath(); g.moveTo(PAD.l,y); g.lineTo(w-PAD.r,y); g.stroke(); g.fillText((v?"−":"")+v.toFixed(v<10?1:0)+"%",w-PAD.r+6,y);}
+  if(EQ_HL){const a=Math.max(x0,EQ_HL[0]), b=Math.min(x1,EQ_HL[1]); g.fillStyle="rgba(37,99,235,.12)"; g.fillRect(X(a),PAD.t,Math.max(2,X(b)-X(a)),h-PAD.t-PAD.b);}
+  g.fillStyle="rgba(180,35,24,.22)"; g.strokeStyle="#b42318"; g.lineWidth=1.2; g.beginPath(); g.moveTo(X(S.x[0]),Y(0));
+  for(let i=0;i<dd.length;i++) g.lineTo(X(S.x[i]),Y(dd[i])); g.lineTo(X(S.x[dd.length-1]),Y(0)); g.closePath(); g.fill();
+  g.beginPath(); for(let i=0;i<dd.length;i++){const x=X(S.x[i]),y=Y(dd[i]); if(i) g.lineTo(x,y); else g.moveTo(x,y);} g.stroke();
+
+}
+function hover(ev){
+  const c=document.getElementById("eq-canvas"), m=c._map, tip=document.getElementById("eq-tip"); if(!m||!SERIES) return;
+  const rect=c.getBoundingClientRect(), px=ev.clientX-rect.left;
+  const t=m.x0+(px-PAD.l)/(m.w-PAD.l-PAD.r)*(m.x1-m.x0);
+  let lo=0, hi=SERIES.x.length-1; while(lo<hi){const mid=(lo+hi)>>1; if(SERIES.x[mid]<t) lo=mid+1; else hi=mid;}
+  const i=Math.max(0,Math.min(SERIES.x.length-1,lo)), dd=(MODE==="comp"?SERIES.ddc:SERIES.dds)[i];
+  const v=(MODE==="comp"?SERIES.comp:SERIES.simple)[i];
+  tip.innerHTML=`${ymd(SERIES.x[i])}<br>${fmtPct((v-1)*100,1)}・${fmtYen(DATA.initial_balance*v)}<br>山からの落ち込み −${dd.toFixed(1)}%`;
+  tip.style.display="block"; const tx=Math.min(px+12, rect.width-tip.offsetWidth-4); tip.style.left=tx+"px"; tip.style.top="8px";
+}
+
+function heat(v,scale){ if(!isNum(v)) return ""; const a=Math.min(1,Math.abs(v)/scale); return v>=0?`background:rgba(21,128,61,${(0.08+0.5*a).toFixed(3)})`:`background:rgba(180,35,24,${(0.08+0.5*a).toFixed(3)})`; }
+function renderMonths(e){
+
+  const sub=document.getElementById("month-sub");
+  if(!e.trades.t.length){
+    document.getElementById("month-table").innerHTML="";
+    if(sub) sub.textContent="まだ決済がありません";
+    return;
+  }
+
+  const y0=+e.judge_period[0].slice(0,4), y1=+e.judge_period[1].slice(0,4), years=[...Array(y1-y0+1)].map((_,i)=>y0+i), ms=e.monthly;
+  const vals=Object.values(ms).filter(isNum).map(Math.abs).sort((a,b)=>a-b);
+  const scale=Math.max(1,vals[Math.floor(vals.length*0.9)]||1);
+  const yv=Object.values(e.yearly).filter(isNum).map(Math.abs).sort((a,b)=>a-b), yscale=Math.max(1,yv[Math.floor(yv.length*0.9)]||1);
+  const pm=new Set(e.partial_months), py=new Set(e.partial_years.map(String));
+  let h="<thead><tr><th>年</th>"+[...Array(12)].map((_,i)=>`<th>${i+1}月</th>`).join("")+"<th>年間</th><th>件数</th></tr></thead><tbody>";
+  for(const y of years){
+    const star=py.has(String(y))?"※":"";
+    h+=`<tr><th>${y}${star}</th>`;
+    for(let m=1;m<=12;m++){const k=`${y}-${String(m).padStart(2,"0")}`, v=ms[k], p=pm.has(k);
+      h+=isNum(v)?`<td style="${heat(v,scale)}" title="${k}${p?"（判定期間の端で途中の月）":""}">${fmtPct(v,1)}${p?"※":""}</td>`:`<td class="none">—</td>`;}
+    h+=isNum(e.yearly[y])?`<td class="year" style="${heat(e.yearly[y],yscale)}">${fmtPct(e.yearly[y],1)}${star}</td>`:`<td class="year none">—</td>`;
+    h+=`<td class="year">${(e.yearly_trades[y]||0).toLocaleString("ja-JP")}</td></tr>`;
+  }
+  document.getElementById("month-table").innerHTML=h+"</tbody>";
+  document.getElementById("month-sub").textContent=`リスク${DATA.live_risk_percent.toFixed(1)}%・複利・${e.judge_period[0]}〜${e.judge_period[1]}`;
+}
+
+function kv(rows){return `<thead><tr><th>項目</th><th>値</th><th>メモ</th></tr></thead><tbody>`+
+  rows.map(([k,v,s])=>`<tr><th>${esc(k)}</th><td class="kv-num">${v}</td><td class="kv-memo">${s?esc(s):""}</td></tr>`).join("")+
+  `</tbody>`;}
+function renderStats(e){
+  const s=e.stats, rk=DATA.live_risk_percent.toFixed(1);
+  document.getElementById("stats-table").innerHTML=kv([
+    ["取引数",`${s.trades.toLocaleString("ja-JP")}件`,`年あたり ${isNum(s.per_year)?s.per_year.toFixed(1):"—"}件（${isFwd()?"動かし始めてから":"判定期間の全体"} ${isNum(s.years)?s.years.toFixed(1):"—"}年で割る）`],
+    ["年ごとの件数",s.year_trades_min==null?"—":`${s.year_trades_min}〜${s.year_trades_max}件`,
+      s.year_trades_min==null?"":`最少 ${s.year_trades_min_year}年・最多 ${s.year_trades_max_year}年・比 ${s.year_trades_ratio==null?"—（0件の年がある）":s.year_trades_ratio.toFixed(1)+"倍"}（途中の年を除く ${s.full_years}年）`],
+    ["勝率",fmtPct(s.win_pct,1,false),isNum(s.long_trades)?`買い ${s.long_trades}件（勝率 ${fmtPct(s.long_win_pct,1,false)}）・売り ${s.short_trades}件（勝率 ${fmtPct(s.short_win_pct,1,false)}）`:"買い・売りの別は実口座の決済の記録に無い"],
+    ["プロフィットファクター",fmtNum(s.pf,2)],
+    ["1取引の期待利得",fmtPct(s.expected_pct,3),"残高に対する平均の損益率"],
+    ["年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,1)}</span>`,`期間全体の損益 ${fmtPct(s.net_pct,0)}`],
+    ["最大ドローダウン（決済だけ）",`<span class="neg">${fmtDD(s.max_dd_pct)}</span>`,"含み損は入らない。含み損込みは報告書の表の「証拠金相対ドローダウン」"],
+    ["リカバリファクター",fmtNum(s.recovery_factor,2)],
+    ["シャープレシオ（日次・年率）",fmtNum(s.sharpe_daily,2),"最初の決済の日〜最後の決済の日の暦日で、取引の無い日も0%として数える（判定期間の端の取引の無い日は入れない）"],
+    ["直線度（取引順）",fmtNum(s.straightness_trade,4),"取引の番号に対する累積損益（R 基準）の直線への当てはまり R²（正本の定義。時刻で回すと取引の疎な EA が低く出る）"],
+    ["最長の水面下",isNum(s.max_under_days)?`${Math.round(s.max_under_days)}日`:"—","山から、回復した取引まで"],
+    ["最長の取引の無い期間",isNum(s.max_gap_days)?`${Math.round(s.max_gap_days)}日`:"—","建てた時刻の間隔"],
+    ["最大連敗",isNum(s.max_loss_streak)?`${s.max_loss_streak}回`:"—",`最も長い連敗の合計 ${fmtPct(s.loss_streak_pct,1)}（${s.loss_streak_count}回）`],
+    ["最大連勝",isNum(s.max_win_streak)?`${s.max_win_streak}回`:"—",`その合計 ${fmtPct(s.win_streak_pct,1)}`],
+    ["最大の勝ち／負け",`${fmtPct(s.best_trade_pct,2)}／${fmtPct(s.worst_trade_pct,2)}`,`平均の勝ち ${fmtPct(s.avg_win_pct,2)}・平均の負け ${fmtPct(s.avg_loss_pct,2)}`],
+    ["最悪の月",fmtPct(s.worst_month_pct,1),"完成した暦月だけ（判定期間の端の途中の月は入れない）"],
+    ["黒字の年",isNum(s.profitable_years)?`${s.profitable_years}／${s.years_with_trades}年`:"—","取引のあった年のうち（取引の無い年は年と月の表に 0件で出る）"],
+    ["保有時間",`平均 ${fmtHours(s.hold_avg_hours)}`,`最長 ${fmtHours(s.hold_max_hours)}・最短 ${fmtHours(s.hold_min_hours)}`],
+    ["上位5%の大勝ちが総利益に占める割合",fmtPct(s.top5_share_pct_r,1,false),"R 基準（円基準だと1.6〜1.7倍ちがう）"],
+    ["上位5%を抜いたときの PF",fmtNum(s.pf_without_top5_r,3),"R 基準。1.0 未満なら、少数の大勝ちが無いと赤字"],
+    ["ロット上限に張り付いた取引",isNum(s.lot_cap_trades)?`${s.lot_cap_trades.toLocaleString("ja-JP")}件`:"—",
+      !isNum(s.lot_cap)?"実口座の決済の記録はロットを持っていないので数えられない（MT5 の履歴には残っている）"
+      :s.lot_cap_trades?`1注文 ${s.lot_cap}ロットが上限。バックテストの残高が大きくなってから（最初は ${s.lot_cap_first}）。張り付いた取引は実際のリスクが${rk}%を下回り、損益の%が小さく記録される`
+                       :`1注文 ${s.lot_cap}ロットの上限に届いた取引は無い`],
+  ]);
+  document.getElementById("stats-note").innerHTML=(isFwd()
+    ?`出どころ: <b>実口座の決済の記録</b>（${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}・口座に入った損益そのまま＝手数料もスワップも引かれた後）。`+
+      `R は「損益 ÷ (その取引の前の残高 × リスク%)」で、見極めのページと同じ作り方。%は実際の残高に対する複利。`+
+      (e.unknown?`<b>${e.unknown}件は R を出せないので外してある</b>（残高の記録が足りない等）。`:"")
+    :`出どころ: <b>正本の台帳</b>（手数料控除後・受取スワップは0・<b>決済だけ</b>）を<b>判定期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}</b>で切り、<b>リスク${rk}%の複利</b>で積み直した値。%は初期残高に依らない。`)+
+    `ロット上限はバックテストのとおり入っている（張り付いた取引は上の行）。「R 基準」は損益を建てた時点の残高×リスク%で割った値で比べるという意味（画面には R を出さない）。`;
+}
+function renderReport(e){
+
+  const panel=document.getElementById("report-panel");
+  if(panel) panel.style.display=isFwd()?"none":"";
+  const ttl=document.getElementById("stats-title"), sub=document.getElementById("stats-sub");
+  if(ttl) ttl.textContent=isFwd()?"実口座の成績（フォワード）":"台帳からの成績";
+  if(sub) sub.textContent=isFwd()?`${e.judge_period[0]}〜${e.judge_period[1]}・実際に口座へ入った損益`:"判定期間・手数料込み";
+  if(isFwd()){ document.getElementById("report-table").innerHTML=""; document.getElementById("report-note").innerHTML=""; return; }
+  const f=e.report_fields||{}, g=k=>f[k]!=null?esc(f[k]):"—";
+  document.getElementById("report-table").innerHTML=kv([
+    ["期間（報告書の窓）",g("期間")],["ヒストリー品質",g("ヒストリー品質")],["初期証拠金",g("初期証拠金"),"円"],
+    ["総損益",g("総損益"),`円（報告書の窓・リスク${e.report_risk_percent.toFixed(1)}%複利）`],["プロフィットファクター",g("プロフィットファクター")],["期待利得",g("期待利得"),"円"],
+    ["残高相対ドローダウン（決済だけ）",g("残高相対ドローダウン"),"%で最大の回"],["証拠金相対ドローダウン（含み損込み）",g("証拠金相対ドローダウン"),`%で最大の回。報告書の中の含み損込み（${e.report_fee_included?"手数料込み":"後控除の手数料なし"}・受取スワップ込み・報告書の窓）`],
+    ["リカバリファクター",g("リカバリファクター")],["シャープレシオ",g("シャープレシオ"),"MT5 の定義"],["証拠金維持率（最低）",g("証拠金維持率")],
+    ["取引数（約定数）",`${g("取引数")}（${g("約定数")}）`],["勝ちトレード",g("勝ちトレード (勝率 %)")],["負けトレード",g("負けトレード (負率 %)")],
+    ["買い（勝率）",g("ロング (勝率 %)")],["売り（勝率）",g("ショート (勝率 %)")],
+    ["最大の勝ち／負け",`${g("最大 勝ちトレード")}／${g("最大 負けトレード")}`,"円"],["平均の勝ち／負け",`${g("平均 勝ちトレード")}／${g("平均 負けトレード")}`,"円"],
+    ["最大連勝（金額）",g("最大 連勝数 (金額)")],["最大連敗（金額）",g("最大 連敗数 (金額)")],
+    ["最大の連勝利益（回）",g("最大 連勝利益額 (数)")],["最大の連敗損失（回）",g("最大 連敗損失額 (数)")],
+    ["保有時間（最短／平均／最長）",`${g("ポジション最短保持時間")}／${g("ポジション平均保持時間")}／${g("ポジション最長保持時間")}`],
+    ["Z-Score",g("Z-Score")],["AHPR／GHPR",`${g("AHPR")}／${g("GHPR")}`],["LR Correlation",g("LR Correlation")],
+  ]);
+  document.getElementById("report-note").innerHTML=`出どころ: <b>MT5 の報告書</b>（${esc(e.report)}）の値そのまま。<b>窓は報告書のもの</b>（判定期間と違う）・初期証拠金 ${esc(g("初期証拠金"))}円・<b>リスク${e.report_risk_percent.toFixed(1)}%の複利</b>（報告書の入力 RISK_PERCENT）。`+
+    (e.report_fee_included?"手数料はテスターが引いている。":"<b>後控除の手数料を含まない</b>（この銘柄はテスターの手数料が0で、台帳が後から引く。左の表より成績が良く出る）。")+
+    "スワップはテスターの値のまま（受け取りも入る）。%は報告書が整数に丸めている。";
+}
+
+function renderMechanism(e){
+
+  const m=e.mechanism||(BT&&BT.eas&&(BT.eas.find(x=>x.name===e.name)||{}).mechanism)||null;
+  const x=e.exits, k=x.kinds, n=e.stats.trades;
+  document.getElementById("mech-title").textContent=`EAの仕組み — ${e.name}`;
+  document.getElementById("mech-sub").textContent=`${e.symbol}・報告書の入力の値で`;
+  const list=a=>Array.isArray(a)&&a.length?`<ul>${a.map(t=>`<li>${esc(t)}</li>`).join("")}</ul>`:"<p class=\"mech-none\">—</p>";
+
+  const card=(title,body,cls,n)=>body?`<div class="mech-card ${cls||""}"><h3>${esc(title)}`+
+    (n?`<span class="mech-count">${n}項目</span>`:"")+`</h3>${body}</div>`:"";
+  const cnt=a=>Array.isArray(a)?a.length:0;
+  document.getElementById("mech-rules").innerHTML=m
+    ? card("ひとことで言うと", m.summary?`<p class="mech-summary">${esc(m.summary)}</p>`:"", "span-all")+
+      card("いつ利確・損切りするか（出る）", list(m.exit), "key", cnt(m.exit))+
+      card("いつ買うか", list(m.entry_long), "", cnt(m.entry_long))+
+      card("いつ売るか", list(m.entry_short), "", cnt(m.entry_short))+
+      card("そのほか", (m.other&&m.other.length)?list(m.other):"", "", cnt(m.other))
+    :`<div class="mech-card span-all"><p class="mech-none">この EA の仕組みの説明はまだありません（「実際の決済」はバックテストの約定から出ています）。</p></div>`;
+  const row=(label,key,expl)=>k[key]?[label,`${k[key].n.toLocaleString("ja-JP")}件（${(100*k[key].n/n).toFixed(1)}%）`,`勝ち ${k[key].wins}件・負け ${k[key].n-k[key].wins}件。${expl}`]:null;
+  const q=x.sl_dist, u=x.unit, f=v=>u==="pips"?v.toFixed(1)+" pips":v.toFixed(2)+" ドル";
+  document.getElementById("mech-exits").innerHTML=kv([
+    row("EA が自分で閉じた","ea","出口のルール（説明の「いつ利確・損切りするか」）で EA が決済した"),
+    row("損切り注文（逆指値）に当たった","sl","注文に付けた損切りの値段に届いて決済した"),
+    row("利確注文（指値）に当たった","tp","注文に付けた利確の値段に届いて決済した"),
+    row("テストの終わりで閉じた","end","バックテストの最後の日に残っていた建玉"),
+    row("証拠金不足で閉じられた","so","ロスカット"),
+    ["最初の損切りまでの距離",q?`中央値 ${f(q.median)}`:"—",q?`1割 ${f(q.p10)}〜9割 ${f(q.p90)}（注文に付けた損切りの値段と約定値の差・${q.n}件）。この距離で負けると口座のリスク%ぶん`:""],
+    ["保有時間の中央値",fmtHours(x.hold_median_hours),`判定期間 ${n.toLocaleString("ja-JP")}件`],
+  ].filter(Boolean));
+  document.getElementById("mech-note").innerHTML=(m
+    ?`説明の出どころ: <b>${esc(m.source)}</b>（ソースを読んで書いた・${esc(m.written||"—")}）と、報告書の入力の値（数字はここから差し込んでいる）。`+
+      (m.notes&&m.notes.length?esc(m.notes.join("／"))+"。":"")+
+      (m.source_changed?`<div class="mech-warn">説明を書いた後にソースが変わっています。取引の中身が変わったかは確かめていないので、説明は確かめ直すまで参考にしてください。</div>`:"")+
+      (m.inputs_changed.length?`<div class="mech-warn">説明を書いたときと報告書の入力が違います（${esc(m.inputs_changed.join("・"))}）。出口などの分かれ道が変わっているかもしれないので、説明は確かめ直すまで参考にしてください。</div>`:"")
+    :"")+
+    (isFwd()
+      ?`<b>決済の理由の内訳（EA が閉じた・損切り・利確）と損切りまでの距離は、実口座の決済の記録に無いので出せません。</b>`+
+       `MT5 の端末の履歴には残っているので、必要なら端末で見る。保有時間は実口座の建て時刻と決済時刻から数えた。`
+      :`実際の決済は、MT5 報告書（${esc(e.report)}）の約定のコメント（sl・tp・無し）と注文の損切りの値段から、判定期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])} の取引で数えた。`);
+}
+function renderMetrics(e){
+  const s=e.stats, f=e.report_fields||{};
+  const m=(label,val,accent,sub)=>`<div class="metric accent-${accent}"><div class="metric-label">${label}</div><div class="metric-value">${val}${sub?`<small>${sub}</small>`:""}</div></div>`;
+  document.getElementById("metrics").innerHTML=
+    m("年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,1)}</span>`,"green")+
+    m('<span class="kl">最大DD<wbr>（決済だけ）</span>',`<span class="neg">${fmtDD(s.max_dd_pct)}</span>`,"red")+
+    m('<span class="kl">含み損込みの<wbr>最大DD</span>',(()=>{const mm=/^\s*([\d.]+)\s*%/.exec(f["証拠金相対ドローダウン"]||""); return mm?`<span class="neg">−${esc(mm[1])}%</span>`:"—";})(),"rose")+
+    m("PF",fmtNum(s.pf,2),"blue")+
+    m("勝率",fmtPct(s.win_pct,1,false),"teal")+
+    m('<span class="kl">取引<wbr>（年あたり）</span>',`${s.per_year.toFixed(1)}件`,"purple")+
+    m("最長の水面下",`${Math.round(s.max_under_days)}日`,"amber")+
+    m('<span class="kl">上位5%集中<wbr>（R基準）</span>',fmtPct(s.top5_share_pct_r,1,false),"amber");
+  const win=(/\(([^)]*)\)/.exec(f["期間"]||"")||[])[1]||f["期間"]||"—";
+  const bal=/^\s*([\d.]+)\s*%/.exec(f["残高相対ドローダウン"]||"");
+  document.getElementById("metrics-note").innerHTML=
+    `カードの値は<b>正本の台帳</b>（判定期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}・リスク${DATA.live_risk_percent.toFixed(1)}%の複利・手数料控除後・受取スワップは0・決済だけ・${capText(e)}）。`+
+    `<b>「含み損込みの最大DD」だけは MT5 報告書</b>の「証拠金相対ドローダウン」（窓 ${esc(win)}・リスク${e.report_risk_percent.toFixed(1)}%の複利・${e.report_fee_included?"手数料込み":"後控除の手数料なし"}・受取スワップ込み・整数の%）。`+
+    (bal?`同じ報告書の決済だけ（残高相対ドローダウン）は −${esc(bal[1])}%。窓と手数料が違うので、比べるなら報告書の中の2つで比べる。`:"");
+}
+
+function capText(e){const s=e.stats;
+  if(!isNum(s.lot_cap)) return "ロットは実口座の記録に無いので、上限に張り付いた取引は数えていない";
+  return s.lot_cap_trades?`ロット上限 ${s.lot_cap}ロットに張り付いた ${s.lot_cap_trades}件は実際のリスクが${DATA.live_risk_percent.toFixed(1)}%より低く、その縮んだ損益のまま`:`ロット上限 ${s.lot_cap}ロットに届いた取引は無い`;}
+const fmtInit=()=>DATA.initial_balance%10000===0?`${(DATA.initial_balance/10000).toLocaleString("ja-JP")}万円`:fmtYen(DATA.initial_balance);
+
+let EQ_HL=null;
+function eqEpisodes(S){
+  const dd=MODE==="comp"?S.ddc:S.dds, ys=MODE==="comp"?S.comp:S.simple, n=dd.length, out=[];
+  let i=1;
+  while(i<n){
+    if(dd[i]>1e-9){
+      const pk=i-1; let bot=i, j=i;
+      while(j<n&&dd[j]>1e-9){ if(dd[j]>dd[bot]) bot=j; j++; }
+      out.push({pk, bot, rec:j<n?j:null, depth:dd[bot]});
+      i=j;
+    } else i++;
+  }
+  return {out, dd, ys};
+}
+let EQ_SHORT=false;
+const ymS=t=>{const d=new Date(t*1000);return EQ_SHORT?(d.getUTCMonth()+1)+"/"+d.getUTCDate():d.getUTCFullYear()+"/"+String(d.getUTCMonth()+1).padStart(2,"0");};
+const daysBetween=(a,b)=>Math.round((b-a)/86400);
+function renderEqSide(e){
+  const side=document.getElementById("eq-side"), two=document.getElementById("eq-two");
+  if(!side) return;
+  const S=SERIES, show=!!S;
+  side.style.display=show?"":"none"; if(two) two.classList.toggle("only",!show);
+  if(!show){ EQ_HL=null; return; }
+  const {out, dd, ys}=eqEpisodes(S), x=S.x, n=x.length, x0=x[0], x1=x[n-1];
+  const yrs=Math.max((x1-x0)/(365.25*86400),1e-9), last=ys[n-1], comp=MODE==="comp";
+  EQ_SHORT=yrs<1;
+  const big=out.slice().sort((a,b)=>b.depth-a.depth), top=big[0]||null;
+  let uw=0, longest=null;
+  out.forEach(o=>{const end=o.rec===null?x1:x[o.rec], len=end-x[o.pk]; uw+=end-x[o.pk+1]; if(!longest||len>longest.len) longest={o,len};});
+  const rows=[];
+  rows.push(["終わりの値",`${fmtPct((last-1)*100,0)}`,comp?`${yrs.toFixed(1)}年で ${last.toFixed(1)}倍`:`${yrs.toFixed(1)}年・単利`]);
+  if(yrs<1) rows.push(["年あたりの増え","—","1年未満なので出さない（短い期間を年に直すと大げさになる）"]);
+  else if(comp&&last>0) rows.push(["年あたりの増え",`${fmtPct((Math.pow(last,1/yrs)-1)*100,1)}`,"複利の年率"]);
+  else rows.push(["年あたりの増え",`${fmtPct((last-1)*100/yrs,1)}`,"単利で年数に割る"]);
+  rows.push(["最大の落ち込み",top?`−${top.depth.toFixed(1)}%`:"なし",top?`${ymS(x[top.pk])} の山→${ymS(x[top.bot])} の底・${top.rec===null?"未回復":`戻るまで ${daysBetween(x[top.bot],x[top.rec])}日`}`:"一度も山を割っていない"]);
+  rows.push(["最長の水面下",longest?`${daysBetween(0,longest.len)}日`:"なし",longest?`${ymS(x[longest.o.pk])}〜${longest.o.rec===null?"未回復":ymS(x[longest.o.rec])}（山を超えるまで）`:""]);
+  rows.push(["水面下にいた時間",`${(uw/(x1-x0)*100).toFixed(0)}%`,"負けてから山に戻るまでの時間の割合"]);
+  const profit=(last-1)*100;
+  if(top&&top.depth>0) rows.push(["利益÷最大の落ち込み",`${(profit/top.depth).toFixed(1)}倍`,"大きいほど落ち込みの割に増えている"]);
+  const now=dd[n-1];
+  rows.push([isFwd()?"今の位置":"終わりの位置",now>1e-9?`山から −${now.toFixed(1)}%`:"山の上",now>1e-9?`${ymS(x[out[out.length-1].pk])} の山から`:"最後の決済で山を更新"]);
+  document.getElementById("eq-facts").innerHTML=kv(rows);
+  const t5=big.slice(0,5);
+  let h=`<thead><tr><th>深さ</th><th>山</th><th>底</th><th>${EQ_SHORT?"戻った日":"戻った月"}</th><th>山→戻り</th></tr></thead><tbody>`;
+  if(!t5.length) h+="<tr><td colspan='5'>山を割った落ち込みはありません</td></tr>";
+  t5.forEach((o,i)=>{const end=o.rec===null?x1:x[o.rec];
+    h+=`<tr data-a="${x[o.pk]}" data-b="${end}"><td class="${i===0?"dd-deep":""}">−${o.depth.toFixed(1)}%</td><td>${ymS(x[o.pk])}</td><td>${ymS(x[o.bot])}</td>`+
+       `<td class="${o.rec===null?"dd-open":""}">${o.rec===null?"未回復":ymS(x[o.rec])}</td><td>${daysBetween(x[o.pk],end)}日</td></tr>`;});
+  const tb=document.getElementById("eq-dds"); tb.innerHTML=h+"</tbody>";
+  for(const tr of tb.querySelectorAll("tbody tr[data-a]")){
+    const a=+tr.dataset.a, b=+tr.dataset.b;
+    tr.classList.toggle("on",!!EQ_HL&&EQ_HL[0]===a);
+    tr.onclick=()=>{EQ_HL=(EQ_HL&&EQ_HL[0]===a)?null:[a,b]; drawAll();};
+  }
+  document.getElementById("eq-side-note").textContent=`左の曲線と同じ列（${comp?"複利":"単利"}・リスク${DATA.live_risk_percent.toFixed(1)}%・決済ベース）から数えた。行を押すと左の曲線にその期間の帯が出る（もう一度押すと消える）。`;
+}
+function drawAll(){ if(!SERIES) return; drawEquity(); drawDD(); renderEqSide(CUR);
+  const S=SERIES, e=CUR, rk=DATA.live_risk_percent.toFixed(1);
+  const last=(MODE==="comp"?S.comp:S.simple)[S.comp.length-1];
+  document.getElementById("chart-sub").textContent=`${e.symbol}・リスク${rk}%・${MODE==="comp"?"複利":"単利"}・${e.judge_period[0]}〜${e.judge_period[1]}`;
+  document.getElementById("chart-note").innerHTML=`出どころ: <b>正本の台帳</b>の取引ごとの列（${S.x.length-1}件・手数料控除後・受取スワップは0）を<b>目標のリスク${rk}%</b>で積み直した曲線（${capText(e)}）。`+
+    `終わりの値 ${fmtPct((last-1)*100,0)}（初期${fmtInit()}なら ${fmtYen(DATA.initial_balance*last)}）・最大の落ち込み −${(MODE==="comp"?S.maxddc:S.maxdds).toFixed(1)}%。`+
+    `<b>含み損は入らない</b>（含み損込みの最大は上のカード「含み損込みの最大DD」）。`;
+}
+
+function msWindows(r,k){const out=[];let s=0;for(let i=0;i<r.length;i++){s+=r[i];if(i>=k)s-=r[i-k];if(i>=k-1)out.push(s);}return out;}
+function msMonths(e){
+  const pm=new Set(e.partial_months||[]), mo={};
+  e.trades.t.forEach((t,i)=>{const d=new Date(t*1000), k=d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0"); mo[k]=(mo[k]||0)+e.trades.r[i];});
+  const keys=Object.keys(mo).filter(k=>!pm.has(k)).sort();
+  let run=0,maxNeg=0,plus=0; keys.forEach(k=>{if(mo[k]>0)plus++; run=mo[k]<0?run+1:0; maxNeg=Math.max(maxNeg,run);});
+  let worst=null;
+  if(keys.length){let [y,m]=keys[0].split("-").map(Number); const [y1,m1]=keys[keys.length-1].split("-").map(Number), cal=[];
+    while(y<y1||(y===y1&&m<=m1)){cal.push(y+"-"+String(m).padStart(2,"0")); m++; if(m>12){m=1;y++;}}
+    for(let i=0;i+2<cal.length;i++){const v=(mo[cal[i]]||0)+(mo[cal[i+1]]||0)+(mo[cal[i+2]]||0); if(worst===null||v<worst)worst=v;}}
+  return {plus:keys.length?plus/keys.length:null, maxNeg, worst};
+}
+function renderMonthSide(e){
+  const box=document.getElementById("month-side-box"), two=document.getElementById("month-two");
+  if(!box) return;
+  const show=!isFwd() && e && e.trades && e.trades.r && e.trades.r.length;
+  box.style.display=show?"":"none"; if(two) two.classList.toggle("only",!show);
+  if(!show) return;
+  const r=e.trades.r, rows=[], f=(v,d)=>isNum(v)?(v>0?"+":v<0?"−":"")+Math.abs(v).toFixed(d):"—";
+  let lr=null; try{ lr=(window.UI2&&UI2.data&&UI2.data.eas||[]).filter(x=>(x.key||x.name)===e.name)[0]; }catch(_){ lr=null; }
+  const c=lr&&lr.cmp, n=lr?(lr.n||0):null;
+  if(n===null) rows.push(["今の実弾","読み込み中…",""]);
+  else if(!n) rows.push(["今の実弾","まだ決済がありません","下の4行は BT だけの数字"]);
+  else {
+    rows.push(["今の実弾",`${n}件・合計 <b class="${c&&c.total_r<0?"ms-lo":c&&c.total_r>0?"ms-hi":""}">${c?f(c.total_r,2):"—"}R</b>`,"上の見比べと同じ数字（残高比の%÷リスク%）"]);
+    if(c&&isNum(c.rank)){
+      const med=c.band&&c.band[n-1]?c.band[n-1][3]:null, cls=n<5?"":c.rank<=10?"ms-lo":c.rank>=90?"ms-hi":"";
+      rows.push([`同じ ${n}件 の BT の中の位置`,`下から <b class="${cls}">${c.rank}%</b>`,
+        `BT で続けて ${n}件 の並びを全部ずらして比べた${isNum(med)?`（中央 ${f(med,2)}R）`:""}。${n<5?"5件未満は色なし":"10%以下は赤・90%以上は緑"}`]);
+    }
+    if(n<=r.length){const w=msWindows(r,n), neg=w.filter(v=>v<0).length/w.length;
+      rows.push([`続く ${n}件 の合計がマイナスの割合（BT）`,`${(neg*100).toFixed(0)}%`,`BT どおりでもこの割合で起きる`]);}
+  }
+  let run=0,maxL=0; r.forEach(v=>{run=v<0?run+1:0; maxL=Math.max(maxL,run);});
+  const M=msMonths(e);
+  rows.push(["最長の連敗（BT）",`${maxL}件`,"15年の中の最長"]);
+  rows.push(["黒字の月の割合（BT）",isNum(M.plus)?`${(M.plus*100).toFixed(0)}%`:"—","取引のあった月のうち"]);
+  rows.push(["続けて赤字の月の最長（BT）",`${M.maxNeg}か月`,"取引のあった月を並べて"]);
+  rows.push(["最悪の連続3か月（BT）",isNum(M.worst)?`${f(M.worst,2)}R`:"—","続く3か月の R の合計"]);
+  document.getElementById("month-side").innerHTML=kv(rows.map(([k,v,m])=>[k,v,m]));
+  document.getElementById("month-side-note").textContent="今のマイナスが「BT でもよくある負け方」か「BT ではめったに無い負け方」かを見るための表。R は1回の損切り幅（BT は統一基準K の台帳）。";
+}
+function select(name){
+  const e=DATA.eas.find(x=>x.name===name)||DATA.eas[0]; CUR=e;
+
+  SERIES=(e.trades.t.length>=2)?buildSeries(e):null; EQ_HL=null;
+  for(const b of document.querySelectorAll(".ea-chip")) b.setAttribute("aria-pressed", String(b.dataset.ea===e.name));
+  document.getElementById("picker-select").value=e.name;
+  document.getElementById("chart-title").textContent=`資産曲線 — ${e.name}`;
+
+  const mp=document.getElementById("mech-panel");
+  if(mp) mp.style.display=isFwd()?"none":"";
+  const t2=document.getElementById("mech-exits-title");
+  if(t2) t2.textContent=isFwd()?"実際の決済（実口座の記録から）":"実際の決済（バックテストの約定から）";
+  if(!isFwd()) renderMechanism(e);
+  renderMetrics(e); renderMonths(e); renderMonthSide(e); renderStats(e); renderReport(e);
+
+  const show=!!SERIES;
+  for(const id of ["eq-wrap","dd-wrap","dd-cap","chart-toggles"]){
+    const el=document.getElementById(id); if(el) el.style.display=show?"":"none";
+  }
+  if(show){ drawAll(); }
+  else{
+    renderEqSide(e);
+    for(const id of ["eq-canvas","dd-canvas"]){
+      const c=document.getElementById(id); if(!c) continue;
+      const g=c.getContext("2d"); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,c.width,c.height);
+    }
+    document.getElementById("chart-sub").textContent=`${e.symbol}・${e.judge_period[0]}〜${e.judge_period[1]}`;
+    document.getElementById("chart-note").innerHTML=`<span class="bt-empty">決済が ${e.trades.t.length} 件なので曲線は出しません（2件から出します）。`+
+      `${e.live_since?esc(e.live_since)+" から":""}動いていますが、まだ決済が足りません。</span>`;
+  }
+  try{ if(location.hash!=="#"+encodeURIComponent(e.name)) history.replaceState(null,"","#"+encodeURIComponent(e.name)); }catch(err){}
+}
+function setSeg(attr,val){
+  for(const b of document.querySelectorAll(`[data-${attr}]`)) b.setAttribute("aria-pressed", String(b.dataset[attr]===val));
+  const logBtn=document.querySelector('[data-scale="log"]'); logBtn.disabled=MODE!=="comp";
+  if(MODE!=="comp"&&SCALE==="log"){SCALE="lin"; for(const b of document.querySelectorAll("[data-scale]")) b.setAttribute("aria-pressed", String(b.dataset.scale==="lin"));}
+}
+
+const PAIR_ORDER = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURJPY", "GBPJPY"];
+const PAIR_HUES = { XAUUSD: 42, EURUSD: 218, GBPUSD: 275, USDJPY: 352, AUDUSD: 140, EURJPY: 188, GBPJPY: 22 };
+function pairOfSymbols(value) {
+  const first = String(value || "").split(/[,\s/]+/).filter(Boolean)[0] || "";
+  const m = first.toUpperCase().match(/^[A-Z]{6}/);
+  return m ? m[0] : "";
+}
+function pairRank(pair) {
+  const i = PAIR_ORDER.indexOf(pair);
+  return i >= 0 ? i : pair ? PAIR_ORDER.length : PAIR_ORDER.length + 1;
+}
+function pairShadeColor(pair, index, count) {
+  let hue = PAIR_HUES[pair];
+  if (hue === undefined) { let h = 2166136261; for (let i = 0; i < pair.length; i++) { h ^= pair.charCodeAt(i); h = Math.imul(h, 16777619); } hue = (h >>> 0) % 360; }
+  const t = count > 1 ? index / (count - 1) : 0;
+  return {
+    bg: `hsl(${hue} 78% ${Math.round(94 - t * 12)}%)`,
+    border: `hsl(${hue} 62% ${Math.round(52 - t * 14)}%)`,
+    text: `hsl(${hue} 80% ${Math.round(34 - t * 16)}%)`,
+  };
+}
+
+function chipStyle(e, list){
+  const pair=pairOfSymbols(e.symbol);
+  if(!pair) return "";
+  const members=list.filter(x=>pairOfSymbols(x.symbol)===pair).map(x=>String(x.name));
+  const c=pairShadeColor(pair, members.indexOf(String(e.name)), members.length);
+  return ` style="--chip-bg:${c.bg};--chip-border:${c.border};--chip-text:${c.text}"`;
+}
+function sortByPair(eas){
+  return [...eas].sort((a,b)=>{const pa=pairOfSymbols(a.symbol), pb=pairOfSymbols(b.symbol);
+    return (pairRank(pa)-pairRank(pb))||pa.localeCompare(pb)||String(a.name).localeCompare(String(b.name),"ja-JP",{numeric:true});});
+}
+function applyData(j){
+
+  if(j&&Array.isArray(j.eas)) j={...j, eas:sortByPair(j.eas)};
+  DATA=j;
+  document.getElementById("src-note").innerHTML=j.forward
+    ?`実口座 ${isNum(j.balance_now)?fmtYen(j.balance_now):"—"}・決済 ${isNum(j.trades_total)?j.trades_total:"—"}件・${esc(j.made||"")} 時点`
+    :`データ ${esc(j.made||"")} 作成・初期${fmtInit()}`;
+  for(const b of document.querySelectorAll("[data-src]")) b.setAttribute("aria-pressed", String(b.dataset.src===SRC));
+  const pick=document.getElementById("picker"), sel=document.getElementById("picker-select");
+  pick.innerHTML=j.eas.map(e=>`<button type="button" class="ea-chip" data-ea="${esc(e.name)}" aria-pressed="false"${chipStyle(e,j.eas)}>${esc(e.name)}<small>${esc(e.symbol)}</small></button>`).join("");
+  sel.innerHTML=j.eas.map(e=>`<option value="${esc(e.name)}">${esc(e.name)}（${esc(e.symbol)}）</option>`).join("");
+  pick.onclick=ev=>{const b=ev.target.closest(".ea-chip"); if(b) select(b.dataset.ea);};
+  sel.onchange=()=>select(sel.value);
+  setStatus(`${j.eas.length}本・${j.forward?"フォワード（実口座）":"バックテスト"}・${esc(j.made||"")}`,"status-live");
+  document.querySelector('[data-unit="yen"]').textContent=`円（初期${fmtInit()}）`;
+  let first=(CUR&&j.eas.some(e=>e.name===CUR.name))?CUR.name:j.eas[0].name;
+  try{ const h=decodeURIComponent(location.hash.slice(1)); if(j.eas.some(e=>e.name===h)) first=h; }catch(err){}
+  try{ select(first); }catch(e){ fail("表示の途中で誤り（"+((e&&e.message)||e)+"）"); }
+}
+async function switchSrc(src){
+  if(src===SRC) return;
+  if(src==="fwd"&&!FWD){
+    setStatus("フォワードを読み込み中","status-live");
+    let j; try{ j=await getJson("/api/forward-detail",30000); }
+    catch(e){ setStatus("フォワードを取得できません（"+((e&&e.message)||"通信の誤り")+"）","status-error"); return; }
+    const why=checkShape(j); if(why){ setStatus("フォワードを表示しない: "+why,"status-error"); return; }
+    FWD=j;
+  }
+  SRC=src; applyData(src==="fwd"?FWD:BT);
+}
+async function load(){
+  let j; try{ j=await getJson("/api/backtest-detail",30000); }catch(e){ fail("取得できません（"+((e&&e.name==="AbortError")?"時間切れ":((e&&e.message)||"通信の誤り"))+"）"); return; }
+  const why=checkShape(j); if(why){ fail(why); return; }
+  BT=j; DATA=j;
+  applyData(j);
+}
+function render(name){ select(name); }
+for(const b of document.querySelectorAll("[data-src]")) b.onclick=()=>{ switchSrc(b.dataset.src); };
+
+{
+  const dn=document.getElementById("zoom-down"), up=document.getElementById("zoom-up"),
+        zb=document.getElementById("zoom-reset"), box=document.getElementById("zoom-ctl");
+  if(dn) dn.onclick=()=>applyZoom(Math.round((ZOOM-ZOOM_STEP)*100)/100,true);
+  if(up) up.onclick=()=>applyZoom(Math.round((ZOOM+ZOOM_STEP)*100)/100,true);
+  if(zb) zb.onclick=()=>applyZoom(1,true);
+  if(box) box.addEventListener("keydown",ev=>{
+    if(ev.key==="ArrowLeft"){ ev.preventDefault(); applyZoom(Math.round((ZOOM-ZOOM_STEP)*100)/100,true); }
+    else if(ev.key==="ArrowRight"){ ev.preventDefault(); applyZoom(Math.round((ZOOM+ZOOM_STEP)*100)/100,true); }
+  });
+
+  applyZoom(ZOOM,false); }
+for(const b of document.querySelectorAll("[data-mode]")) b.onclick=()=>{MODE=b.dataset.mode; setSeg("mode",MODE); drawAll();};
+for(const b of document.querySelectorAll("[data-unit]")) b.onclick=()=>{UNIT=b.dataset.unit; setSeg("unit",UNIT); drawAll();};
+for(const b of document.querySelectorAll("[data-scale]")) b.onclick=()=>{ if(b.disabled) return; SCALE=b.dataset.scale; setSeg("scale",SCALE); drawAll();};
+document.getElementById("eq-canvas").addEventListener("mousemove",hover);
+document.getElementById("eq-canvas").addEventListener("mouseleave",()=>{document.getElementById("eq-tip").style.display="none";});
+let rt=null; window.addEventListener("resize",()=>{clearTimeout(rt); rt=setTimeout(drawAll,120);});
+window.addEventListener("hashchange",()=>{ if(!DATA) return; const h=decodeURIComponent(location.hash.slice(1)); if(CUR&&h!==CUR.name&&DATA.eas.some(e=>e.name===h)) select(h); });
+load();
+</script>
+<script src="static/ui2.js"></script>
+<script>
+(function(){var orig=select;select=function(n){orig(n);if(window.UI2&&CUR)UI2.compare(CUR.name);};if(CUR&&window.UI2)UI2.compare(CUR.name);if(window.UI2){var od=UI2.onData;UI2.onData=function(d){if(od)od(d);if(CUR)renderMonthSide(CUR);};}})();
+</script>
+</body>
+</html>

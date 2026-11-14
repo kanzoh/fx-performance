@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+
+(function(){
+  var FROZEN=1794573000000, _D=Date;
+  function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
+    return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
+  FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
+  window.Date=FD;
+  var PAGES={"/": "index.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/study": "study.html", "/analysis": "analysis.html", "/verdict": "verdict.html"};
+  var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=(typeof input==="string")?input:(input&&input.url)||"";
+    var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
+    if(!m) return _fetch(input,init);
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+    if(method!=="GET"){
+      return Promise.resolve(new Response(JSON.stringify({ok:false,error:"公開用サンプルのため操作できません"}),
+        {status:200,headers:{"Content-Type":"application/json"}}));
+    }
+    return _fetch(here+"api/"+m[1].replace(/\//g,"_")+".json",{cache:"no-cache"});
+  };
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("a[href]"); if(!a) return;
+    var h=a.getAttribute("href"); if(!h||h.charAt(0)!=="/"||h.indexOf("//")===0) return;
+    var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
+    if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
+  },true);
+  document.addEventListener("submit",function(e){ e.preventDefault(); alert("公開用サンプルのため操作できません"); },true);
+  document.addEventListener("DOMContentLoaded",function(){
+    var b=document.createElement("div");
+    b.textContent="公開用サンプル：数字はすべて作りものです（実在の口座・EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。";
+    b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
+    document.body.insertBefore(b,document.body.firstChild);
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ポートフォリオモニター｜EAの見極め</title>
+<link rel="stylesheet" href="static/style.css">
+<style>
+a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.verdict-lead{margin:0;color:var(--muted);font-size:1rem;font-weight:700;line-height:1.6}
+.verdict-lead b{color:var(--text)}
+.verdict-table{min-width:1212px}
+.watch-table{min-width:1054px}
+.sub-head{margin:26px 0 0;font-size:1.05rem;font-weight:900;color:var(--text)}
+.events-table{min-width:860px}
+.lines-table{min-width:1500px}
+td.memo{text-align:left!important;white-space:normal!important;vertical-align:middle}
+.memo-box{min-height:30px;padding:4px 8px;border:1px dashed var(--line-strong);border-radius:5px;background:#fff;font-size:1rem;font-weight:650;color:var(--text);outline:none;cursor:text;white-space:pre-wrap;word-break:break-word}
+.memo-box:empty::before{content:'メモを書く';color:#98a2b3;font-weight:700}
+.memo-box:focus{border-style:solid;border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.memo-box.saved{border-color:var(--green)}
+.verdict-table td:first-child{text-align:left}
+.verdict-table td:nth-child(2){text-align:center}
+.verdict-table td{font-size:1.1rem}
+.vcell{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.vcell strong{font-size:1.2rem;font-weight:900}
+.vcell small{font-size:.86rem;font-weight:800;color:var(--muted)}
+td.lv-ok{background:var(--panel-green)!important}
+td.lv-warn{background:var(--panel-amber)!important}
+td.lv-over{background:var(--red-soft)!important;box-shadow:inset 0 0 0 2px #f97066}
+td.lv-over strong{color:var(--red)}
+.judge{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border-radius:6px;font-weight:900;font-size:1.05rem;white-space:nowrap}
+.judge.ok{color:var(--green);background:var(--green-soft);border:1px solid var(--border-green)}
+.judge.bad{color:#fff;background:var(--red);border:1px solid var(--red)}
+.judge-why{display:block;margin-top:4px;font-size:.86rem;font-weight:850;color:var(--red);white-space:normal}
+.sym{display:inline-flex;padding:3px 9px;border-radius:5px;font-weight:850;font-size:.95rem;border:1px solid}
+.sym.gold{color:var(--amber);background:var(--amber-soft);border-color:var(--border-amber)}
+.sym.fx{color:var(--cyan);background:var(--cyan-soft);border-color:var(--border-cyan)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px;font-size:.92rem;font-weight:800;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:18px;height:14px;border-radius:3px;border:1px solid var(--line-strong)}
+.verdict-panel{border-top:4px solid var(--rose)}
+.events-panel{border-top:4px solid var(--violet)}
+.lines-panel{border-top:4px solid var(--teal)}
+.target-panel{border-top:4px solid var(--blue)}
+.target-table{min-width:1080px}
+.target-table td:first-child{text-align:left}
+td.hit strong{color:var(--green)}
+td.miss strong{color:var(--red)}
+.empty-row td{text-align:center!important;color:var(--green);font-weight:850}
+.big-table .empty-row td{position:static!important;white-space:normal!important;overflow-wrap:anywhere}
+#status{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+
+.one-table{min-width:1960px;border-collapse:separate;border-spacing:0}
+.one-table thead th{position:sticky;top:0;z-index:3;background:var(--panel-head,#f4f6fa)}
+.one-table thead tr:nth-child(2) th{top:34px}
+.one-table th.grp{text-align:center;font-size:.95rem;letter-spacing:.04em}
+.one-table th.grp-a{background:#eef3ff}.one-table th.grp-b{background:#eefaf3}
+.one-table th.grp-c{background:#fff6e6}.one-table th.grp-d{background:#f3eefe}
+.one-table td:first-child,.one-table th:first-child{position:sticky;left:0;z-index:4;background:#fff;box-shadow:1px 0 0 var(--line-strong)}
+.one-table thead th:first-child{z-index:5}
+.one-table td{font-size:1.06rem;padding:7px 9px}
+.one-table tbody tr:hover td{background:#fbfcff}
+.one-table tbody tr:hover td:first-child{background:#fbfcff}
+.ea-cell{display:flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1.25}
+.ea-cell small{font-size:.84rem;font-weight:800;color:var(--muted)}
+.sub-head{margin:26px 0 0;font-size:1.05rem;font-weight:900;color:var(--text)}
+
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+@media (max-width:1560px){.cards{grid-template-columns:1fr}}
+.cards .panel{margin:0}
+.card-table{width:100%;table-layout:fixed}
+.card-table th,.card-table td{padding:6px 8px;font-size:1.05rem}
+.card-table th:first-child,.card-table td:first-child{text-align:left}
+.card-table td{white-space:nowrap}
+.ea-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2}
+.ea-cell small{font-size:.82rem;font-weight:800;color:var(--muted)}
+.card-note{margin:0 0 8px;color:var(--muted);font-size:.94rem;font-weight:750;line-height:1.5}
+.earn-panel{border-top:4px solid var(--green,#12b76a)}
+.qual-panel{border-top:4px solid var(--blue,#2e90fa)}
+.watch-panel{border-top:4px solid var(--rose,#f63d68)}
+.goal-panel{border-top:4px solid var(--violet,#7a5af8)}
+
+.card-table th,.card-table td{padding:9px 10px;font-size:1.22rem}
+.card-table thead th{font-size:1.06rem}
+.card-table .vcell{flex-direction:row;align-items:baseline;justify-content:flex-end;gap:7px;white-space:nowrap}
+.card-table .vcell strong{font-size:1.3rem;font-weight:900}
+.card-table .vcell small{font-size:1.02rem;font-weight:800}
+.card-table .ea-cell{flex-direction:row;align-items:baseline;gap:8px}
+.card-table .ea-cell small{font-size:1.0rem}
+.card-table .ea-badge{font-size:1.12rem}
+.judge{min-height:28px;padding:3px 10px;font-size:1.06rem}
+.judge-why{display:inline;margin-left:6px;font-size:.98rem}
+.card-note{font-size:1.0rem}
+.section-title h2{font-size:1.35rem}
+
+.card-table{width:auto;table-layout:auto}
+.card-table th,.card-table td{padding:9px 14px;white-space:nowrap}
+.cards{grid-template-columns:repeat(2,max-content);justify-content:start}
+@media (max-width:1560px){.cards{grid-template-columns:max-content}}
+.cards .panel{width:max-content;max-width:100%;overflow-x:auto}
+.card-note{max-width:62ch;white-space:normal}
+.section-title span{white-space:normal}
+
+.card-table th,.card-table td{padding:8px 11px;font-size:1.14rem}
+.card-table .vcell strong{font-size:1.2rem}
+.card-table .vcell small{font-size:.98rem}
+.card-table thead th{font-size:1.0rem}
+.cards{gap:14px}
+
+.cards{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+@media (max-width:1560px){.cards{display:flex}}
+.cards .panel{flex:0 0 auto}
+
+.card-table th,.card-table td{padding:8px 8px}
+.card-table td:first-child,.card-table th:first-child{padding-left:12px}
+
+.cards{display:block}
+.big-table{width:100%;table-layout:auto;border-collapse:separate;border-spacing:0}
+.big-table th,.big-table td{padding:7px 7px;font-size:1.10rem;white-space:nowrap}
+.big-table thead th{position:sticky;top:0;z-index:3;font-size:1.0rem;background:#eef1f6}
+.big-table thead tr:first-child th{z-index:4}
+.big-table thead tr:nth-child(2) th{top:35px}
+.big-table th.grp{text-align:center;font-size:1.06rem;font-weight:900;letter-spacing:.06em;padding:7px 9px}
+.big-table th.g-ea{background:#e6edfb;color:#1e3a8a}
+.big-table th.g-perf{background:#dff5e8;color:#166534}
+.big-table th.g-watch{background:#ffeccc;color:#8a4b00}
+.big-table th.g-goal{background:#ece5ff;color:#4c1d95}
+.big-table td.b-perf{background:#f5fcf8}
+.big-table td.b-goal{background:#faf7ff}
+.big-table td.b-ea{background:#fafbff}
+.big-table tbody tr:hover td{filter:brightness(.985)}
+.big-table td:first-child,.big-table th:first-child{position:sticky;left:0;z-index:2;background:#fff;box-shadow:1px 0 0 var(--line-strong)}
+.big-table thead th:first-child{z-index:5;background:#e6edfb}
+.big-table td:first-child,.big-table th:first-child{padding-left:12px}
+.big-table .vcell{flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px}
+.big-table .vcell strong{font-size:1.2rem;font-weight:900}
+.big-table .vcell small{font-size:.98rem;font-weight:800}
+.big-table .ea-cell{flex-direction:row;align-items:baseline;gap:8px}
+.big-table .memo-box{min-width:104px}
+.band-note{display:flex;flex-wrap:wrap;gap:8px 18px;margin:8px 0 0;font-size:1.0rem;font-weight:750;color:var(--muted)}
+.band-note b{color:var(--text)}
+
+.big-table td.memo,.big-table th:last-child{width:100%}
+.big-table .memo-box{min-width:120px;white-space:normal}
+.events-panel{border-top:4px solid var(--red,#f04438)}
+.events-panel .empty-row td{color:var(--green)}
+
+.cards{display:block!important}
+.cards .panel{width:auto!important;max-width:none!important;overflow-x:auto}
+.cards .panel + .panel{margin-top:16px}
+
+.big-table th,.big-table td{padding:10px 14px}
+.big-table td:first-child,.big-table th:first-child{padding-left:16px;padding-right:18px}
+.big-table .vcell{gap:9px}
+
+.cards .panel{overflow:visible!important;max-width:100%!important}
+.cards .panel .table-wrap{overflow-x:auto;max-width:100%}
+
+.cards,.cards .panel,.cards .panel .table-wrap{min-width:0!important}
+
+.status-warn{color:#b54708;background:#fef0c7;border:1px solid #fdb022}
+#incidents{margin:12px 0 0}
+
+#incidents{margin:0;display:grid;gap:6px;
+           grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+#incidents .inc{border-radius:6px;padding:4px 10px;margin:0;font-size:12px;line-height:1.5;
+                display:flex;align-items:baseline;gap:6px;min-width:0}
+#incidents .inc.urgent{background:#fee4e2;border:1px solid #fda29b;color:#b42318}
+#incidents .inc.normal{background:#fef0c7;border:1px solid #fdb022;color:#b54708}
+#incidents .inc b{flex:0 0 auto;padding:0 7px;border-radius:999px;font-size:11px;font-weight:700;
+                  background:rgba(255,255,255,.75)}
+#incidents .inc .inc-title{flex:1 1 auto;min-width:0;font-weight:600;
+                           overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#incidents .inc .body{flex:0 0 auto;font-size:11px;opacity:.75;
+                      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#incidents .inc button{flex:0 0 auto;padding:0 8px;font-size:11px;cursor:pointer}
+
+.health-panel{border-top:4px solid var(--cyan,#06aed4)}
+.health-lead{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 14px;
+             border-radius:8px;font-size:1.12rem;font-weight:900;line-height:1.5;border:1px solid}
+.health-lead .big{font-size:1.35rem;line-height:1}
+.hl-ok{color:#027a48;background:#ecfdf3;border-color:#a6f4c5}
+.hl-watch{color:#b54708;background:#fef0c7;border-color:#fdb022}
+.hl-bad{color:#b42318;background:#fee4e2;border-color:#fda29b}
+.hl-blind{color:#344054;background:repeating-linear-gradient(135deg,#f2f4f7,#f2f4f7 7px,#e4e7ec 7px,#e4e7ec 14px);
+          border-color:#98a2b3}
+.hl-unknown{color:#475467;background:#f9fafb;border-color:#d0d5dd}
+
+.hg{margin:0 0 12px;padding:10px 0 2px;border-top:1px dashed var(--line-strong,#d0d5dd)}
+.hg:first-child{border-top:0;padding-top:0}
+.hg-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px 12px}
+.hg-key{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+        border-radius:50%;font-size:1rem;font-weight:900;color:#fff;background:var(--muted,#667085)}
+.hg-ok .hg-key{background:#12b76a}.hg-watch .hg-key{background:#f79009}
+.hg-bad .hg-key{background:#f04438}.hg-blind .hg-key{background:#667085}
+.hg-q{font-size:1.18rem;font-weight:900;color:var(--text,#101828)}
+.hg-speed{padding:2px 10px;border-radius:999px;font-size:.88rem;font-weight:900;
+          color:#0b4a6f;background:#e0f2fe;border:1px solid #7cd4fd;white-space:nowrap}
+.hg-slow .hg-speed{color:#93370d;background:#fffaeb;border-color:#fec84b}
+.hg-state{margin-left:auto;font-size:1rem;font-weight:900;white-space:nowrap}
+.hg-why{margin:4px 0 0;font-size:.96rem;font-weight:750;color:var(--muted,#667085);line-height:1.5}
+.hg-caveat{margin:3px 0 0;font-size:.94rem;font-weight:800;color:#93370d;line-height:1.5}
+.hg-caveat b{color:#b42318}
+.hg-tiles{display:grid;gap:8px;margin:9px 0 2px;
+          grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+
+.hl{display:flex;flex-direction:column;gap:3px;padding:9px 12px;border-radius:8px;
+    border:1px solid;text-align:left;cursor:default;min-width:0}
+.hl-top{display:flex;align-items:baseline;gap:7px;font-size:1.02rem;font-weight:900;min-width:0}
+.hl-top b{flex:0 0 auto;padding:1px 7px;border-radius:5px;font-size:.82rem;font-weight:900;
+          background:rgba(255,255,255,.72);border:1px solid rgba(16,24,40,.12)}
+.hl-top span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hl-msg{font-size:.98rem;font-weight:850;line-height:1.45}
+.hl-watchline{font-size:.86rem;font-weight:750;opacity:.8;line-height:1.4}
+.hl-seen{font-size:.82rem;font-weight:800;opacity:.72}
+.hl-items{margin:6px 0 0;padding:0 0 0 2px;list-style:none;display:flex;flex-direction:column;gap:4px}
+.hl-items li{font-size:.88rem;font-weight:750;line-height:1.4;padding:4px 8px;border-radius:5px;
+             background:rgba(255,255,255,.66);border:1px solid rgba(16,24,40,.1)}
+.hl-items li b{font-weight:900}
+.hg-cusum{margin:8px 0 0;padding:6px 10px;border-radius:6px;background:#f9fafb;border:1px solid #e4e7ec;
+          font-size:.92rem;font-weight:800;color:var(--muted,#667085);line-height:1.5}
+.health-foot{margin:10px 0 0;font-size:.9rem;font-weight:750;color:var(--muted,#667085);line-height:1.6}
+.health-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:8px 0 0;
+               font-size:.86rem;font-weight:800;color:var(--muted,#667085)}
+.health-legend span{display:inline-flex;align-items:center;gap:5px}
+.health-legend i{display:inline-block;width:16px;height:13px;border-radius:3px;border:1px solid #98a2b3}
+
+.page-header{padding:9px 20px 8px}
+.page-header h1{font-size:1.3rem;line-height:1.25}
+.page-header .subtitle{font-size:.82rem;line-height:1.3}
+.tab-bar{padding:8px 20px 0}
+.tab-bar .tab-button{padding:6px 12px}
+.metrics-grid{grid-template-columns:repeat(7,minmax(0,200px));justify-content:start;padding:10px 20px;gap:0}
+.metrics-grid .metric{min-width:0;min-height:0}
+.metrics-grid .metric-label{font-size:.82rem;padding:6px 8px;white-space:normal}
+.metrics-grid .metric-value{font-size:1.45rem;padding:6px 10px}
+main{display:grid;gap:12px;padding:0 20px 20px}
+.panel{padding:12px}
+.section-title{margin-bottom:8px}
+.section-title h2{font-size:1.12rem}
+.section-title span{font-size:.85rem}
+.health-lead{padding:5px 10px;margin-bottom:8px;font-size:.94rem}
+.health-lead .big{font-size:1.05rem}
+#health-groups{display:grid;grid-template-columns:repeat(8,minmax(0,230px));justify-content:start;gap:10px;align-items:start}
+.hg,.hg:first-child{margin:0;padding:10px;border:1px solid #d0d5dd;border-radius:7px;background:#fff;min-width:0}
+.hg-head{gap:6px}
+.hg-q{font-size:1rem}
+.hg-key{width:22px;height:22px;font-size:.9rem;flex-shrink:0}
+.hg-speed{font-size:.75rem;padding:2px 6px}
+.hg-state{display:block;margin:7px 0;font-size:1rem}
+.hg-status-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:6px 0}
+.hg-status-row .hg-state{margin:0;font-size:.94rem}
+.hg-summary{display:grid;gap:3px}
+.hg-summary-row{display:flex;align-items:baseline;gap:7px;font-size:.84rem;line-height:1.3}
+.hg-summary-row .layer-name{flex:0 0 auto;color:#475467;font-weight:750}
+.hg-summary-row .layer-result{min-width:0;font-weight:800}
+.hg-summary-row.h-summary-watch .layer-result{color:#b54708}
+.hg-summary-row.h-summary-bad .layer-result{color:#b42318}
+.hg-summary-row.h-summary-blind .layer-result,.hg-summary-row.h-summary-unknown .layer-result{color:#475467}
+.hg-short-note{font-size:.8rem;line-height:1.35;color:#93370d;margin:6px 0 0;font-weight:750}
+details>summary{cursor:pointer;line-height:1.5;font-weight:750;color:#475467}
+details>summary:focus-visible,.view-switch button:focus-visible{outline:2px solid #1570ef;outline-offset:3px}
+.hg-details{margin-top:8px;font-size:.84rem}
+.hg-details .hg-tiles{grid-template-columns:1fr;margin-top:8px}
+.hg-details .hg-why,.hg-details .hg-caveat{font-size:.85rem}
+.hg-cusum{font-size:.8rem;padding:5px 7px}
+.health-explain{margin-top:8px;font-size:.82rem}
+.health-foot{font-size:.82rem}
+.health-legend{font-size:.8rem}
+.cards .panel + .panel{margin-top:12px}
+.table-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:0}
+.verdict-panel>.section-title{flex-wrap:wrap}
+.view-switch{display:flex;flex-wrap:wrap;gap:3px;padding:3px;background:#f2f4f7;border:1px solid #e4e7ec;border-radius:7px}
+.view-switch button{font:inherit;font-size:.87rem;font-weight:800;padding:5px 12px;border:0;border-radius:5px;background:transparent;color:#475467;cursor:pointer}
+.view-switch button[aria-pressed="true"]{background:#fff;color:#175cd3;box-shadow:0 1px 3px #10182822}
+.table-key{font-size:.82rem;color:#667085;font-weight:750}
+.table-explain{font-size:.85rem;margin-bottom:6px}
+.band-note{font-size:.85rem}
+#verdict-table th,#verdict-table td{padding:6px 10px;font-size:.96rem;height:36px}
+#verdict-table thead tr:nth-child(2) th{top:36px}
+#verdict-table .vcell strong{font-size:1rem}
+#verdict-table .vcell small{font-size:.83rem}
+#verdict-table .ea-cell{gap:6px}
+#verdict-table .ea-cell small{font-size:.8rem}
+#verdict-table .ea-badge{font-size:.95rem}
+#verdict-table .judge{font-size:.88rem;min-height:24px;padding:2px 8px}
+#verdict-table .judge-why{font-size:.8rem;display:block;max-width:230px;margin:3px 0 0}
+#verdict-table .memo-box{font-size:.9rem;min-height:24px;min-width:100px}
+#lead-bal{font-size:.86rem;max-width:none;margin:5px 0}
+.events-panel>summary{display:flex;align-items:center;gap:8px;font-size:.95rem}
+.events-panel>summary::before{content:'▸';font-size:.9rem}
+.events-panel[open]>summary::before{content:'▾'}
+.events-panel .table-wrap{margin-top:10px}
+.events-panel .history-note{margin-left:auto;color:#667085;font-size:.8rem}
+#events-count{padding:1px 7px;border-radius:999px;background:#f2f4f7;font-size:.8rem}
+.events-panel.has-events #events-count{background:#fee4e2;color:#b42318}
+[hidden]{display:none!important}
+
+#incidents{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+#incidents .inc .body{display:none}
+
+#health-card>.section-title h2{font-size:20px;line-height:1.35}
+#health-card>.section-title span{font-size:14px;line-height:1.4}
+#health-card .health-lead{font-size:16px;line-height:1.45;padding:7px 10px}
+#health-card .health-lead .big{font-size:20px}
+#health-card .hg{padding:12px}
+#health-card .hg-q{font-size:20px;line-height:1.35}
+#health-card .hg-key{width:26px;height:26px;font-size:17px}
+#health-card .hg-status-row{gap:7px 9px;margin:8px 0}
+#health-card .hg-status-row .hg-state{font-size:18px;line-height:1.4;white-space:normal}
+#health-card .hg-speed{font-size:14px;padding:2px 7px}
+#health-card .hg-summary{gap:5px}
+#health-card .hg-summary-row{font-size:16px;line-height:1.45;flex-wrap:wrap;gap:0 8px}
+#health-card .hg-summary-row .layer-result{overflow-wrap:anywhere}
+#health-card .hg-short-note{font-size:15px;line-height:1.45}
+#health-card .hg-details,#health-card .health-explain{font-size:15px;line-height:1.5}
+#health-card .hg-details .hg-why,#health-card .hg-details .hg-caveat{font-size:15px}
+#health-card .hl-top{font-size:17px}
+#health-card .hl-top b{font-size:14px}
+#health-card .hl-msg{font-size:16px}
+#health-card .hl-watchline,#health-card .hl-seen,#health-card .hl-items li{font-size:14px}
+#health-card .hg-cusum,#health-card .health-foot,#health-card .health-legend{font-size:15px}
+#health-readiness{font-size:15px;line-height:1.45;color:#93370d;font-weight:750;margin:0 0 8px}
+.hg-coverage,.hg-updated{margin:5px 0;font-size:15px;line-height:1.45;color:#475467;font-weight:750;overflow-wrap:anywhere}
+@media(max-width:1799px){
+  #health-groups{grid-template-columns:repeat(4,minmax(0,240px))}
+}
+@media(max-width:1000px){
+  .metrics-grid{grid-template-columns:repeat(4,minmax(0,200px))}
+}
+@media(max-width:800px){ #health-groups{grid-template-columns:repeat(2,minmax(0,240px))}}
+@media(max-width:650px){
+  main{padding:0 10px 12px}.page-header{padding:10px;flex-wrap:wrap}
+  .tab-bar{padding:8px 10px 0;overflow-x:auto}.tab-button{min-width:auto;padding:7px 10px;white-space:nowrap}
+  .metrics-grid{padding:8px 10px;grid-template-columns:repeat(3,minmax(0,200px))}
+  .events-panel .history-note{display:none}
+}
+@media(max-width:540px){ #health-groups{grid-template-columns:minmax(0,360px)}}
+</style>
+<link rel="stylesheet" href="static/readable.css">
+<script src="static/tablealign.js" defer></script>
+</head>
+<body>
+<header class="page-header">
+  <div>
+    <h1>ポートフォリオモニター</h1>
+    <div class="subtitle">EA別リアルタイム監視</div>
+  </div>
+  <div id="status" class="status-pill status-live">読み込み中</div>
+</header>
+
+
+<nav class="tab-bar" aria-label="表示切替">
+  <a class="tab-button" href="index.html#top">トップ</a>
+  <a class="tab-button" href="index.html#ea">EA別</a>
+  <a class="tab-button" href="analysis.html">市場分析</a>
+  <a class="tab-button" href="study.html">EA分析</a>
+  <a class="tab-button active" href="verdict.html" aria-current="page">EAの見極め</a>
+  <a class="tab-button" href="backtest.html">詳細データ</a>
+  <a class="tab-button" href="ranking.html">ランキング</a>
+</nav>
+
+<section class="metrics-grid" aria-label="サマリー">
+  <div class="metric accent-blue"><div class="metric-label">見ているEA</div><div id="m-ea" class="metric-value">-</div></div>
+  <div class="metric accent-green"><div class="metric-label">想定内</div><div id="m-ok" class="metric-value">-</div></div>
+  <div class="metric accent-red"><div class="metric-label">疑う</div><div id="m-bad" class="metric-value">-</div></div>
+  <div class="metric accent-amber"><div class="metric-label" title="決められない取引がある EA。想定内とは数えない">判定できない&nbsp;🛈</div><div id="m-unk" class="metric-value">-</div></div>
+  <div class="metric accent-amber"><div class="metric-label" title="線（15年間の最悪）の半分を超えた項目の数（最大の負けは、ふつうの損切りでも半分を超えるので数えない）">線に近い項目&nbsp;🛈</div><div id="m-warn" class="metric-value">-</div></div>
+  <div class="metric accent-teal"><div class="metric-label">実口座の取引</div><div id="m-n" class="metric-value">-</div></div>
+  <div class="metric accent-purple"><div class="metric-label" title="EA ごとの損益率を単純に足したもの。口座全体の損益ではない">EA別の損益率の和&nbsp;🛈</div><div id="m-sum" class="metric-value">-</div></div>
+</section>
+
+<main>
+  
+  <section class="panel health-panel" id="health-card">
+    <div class="section-title"><h2>🩺 監視そのものの状態</h2>
+      <span>5分ごと・「見えていない」は緑にしません</span></div>
+    <p class="health-lead hl-unknown" id="health-lead"><span class="big">・</span><span>読み込み中</span></p>
+    <p id="health-readiness">未計測の内訳・外部通知の接続状態を確認中</p>
+    <div id="health-groups"></div>
+    <details class="health-explain"><summary>監視の仕組み・更新時刻・色の意味</summary>
+    <p class="health-foot" id="health-foot"></p>
+    <div class="health-legend">
+      <span><i style="background:#ecfdf3;border-color:#a6f4c5"></i>見えていて指摘なし</span>
+      <span><i style="background:#fef0c7;border-color:#fdb022"></i>見ている（画面だけ）</span>
+      <span><i style="background:#fee4e2;border-color:#fda29b"></i>対応が必要</span>
+      <span><i style="background:repeating-linear-gradient(135deg,#f2f4f7,#f2f4f7 5px,#e4e7ec 5px,#e4e7ec 10px)"></i>見えていない（＝異常なしではない）</span>
+    </div>
+    </details>
+  </section>
+
+  
+  <section class="panel incidents-panel" id="incidents-card" hidden>
+    <div class="section-title"><h2>🚨 いま対応が必要なこと</h2>
+      <span>緊急だけ・「受け取った」で消えます</span></div>
+    <div id="incidents"></div>
+    <p class="card-note" id="incidents-rest" hidden></p>
+  </section>
+
+  <div class="cards">
+    <section class="panel verdict-panel">
+      <div class="section-title"><h2>EAの見極め</h2>
+      <div class="table-tools">
+        <div class="view-switch" role="group" aria-label="表の表示項目">
+          <button type="button" data-view="overview" aria-pressed="true">要点</button>
+          <button type="button" data-view="performance" aria-pressed="false">成績</button>
+          <button type="button" data-view="watch" aria-pressed="false">見張りの線</button>
+          <button type="button" data-view="all" aria-pressed="false">全項目</button>
+        </div>
+        <span class="table-key">太字＝実口座 ／ 小さい字＝バックテスト・線 ※研究目標は逆</span>
+      </div>
+      </div>
+      <p class="card-note" id="lead-bal"></p>
+      <details class="table-explain"><summary>数字の読み方・判定の注意点</summary>
+      <div class="band-note">
+        <span><b style="color:#166534">緑の区分＝成績</b> 実口座がバックテストと同じ稼ぎ方をしているか</span>
+        <span><b style="color:#8a4b00">橙の区分＝見張りの線</b> 15年で出た最悪。越えたら<b style="color:var(--red)">疑う</b>（余裕あり／線に近い／越えた で色）</span>
+        <span><b style="color:#4c1d95">紫の区分＝目標の物差し</b> 2段の線（研究用。採用の条件ではない。中央ポリシーから作る）に届いているか。ここだけ<b>太字がバックテスト</b>（線と比べる値）・小さい字が実口座</span>
+      </div>
+      </details>
+      <div class="table-wrap" style="margin-top:10px">
+        <table class="data-table big-table" id="verdict-table">
+          <thead>
+            <tr>
+              <th class="grp g-ea" colspan="2">EA</th>
+              <th class="grp g-perf" colspan="7">成績（左＝実口座／右＝バックテスト15年）</th>
+              <th class="grp g-watch" colspan="6">見張りの線（15年で出た最悪）</th>
+              <th class="grp g-goal" colspan="4">目標の物差し（2段の線・研究用）</th>
+              <th class="grp g-ea">メモ</th>
+            </tr>
+            <tr>
+              <th>EA</th><th>判定</th>
+              <th>取引</th><th title="実口座だけ。大きい字＝1件ごとの損益率（損益÷建てた時点の口座残高）を掛け合わせた率／小さい字＝実際の損益の合計（円）。口座には他の EA の損益や同時の建玉があるので、円を残高で割った値とは一致しない">損益&nbsp;🛈</th><th>年利</th><th>勝率</th>
+              <th title="総利益÷総損失（R）">PF</th><th title="純益÷最大DD額">RF</th><th title="日次の利益率から出した年率シャープ">SR</th>
+              <th>最大DD</th><th>連敗</th><th>最大の負け</th>
+              <th title="実口座と同じ件数の、バックテストで最悪だった連続区間">直近の成績</th><th>水面下</th><th>取引無し</th>
+              <th title="目標の物差し（JSON）">t</th><th title="目標の物差し（JSON）">期待R</th>
+              <th title="1年に稼ぐR÷最大DDのR（線が無いときは中立）">効率R</th><th>目標</th>
+              <th>メモ</th>
+            </tr>
+          </thead>
+          <tbody id="rows"><tr class="empty-row"><td colspan="20">読み込み中…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <details class="panel events-panel" id="events-card">
+      <summary>⚠ 線を越えた記録（警報） <span id="events-count">読み込み中</span><span class="history-note">初めて越えた日時・記録は残ります</span></summary>
+      <div class="table-wrap">
+        <table class="data-table big-table">
+          <thead><tr><th>日時</th><th>EA</th><th>項目</th><th>実口座</th><th>線</th><th>メモ</th></tr></thead>
+          <tbody id="events"><tr class="empty-row"><td colspan="6">まだありません</td></tr></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+</main>
+
+<script>
+
+const DEFAULT_EA_NAMES = new Map([]);
+function mergeEaNames(serverNames) {
+  const merged = new Map(DEFAULT_EA_NAMES);
+  for (const [magic, name] of Object.entries(serverNames || {})) {
+    if (name) merged.set(String(magic), String(name));
+  }
+  return merged;
+}
+let eaNames = new Map(DEFAULT_EA_NAMES);
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (ch) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]
+  ));
+}
+function rowList(value) {
+  return Array.isArray(value) ? value : [];
+}
+let latestSummary = null;
+const MAGIC_BADGE_COLORS = [
+  { bg: "#e8f0ff", border: "#8aa8f7", text: "#1e3a8a" },
+  { bg: "#e7f7f0", border: "#74c69d", text: "#166534" },
+  { bg: "#fff4d6", border: "#f3ba4d", text: "#8a4b00" },
+  { bg: "#fbe7ee", border: "#e98aae", text: "#9f1239" },
+  { bg: "#e7f6fb", border: "#67c2d5", text: "#155e75" },
+  { bg: "#efe9ff", border: "#a78bfa", text: "#4c1d95" },
+  { bg: "#edf7df", border: "#a3d977", text: "#3f6212" },
+];
+
+function magicHash(text) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function activeMagicList() {
+  const values = rowList(latestSummary?.ea_stats)
+    .map((row) => String(row.magic ?? ""))
+    .filter((value) => value && value !== "0" && value !== "-");
+  for (const key of eaNames.keys()) {
+    const value = String(key ?? "");
+    if (value && value !== "0" && value !== "-") values.push(value);
+  }
+  return values
+    .filter((value, index, list) => list.indexOf(value) === index)
+    .sort((a, b) => a.localeCompare(b, "ja-JP", { numeric: true }));
+}
+
+function indexedMagicColor(index) {
+  const paletteIndex = index % MAGIC_BADGE_COLORS.length;
+  const cycle = Math.floor(index / MAGIC_BADGE_COLORS.length);
+  if (cycle === 0) return MAGIC_BADGE_COLORS[paletteIndex];
+  const hue = Math.round((index * 137.508) % 360);
+  const saturation = 62 + (index % 5) * 4;
+  const bgLightness = 92 - (cycle % 3) * 3;
+  const borderLightness = 42 - Math.min(cycle % 3, 2) * 3;
+  return {
+    bg: `hsl(${hue} ${Math.min(saturation + 10, 84)}% ${bgLightness}%)`,
+    border: `hsl(${hue} ${saturation}% ${borderLightness}%)`,
+    text: `hsl(${hue} ${Math.min(saturation + 8, 86)}% 24%)`,
+  };
+}
+
+const PAIR_ORDER = ["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "EURJPY", "GBPJPY"];
+const PAIR_HUES = { XAUUSD: 42, EURUSD: 218, GBPUSD: 275, USDJPY: 352, AUDUSD: 140, EURJPY: 188, GBPJPY: 22 };
+function pairOfSymbols(value) {
+  const first = String(value || "").split(/[,\s/]+/).filter(Boolean)[0] || "";
+  const m = first.toUpperCase().match(/^[A-Z]{6}/);
+  return m ? m[0] : "";
+}
+function pairRank(pair) {
+  const i = PAIR_ORDER.indexOf(pair);
+  return i >= 0 ? i : pair ? PAIR_ORDER.length : PAIR_ORDER.length + 1;
+}
+function pairShadeColor(pair, index, count) {
+  let hue = PAIR_HUES[pair];
+  if (hue === undefined) { let h = 2166136261; for (let i = 0; i < pair.length; i++) { h ^= pair.charCodeAt(i); h = Math.imul(h, 16777619); } hue = (h >>> 0) % 360; }
+  const t = count > 1 ? index / (count - 1) : 0;
+  return {
+    bg: `hsl(${hue} 78% ${Math.round(94 - t * 12)}%)`,
+    border: `hsl(${hue} 62% ${Math.round(52 - t * 14)}%)`,
+    text: `hsl(${hue} 80% ${Math.round(34 - t * 16)}%)`,
+  };
+}
+function symbolByMagicMap() {
+  const map = new Map();
+  const add = (rows, field) => {
+    for (const row of rowList(rows)) {
+      const magic = String(row.magic ?? "");
+      if (!magic || magic === "0" || magic === "-" || map.has(magic)) continue;
+      const pair = pairOfSymbols(row[field] || row.symbols || row.symbol);
+      if (pair) map.set(magic, pair);
+    }
+  };
+  add(latestVerdict?.eas, "symbol");
+  add(latestSummary?.ea_stats, "symbols");
+  return map;
+}
+function comparePairThenName(aMagic, bMagic, pairs = symbolByMagicMap()) {
+  const a = String(aMagic ?? ""), b = String(bMagic ?? "");
+  const pa = pairs.get(a) || "", pb = pairs.get(b) || "";
+  return (pairRank(pa) - pairRank(pb)) || pa.localeCompare(pb)
+    || (eaNames.get(a) || a).localeCompare(eaNames.get(b) || b, "ja-JP", { numeric: true })
+    || a.localeCompare(b, "ja-JP", { numeric: true });
+}
+function magicColor(magic) {
+  const text = String(magic ?? "-");
+  const pairs = symbolByMagicMap();
+  const pair = pairs.get(text);
+  if (pair) {
+    const members = [...pairs.entries()].filter(([, p]) => p === pair).map(([m]) => m).sort((a, b) => comparePairThenName(a, b, pairs));
+    return pairShadeColor(pair, members.indexOf(text), members.length);
+  }
+  const activeMagics = activeMagicList();
+  const activeIndex = activeMagics.indexOf(text);
+  if (activeIndex >= 0) return indexedMagicColor(activeIndex);
+  return indexedMagicColor(magicHash(text) % Math.max(MAGIC_BADGE_COLORS.length, 24));
+}
+
+function eaBadge(magic) {
+  const magicKey = magic === null || magic === undefined || magic === "" ? "-" : String(magic);
+  const name = magicKey !== "-" ? eaNames.get(magicKey) : null;
+  const label = name || magicKey;
+  const title = name ? `${name} (${magicKey}) - クリックして名前を編集` : `${magicKey} - クリックして名前を設定`;
+  const color = magicColor(magicKey);
+  const clickable = magicKey === "-" ? "" : ` data-ea-badge-magic="${magicKey}"`;
+  return `<span class="ea-badge" title="${escapeHtml(title)}"${clickable} style="--magic-bg:${color.bg};--magic-border:${color.border};--magic-text:${color.text}">${escapeHtml(label)}</span>`;
+}
+
+function eaNameCell(magic) {
+  const magicKey = magic === null || magic === undefined || magic === "" ? "-" : String(magic);
+  if (magicKey === "-" || magicKey === "0") return "-";
+  if (eaNames.get(magicKey)) return `<span class="ea-name-wrap">${eaBadge(magicKey)}</span>`;
+  return `<span class="ea-name-wrap ea-name-wrap-unnamed"><span class="ea-badge ea-badge-unnamed" title="${magicKey} - set EA name" data-ea-badge-magic="${magicKey}">\u672a\u8a2d\u5b9a</span></span>`;
+}
+const sg=(v,d=2)=>v==null?"—":(v>0?"+":"")+Number(v).toFixed(d);
+const nm=(v,d=1)=>v==null?"—":Number(v).toFixed(d);
+
+let BALANCE=null;
+const pct=(v,d=1)=>v==null?"—":(v>0?"+":"")+Number(v).toFixed(d)+"%";
+
+const yenAmt=(v)=>v==null?"—":(Math.round(v)>0?"+":"")+Math.round(v).toLocaleString("ja-JP")+"円";
+const cls=v=>v>0?"profit-positive":v<0?"profit-negative":"";
+function badge(e){return eaNameCell(e.magic)}
+
+function fitEaCols(){
+  const t=document.getElementById("rows")?.closest("table"); if(!t)return;
+  const col=t.querySelector("col"); if(!col)return;
+  let w=0; for(const b of t.querySelectorAll("tbody .ea-badge")) w=Math.max(w,b.scrollWidth);
+  if(w){const want=Math.max(118,Math.ceil(w)+34); const old=parseInt(col.style.width)||118;
+    col.style.width=want+"px"; t.style.minWidth=(parseInt(getComputedStyle(t).minWidth)||0)+(want-old)+"px";}
+}
+function sym(e){return `${e.symbol}-m`}
+let MEMOS={};
+const esc=escapeHtml;
+function memo(key){return `<td class="memo"><div class="memo-box" contenteditable="plaintext-only" data-key="${key}">${esc(MEMOS[key]||"")}</div></td>`}
+document.addEventListener("focusout",async ev=>{const el=ev.target; if(!el.classList||!el.classList.contains("memo-box"))return;
+  const key=el.dataset.key, text=el.innerText.trim(); if((MEMOS[key]||"")===text)return;
+  try{const r=await fetch("/api/verdict-memo",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({key,text})});
+    if(r.ok){if(text)MEMOS[key]=text;else delete MEMOS[key]; el.classList.add("saved"); setTimeout(()=>el.classList.remove("saved"),1200);}}catch(e){}});
+let warnCount=0;
+function cellX(U,val,line,ratio,over){return U?`<td class="lv-ok"><div class="vcell"><strong>—</strong><small>${line}</small></div></td>`:cell(val,line,ratio,over)}
+function cell(val,line,ratio,over){
+  const r=Math.max(0,ratio||0); const lv=over?"lv-over":(r>=0.5?"lv-warn":"lv-ok"); if(!over&&r>=0.5)warnCount++;
+  return `<td class="${lv}"><div class="vcell"><strong>${val}</strong><small>${line}</small></div></td>`;
+}
+
+function failAll(reason){
+  const st=document.getElementById("status");
+  st.textContent="判定しない: "+reason; st.className="status-pill status-error";
+
+  document.getElementById("rows").innerHTML=`<tr class="empty-row"><td colspan="20" style="color:var(--red)">判定しない — ${esc(reason)}</td></tr>`;
+  document.getElementById("events").innerHTML=`<tr class="empty-row"><td colspan="6" style="color:var(--red)">判定しない</td></tr>`;
+  document.getElementById("events-count").textContent="判定できません";
+  latestVerdict=null; cusumLine(); healthFoot();
+  for(const id of ["m-ea","m-ok","m-bad","m-unk","m-warn","m-n","m-sum"]){const el=document.getElementById(id); if(el)el.textContent="—";}
+  const lb=document.getElementById("lead-bal"); if(lb)lb.innerHTML="";
+}
+
+const utcMs=v=>Date.parse(String(v).slice(0,19).replace(" ","T")+"Z");
+function evalLine(x){
+  x=(x&&typeof x==="object")?x:{};
+  const items=[["ok",x.last_eval_ok],["blind",x.last_eval_blind],["error",x.last_eval_error]]
+    .filter(([k,v])=>typeof v==="string"&&Number.isFinite(utcMs(v))).sort((a,b)=>utcMs(b[1])-utcMs(a[1]));
+  if(!items.length) return `<br><span style="color:#b54708">常駐の判定が動いた記録がまだありません</span>`;
+  const [k,v]=items[0];
+  if(k==="error") return `<br><b style="color:var(--red)">常駐の判定で誤り: ${esc(v)}</b>`;
+  if(k==="blind") return `<br><b style="color:#b54708">常駐の判定は最後に判定しませんでした: ${esc(v)}</b>`;
+  if(Date.now()-utcMs(v)>15*60*1000) return `<br><b style="color:#b54708">常駐の判定が15分以上動いていません（最後 ${esc(v)}）</b>`;
+  return `<br><span style="color:var(--muted)">常駐の判定 最後に動いた時刻: ${esc(v)}</span>`;
+}
+
+async function getJson(url,ms){
+  const ac=new AbortController(); const t=setTimeout(()=>ac.abort(),ms);
+  try{
+    const r=await fetch(url,{credentials:"same-origin",signal:ac.signal});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  }finally{clearTimeout(t)}
+}
+const isNum=v=>typeof v==="number"&&Number.isFinite(v);
+const isObj=v=>!!v&&typeof v==="object"&&!Array.isArray(v);
+
+const LABEL_KEYS=["streak","dd","under","worst","month","window","gap","unknown"];
+const BT_KEYS=["per_year","cagr","win","pf_r","rf","sr","t","mean_r","eff_r"];
+const UNK_KEYS=["unknown_risk","unknown_balance","unknown_profit","unknown_open_time","unknown_bound","unknown_exclusion"];
+const isInt=v=>Number.isInteger(v);
+const numOrNull=v=>v===null||isNum(v);
+function checkShape(j){
+  if(!Array.isArray(j.eas)) return "取得した中身の形が違います（eas）";
+  if(typeof j.baseline_id!=="string"||!j.baseline_id) return "取得した中身の形が違います（baseline_id）";
+  if(!isInt(j.expected_eas)||j.expected_eas<=0) return "取得した中身の形が違います（基準の本数）";
+  if(j.eas.length!==j.expected_eas) return `EA の本数が基準と合いません（${j.eas.length}／${j.expected_eas}本）`;
+  if(!isNum(j.balance)||j.balance<=0||typeof j.now!=="string") return "取得した中身の形が違います（残高・時刻）";
+  if(!isObj(j.labels)||LABEL_KEYS.some(k=>typeof j.labels[k]!=="string")) return "取得した中身の形が違います（項目名）";
+  if(!numOrNull(j.live_risk_percent)||typeof j.risk_history_confirmed!=="boolean") return "取得した中身の形が違います（リスク）";
+  if(j.memos!==undefined&&!isObj(j.memos)) return "取得した中身の形が違います（メモ）";
+  const seen=new Set();
+  for(const e of j.eas){
+    if(!isObj(e)||!isObj(e.live)||!Array.isArray(e.bad)||!isObj(e.lines)||!isObj(e.bt)||!isObj(e.events)||!isObj(e.target)
+       ||!isInt(e.magic)||typeof e.symbol!=="string"||typeof e.name!=="string"||!isNum(e.risk_percent))
+      return `EA の中身の形が違います（${String((e&&e.name)||"?")}）`;
+    const who=e.name, l=e.lines, m=e.live, U=e.bad.includes("unknown");
+    if(seen.has(e.magic)) return `同じ magic の EA が2つあります（${e.magic}）`;
+    seen.add(e.magic);
+    if(e.bad.some(k=>typeof k!=="string"||typeof j.labels[k]!=="string")) return `判定の項目名が違います（${who}）`;
+    for(const k of ["streak","dd","under","worst","month","gap","dd_pct","worst_pct"]) if(!isNum(l[k])) return `線が欠けています（${who}・${k}）`;
+    for(const k of BT_KEYS) if(!isNum(e.bt[k])) return `バックテストの数字が欠けています（${who}・${k}）`;
+
+    const g=e.target;
+    if(typeof g.tier!=="string"||typeof g.qualified!=="boolean"||!isNum(g.pf_r)||!isNum(g.exp_r)||!isNum(g.t)||!numOrNull(g.eff_r))
+      return `目標の物差しの形が違います（${who}）`;
+    if(!isNum(m.gap)) return `取引の無い期間が欠けています（${who}）`;
+    for(const k of UNK_KEYS) if(!isInt(m[k])||m[k]<0) return `決められない取引の件数が欠けています（${who}・${k}）`;
+
+    if(!isInt(m.excluded_n)||m.excluded_n<0||!Array.isArray(m.excluded)||m.excluded.length!==m.excluded_n
+       ||m.excluded.some(x=>!isObj(x)||!isInt(x.ticket)||typeof x.label!=="string"||!isNum(x.profit))||!isNum(m.excluded_yen))
+      return `除外した取引の形が違います（${who}）`;
+    if(!Array.isArray(m.exclusion_errors)||m.exclusion_errors.length!==m.unknown_exclusion)
+      return `除外の指定の合わない理由の数が違います（${who}）`;
+    const unkN=UNK_KEYS.reduce((a,k)=>a+m[k],0);
+    if(!isInt(m.n_total)||m.n_total<0) return `取引の件数が欠けています（${who}）`;
+    if(U){
+      if(unkN<1||m.n!==0||m.n_total<unkN) return `判定できない EA の件数が合いません（${who}）`;
+    }else{
+      if(unkN!==0) return `決められない取引があるのに判定しています（${who}）`;
+      for(const k of ["n","streak","cur_streak","window_n"]) if(!isInt(m[k])||m[k]<0) return `実口座の数字が欠けています（${who}・${k}）`;
+      for(const k of ["dd","under","worst","month","sum_pct","dd_pct","worst_pct","sum_yen","mean","win"]) if(!isNum(m[k])) return `実口座の数字が欠けています（${who}・${k}）`;
+      for(const k of ["pf_r","rf","sr","cagr","t","eff_r"]) if(!numOrNull(m[k])) return `実口座の数字の形が違います（${who}・${k}）`;
+      if(m.n_total!==m.n) return `取引の件数が合いません（${who}）`;
+      if(m.n>0){
+        if(m.window_n<1||!isNum(m.window)||!isNum(m.window_pct)) return `直近の成績が欠けています（${who}）`;
+        if(!isNum(l.window)||!isNum(l.window_pct)) return `直近の成績の線が欠けています（${who}）`;
+      }else if(m.window_n!==0) return `取引0件なのに直近の成績があります（${who}）`;
+    }
+    for(const [k,x] of Object.entries(e.events))
+      if(typeof j.labels[k]!=="string"||!isObj(x)||typeof x.at!=="string"||!isNum(x.value)||!isNum(x.line)||!(x.unit==null||typeof x.unit==="string"))
+        return `越えた記録の形が違います（${who}・${k}）`;
+  }
+  return null;
+}
+let latestVerdict=null;
+let latestHealth=null;
+
+const VIEW_COLS={overview:[1,2,3,4,7,10,13,15,20],performance:[1,2,3,4,5,6,7,8,9,20],
+                 watch:[1,2,10,11,12,13,14,15,20],all:Array.from({length:20},(_,i)=>i+1)};
+let tableView="overview";
+function applyTableView(){
+  const table=document.getElementById("verdict-table");
+  const cols=new Set(VIEW_COLS[tableView]);
+  for(const row of [table.tHead.rows[1],...table.tBodies[0].rows]){
+    if(row.cells.length!==20) continue;
+    [...row.cells].forEach((cell,i)=>cell.hidden=!cols.has(i+1));
+  }
+  const groups=[[1,2],[3,4,5,6,7,8,9],[10,11,12,13,14,15],[16,17,18,19],[20]];
+  [...table.tHead.rows[0].cells].forEach((cell,i)=>{
+    const n=groups[i].filter(c=>cols.has(c)).length;
+    cell.hidden=!n; cell.colSpan=n||1;
+  });
+  document.querySelectorAll("[data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===tableView)));
+}
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{
+  tableView=b.dataset.view; applyTableView();
+}));
+applyTableView();
+
+const HSTATE={ok:{i:"✅",w:"異常なし",c:"ok"},
+              watch:{i:"👀",w:"要確認",c:"watch"},
+              bad:{i:"🚨",w:"対応が必要",c:"bad"},
+              blind:{i:"🙈",w:"見えていない",c:"blind"},
+              unknown:{i:"・",w:"まだ見ていない",c:"unknown"}};
+const HKEY={A:"①",B:"②",C:"③"};
+
+const HGROUP_OK={C:"線は越えていません"};
+function hAgo(min){
+  if(min===null||min===undefined||!isFinite(min)) return "";
+  if(min<1.5) return "いま見ました";
+  if(min<60) return Math.round(min)+"分前に見ました";
+  const h=min/60;
+  if(h<24) return (h<10?h.toFixed(1):String(Math.round(h)))+"時間前に見ました";
+  return (h/24).toFixed(1)+"日前に見ました";
+}
+
+function hBold(el,text){
+  const parts=String(text||"").split("**");
+  for(let i=0;i<parts.length;i++){
+    if(!parts[i]) continue;
+    if(i%2){ const b=document.createElement("b"); b.textContent=parts[i]; el.append(b); }
+    else el.append(document.createTextNode(parts[i]));
+  }
+}
+function hTile(L){
+  const st=HSTATE[L.state==="ok"&&Number(L.blind_n)>0?"watch":L.state]||HSTATE.unknown;
+  const div=document.createElement("div");
+  div.className="hl hl-"+st.c;
+  const top=document.createElement("div"); top.className="hl-top";
+  const chip=document.createElement("b"); chip.textContent=String(L.key||"");
+  const nm=document.createElement("span"); nm.textContent=String(L.name||"");
+  top.append(chip,nm);
+  const msg=document.createElement("div"); msg.className="hl-msg";
+  const partialOk=L.state==="ok"&&Number(L.blind_n)>0;
+  msg.textContent=st.i+" "+(partialOk
+    ? "見えている範囲に指摘なし・未計測 "+L.blind_n+" / "+L.total_n+"本"
+    : String(L.detail||st.w));
+  const wl=document.createElement("div"); wl.className="hl-watchline";
+  wl.textContent="見ているもの： "+String(L.watches||"");
+  const sn=document.createElement("div"); sn.className="hl-seen";
+  sn.textContent=hAgo(L.age_min)+(L.seen_at?("（"+String(L.seen_at)+"）"):"");
+  div.append(top,msg,wl,sn);
+  const unmeasured=Array.isArray(L.unmeasured)?L.unmeasured:[];
+  if(unmeasured.length){
+    const missing=document.createElement("ul");missing.className="hl-items";
+    for(const item of unmeasured){
+      const li=document.createElement("li");li.textContent=String(item.ea)+"： "+String(item.reason);
+      missing.append(li);
+    }
+    div.append(missing);
+  }
+  const items=Array.isArray(L.items)?L.items:[];
+  if(items.length){
+
+    const ul=document.createElement("ul"); ul.className="hl-items";
+    for(const it of items.slice(0,3)){
+      const li=document.createElement("li");
+      const b=document.createElement("b"); b.textContent=String((it&&it.level)||"")+" ";
+      li.append(b,document.createTextNode(String((it&&it.title)||"")+
+                ((it&&it.detail)?("： "+String(it.detail).slice(0,120)):"")));
+      ul.append(li);
+    }
+    const more=(L.count||items.length)-Math.min(3,items.length);
+    if(more>0){ const li=document.createElement("li"); li.textContent="ほか "+more+"件"; ul.append(li); }
+    div.append(ul);
+  }
+  return div;
+}
+async function loadHealth(){
+  const card=document.getElementById("health-card");
+  if(!card) return;
+  const lead=document.getElementById("health-lead");
+  const box=document.getElementById("health-groups");
+  const foot=document.getElementById("health-foot");
+  const readiness=document.getElementById("health-readiness");
+  let j=null;
+  try{ j=await getJson("/api/health",15000) }catch(e){ j=null }
+  latestHealth=j;
+  const expanded=new Set([...box.querySelectorAll("details[open][data-group]")].map(el=>el.dataset.group));
+  box.textContent="";
+  if(!j||!Array.isArray(j.groups)||!j.groups.length){
+    lead.className="health-lead hl-blind";
+    lead.textContent="";
+    const b=document.createElement("span"); b.className="big"; b.textContent=HSTATE.blind.i;
+    const t=document.createElement("span");
+    t.textContent="監視そのものの状態が取れません（"+((j&&j.error)?String(j.error).slice(0,120):"古い版の画面か、通信の誤り")+"）";
+    lead.append(b,t);
+    foot.textContent="";
+    readiness.textContent="未計測の内訳・外部通知の接続状態も確認できません";
+    return;
+  }
+  const layers=Array.isArray(j.layers)?j.layers:[];
+  const domains=Array.isArray(j.domains)&&j.domains.length===8?j.domains:layers;
+  const missingNames=[...new Set(layers.flatMap(x=>Array.isArray(x.unmeasured)?x.unmeasured.map(it=>String(it.ea)):[]))];
+  const delivery=j.notification;
+  readiness.textContent=(delivery&&typeof delivery.detail==="string"?delivery.detail:"外部通知の接続状態は確認できません")
+    +(missingNames.length?" ／ 未計測： "+missingNames.join("・"):
+      layers.some(x=>Number(x.blind_n)>0)?" ／ 未計測EA名は取得待ち（本数は下段）":"");
+  const pick=s=>domains.filter(x=>x&&x.state===s).map(x=>x.name);
+  const bad=pick("bad"), blind=pick("blind"), watch=pick("watch"), unk=pick("unknown");
+  let cls="ok", icon=HSTATE.ok.i, text="";
+  if(bad.length){ cls="bad"; icon=HSTATE.bad.i; text="対応が必要です： "+bad.join("・"); }
+  else if(blind.length){ cls="blind"; icon=HSTATE.blind.i;
+    text=blind.length+"つが見えていません（＝異常なしではありません）： "+blind.join("・"); }
+  else if(watch.length){ cls="watch"; icon=HSTATE.watch.i; text="見ているものがあります： "+watch.join("・"); }
+  else if(unk.length){ cls="unknown"; icon=HSTATE.unknown.i; text="まだ見ていないものがあります： "+unk.join("・"); }
+  else { text=domains.length+"領域を確認。観測した範囲に指摘はありません"; }
+  const partial=layers.filter(x=>Number(x.blind_n)>0);
+  if(partial.length){
+    if(cls==="ok") {cls="watch";icon=HSTATE.watch.i;}
+    text+=" ／ 未計測あり： "+partial.map(x=>x.name+" "+x.blind_n+"本").join("・");
+  }
+  lead.className="health-lead hl-"+cls;
+  lead.textContent="";
+  const bi=document.createElement("span"); bi.className="big"; bi.textContent=icon;
+  const bt=document.createElement("span"); bt.textContent=text;
+  lead.append(bi,bt);
+  lead.dataset.originalClass=lead.className; lead.dataset.originalText=lead.textContent;
+  const cards={
+    L0:{title:"監視の稼働",note:"判定処理が止まっていないか"},
+    DATA:{title:"データの信頼性",note:"保存時刻だけでなく、元の更新と台帳を照合"},
+    L1:{title:"配備と設定",note:"EA・設定の一致を確認"},
+    L2:{title:"売買の経路",note:"機会・見送り・実建玉を照合。閾値は未較正"},
+    L3:{title:"執行コスト",note:"スプレッドと上限を監視。滑り等は対象外"},
+    L4:{title:"EAの成績",note:"線の超過なし ≠ 劣化なし。検知には時間が必要"},
+    L5:{title:"口座の安全",note:"証拠金・集中・損切り損失。未取得は0にしない"},
+    DELIVERY:{title:"通知の到達",note:"送信成功と受け取りを区別。VPS外の見張りも必要"}
+  };
+  for(const [index,L] of domains.entries()){
+    const g=j.groups.find(x=>(x.layers||[]).some(y=>y.key===L.key))||{};
+    const meta=cards[L.key]||{title:L.name,note:L.watches||""};
+    const key=L.key==="L4"?"C":L.key;
+    const groupState=L.state==="ok"&&Number(L.blind_n)>0?"watch":L.state;
+    const st=HSTATE[groupState]||HSTATE.unknown;
+    const sec=document.createElement("section");
+    sec.className="hg hg-"+st.c+(L.key==="L4"?" hg-slow":"");
+    sec.dataset.monitor=L.key;
+    sec.dataset.originalClass=sec.className;
+    const head=document.createElement("div"); head.className="hg-head";
+    const k=document.createElement("span"); k.className="hg-key"; k.textContent=String(index+1);
+    const q=document.createElement("span"); q.className="hg-q"; q.textContent=meta.title;
+    const ss=document.createElement("span"); ss.className="hg-state";
+    ss.textContent=st.i+" "+(L.key==="DELIVERY"&&!L.external_connected?"外部未接続":
+      groupState==="ok"?(L.key==="L4"?"線の超過なし":L.key==="DATA"?"照合済み":"指摘なし"):st.w);
+    ss.dataset.originalText=ss.textContent;
+    head.append(k,q);
+    const why=document.createElement("p"); why.className="hg-why"; why.textContent=String(g.why||"");
+    const statusRow=document.createElement("div"); statusRow.className="hg-status-row";
+    statusRow.append(ss); sec.append(head,statusRow);
+    const brief=document.createElement("div"); brief.className="hg-summary";
+    {
+      const layerState=L.state==="ok"&&Number(L.blind_n)>0?"watch":L.state;
+      const state=HSTATE[layerState]||HSTATE.unknown;
+      const row=document.createElement("div"); row.className="hg-summary-row h-summary-"+state.c;
+      const name=document.createElement("span"); name.className="layer-name"; name.textContent="";
+      const result=document.createElement("span"); result.className="layer-result";
+      result.textContent=(L.count?"指摘 "+L.count+"件":"")
+        +(Number(L.blind_n)>0?" 未計測 "+L.blind_n+" / "+L.total_n+"本":"");
+      result.title=String(L.detail||"");
+      row.dataset.layer=L.key; row.dataset.originalClass=row.className;
+      result.dataset.originalText=result.textContent;
+      row.append(name,result); brief.append(row);
+    }
+    sec.append(brief);
+    const coverage=document.createElement("p"); coverage.className="hg-coverage";
+    if(L.key==="L4")coverage.id="hg-performance-coverage";
+    const total=Number(L.total_n),blind=Number(L.blind_n||0);
+    coverage.textContent=L.key==="L0"?"対象：監視の判定処理":
+      Array.isArray(L.facts)&&L.facts.length?L.facts.slice(0,2).join(" ／ "):
+      Number.isFinite(total)&&total>0?"計測："+Math.max(0,total-blind)+" / "+total+(L.key==="L5"?"口座":"本"):"計測範囲：確認できません";
+    if(L.key==="L5"&&L.risk){
+      const r=L.risk;
+      coverage.textContent=(r.position_count?("維持率 "+(isNum(r.margin_level)?Math.round(r.margin_level)+"%":"未計測")):"建玉なし")
+        +" ／ 予定損失："+(isNum(r.sl_loss)?r.sl_loss.toLocaleString()+" "+String(r.currency||""):"実額は未計測")
+        +" ／ 建玉 "+r.measured_n+" / "+r.position_count+"本を計測";
+    }
+    const updated=document.createElement("p"); updated.className="hg-updated";
+    updated.textContent="確認："+(hAgo(L.age_min)||"未確認"); updated.title=String(L.seen_at||"");
+    sec.append(coverage,updated);
+    const short=document.createElement("p"); short.className="hg-short-note";
+    short.textContent=meta.note;
+    if(L.key==="L2")short.textContent="参考判定・閾値は未較正";
+    if(L.key==="L3")short.textContent="スプレッドのみ・未較正";
+    if(L.key==="L4")short.textContent="静か ≠ 劣化なし（検知は遅い）";
+    if(["L2","L3","L4"].includes(L.key))sec.append(short);
+    if(L.key==="L4"){
+      const briefCusum=document.createElement("p"); briefCusum.className="hg-short-note";
+      briefCusum.id="hg-cusum-brief";sec.append(briefCusum);
+    }
+    const detail=document.createElement("details"); detail.className="hg-details"; detail.dataset.group=key;
+    detail.open=expanded.has(key);
+    const summary=document.createElement("summary"); summary.textContent="内訳・根拠を開く";
+    detail.append(summary,why);
+    const explanation=document.createElement("p");explanation.className="hg-why";explanation.textContent=meta.note;detail.append(explanation);
+    if(g.caveat){ const cv=document.createElement("p"); cv.className="hg-caveat"; hBold(cv,g.caveat); detail.append(cv); }
+    const tiles=document.createElement("div"); tiles.className="hg-tiles";
+    tiles.append(hTile(L));
+    detail.append(tiles);
+    if(Array.isArray(L.checks))for(const check of L.checks){
+      const p=document.createElement("p");p.className="hg-why";
+      p.textContent=check.name+"："+check.detail;detail.append(p);
+    }
+    if(L.risk){
+      const p=document.createElement("p");p.className="hg-caveat";
+      p.textContent=L.risk.caveat+" ／ "+L.risk.missing.join("・");detail.append(p);
+    }
+
+    if(L.key==="L4"){ const cz=document.createElement("p"); cz.className="hg-cusum"; cz.id="hg-cusum"; detail.append(cz); }
+    sec.append(detail);
+    box.append(sec);
+  }
+  healthFoot();
+  cusumLine();
+}
+
+function cusumLine(){
+  const el=document.getElementById("hg-cusum");
+  const brief=document.getElementById("hg-cusum-brief");
+  if(!el) return;
+  const j=latestVerdict;
+  if(!j||!Array.isArray(j.eas)){ el.textContent=""; if(brief)brief.textContent="CUSUM：取得待ち"; return; }
+  const withLine=j.eas.filter(e=>e&&e.lines&&isNum(e.lines.cusum));
+  const none=j.eas.length-withLine.length;
+  if(brief)brief.textContent="CUSUM：線あり "+withLine.length+" / "+j.eas.length+"本"
+    +(none?"・未較正 "+none+"本":"")+"・超過 "+withLine.filter(e=>e.bad.includes("cusum")).length+"本";
+  if(!withLine.length){
+    el.textContent="積み上がった不足（CUSUM）の線がまだありません（"+j.eas.length+"本とも較正していません）。"
+                  +"この層で見ているのは「15年の最悪の線」だけです";
+    return;
+  }
+  const over=withLine.filter(e=>Array.isArray(e.bad)&&e.bad.includes("cusum"));
+  let near=null, frac=-1;
+  for(const e of withLine){
+    const v=isNum(e.live&&e.live.cusum)?e.live.cusum:0;
+    const f=v/e.lines.cusum;
+    if(f>frac){ frac=f; near=e; }
+  }
+  const parts=["積み上がった不足（CUSUM）： 線あり "+withLine.length+"本"];
+  if(none) parts.push("線なし "+none+"本（較正が古いか未較正。この層では見ていません）");
+  parts.push("越えた "+over.length+"本");
+  if(near) parts.push("いちばん線に近いのは "+near.name+"（"
+                      +(isNum(near.live&&near.live.cusum)?near.live.cusum.toFixed(2):"0.00")
+                      +" / 線 "+near.lines.cusum.toFixed(1)+" R）");
+
+  const rng=(key)=>{
+    const v=withLine.map(e=>e.cusum&&e.cusum[key]).filter(isNum);
+    if(!v.length) return null;
+    const lo=Math.min(...v), hi=Math.max(...v);
+    return (lo===hi?lo.toFixed(1):(lo.toFixed(1)+"〜"+hi.toFixed(1)))+"か月";
+  };
+  const e0=rng("months_edge0"), fl=rng("months_flip");
+  if(e0||fl){
+    parts.push("気づくまで（実測）： "+(e0?("じわ落ち "+e0):"")+((e0&&fl)?"・":"")+(fl?("反転 "+fl):""));
+  }else{
+    parts.push("気づくまでの実測はまだありません（tools/cusum_power.py を回す）");
+  }
+  el.textContent=parts.join(" ／ ");
+}
+
+function healthFoot(){
+  const foot=document.getElementById("health-foot");
+  const j=latestHealth;
+  if(!foot||!j) return;
+  const extra=[];
+  if(latestVerdict&&Array.isArray(latestVerdict.eas)){
+    const n=latestVerdict.eas.length;
+    const nb=latestVerdict.eas.filter(e=>e&&Array.isArray(e.bad)&&e.bad.length&&e.bad.indexOf("unknown")<0).length;
+    extra.push("成績の内訳：見ている "+n+"本・線を越えた "+nb+"本（下の表のとおり）");
+  }
+  extra.push("記録が "+(j.stale_after_min||20)+"分増えなければ「止まっている」として出します（最後の確認 "+
+             String(j.now||"")+"）");
+  foot.textContent=extra.join(" ／ ");
+
+  syncPerformanceSummary();
+}
+function syncPerformanceSummary(){
+  const detail=document.querySelector('details[data-group="C"]');
+  if(!detail)return;
+  const sec=detail.closest('section'), state=sec.querySelector('.hg-state');
+  const row=sec.querySelector('[data-layer="L4"]'), result=row&&row.querySelector('.layer-result');
+  const lead=document.getElementById('health-lead');
+  sec.className=sec.dataset.originalClass;state.textContent=state.dataset.originalText;
+  if(row){row.className=row.dataset.originalClass;result.textContent=result.dataset.originalText;}
+  lead.className=lead.dataset.originalClass;lead.textContent=lead.dataset.originalText;
+  const j=latestVerdict;
+  const coverage=document.getElementById("hg-performance-coverage");
+  if(coverage)coverage.textContent=j&&Array.isArray(j.eas)?"判定："+j.eas.filter(e=>!e.bad.includes("unknown")).length+" / "+j.eas.length+"本":"判定範囲：取得待ち";
+  const bad=j?j.eas.filter(e=>!e.bad.includes('unknown')&&e.bad.length).length:0;
+  const unknown=j?j.eas.filter(e=>e.bad.includes('unknown')).length:0;
+  const message=bad?'🚨 線を越えた '+bad+'本':unknown?'👀 判定できない '+unknown+'本':!j?'🙈 成績は取得待ち／判定できません':null;
+  if(!message)return;
+  const level=bad?'bad':unknown?'watch':'blind';
+  sec.classList.remove('hg-ok');sec.classList.add('hg-'+level);
+  state.textContent=message;
+  if(row){row.className='hg-summary-row h-summary-'+level;result.textContent=message;}
+  if(bad){lead.className='health-lead hl-bad';lead.textContent+=' ／ 成績の線超過 '+bad+'本';}
+  else if(!j||unknown){
+    if(!lead.classList.contains('hl-bad'))lead.className='health-lead hl-'+level;
+    lead.textContent+=' ／ '+message;
+  }
+}
+let loadGen=0;
+async function loadIncidents(){
+
+  let j;
+  try{ j=await getJson("/api/incidents",15000) }catch(e){ return }
+  const box=document.getElementById("incidents");
+  if(!box) return;
+  const card=document.getElementById("incidents-card");
+  const rest=document.getElementById("incidents-rest");
+  const all=(isObj(j)&&Array.isArray(j.items))?j.items:[];
+
+  const items=all.filter(x=>x&&x.level==="緊急");
+  const other=all.length-items.length;
+  if(!items.length){
+
+    if(card) card.hidden=true;
+    box.textContent=""; box.hidden=true; return;
+  }
+  if(card) card.hidden=false;
+  box.textContent=""; box.hidden=false;
+  if(rest){
+    rest.hidden=!other;
+    rest.textContent=other?("ほかに通常 "+other+"件（画面だけ・記録に残ります）"):"";
+  }
+  for(const it of items){
+    const urgent=true;
+    const div=document.createElement("div");
+    div.className="inc "+(urgent?"urgent":"normal");
+    const b=document.createElement("b"); b.textContent=it&&it.acked_at?"緊急・受取済み":"緊急";
+    const t=document.createElement("span"); t.className="inc-title";
+    t.textContent=String(it&&it.title||"");
+
+    t.title=String(it&&it.title||"");
+    const body=document.createElement("span"); body.className="body";
+    body.textContent=[String(it&&it.detected_at||""),(it&&it.sends>1)?("送った "+it.sends+" 回"):"",
+                      (it&&it.acked_at)?"受け取り済み":""].filter(Boolean).join(" ／ ");
+    t.title+="\n"+body.textContent;
+
+    div.append(b,t,body);
+    if(urgent&&!(it&&it.acked_at)){
+      const btn=document.createElement("button"); btn.type="button"; btn.textContent="受け取った";
+      btn.addEventListener("click",async()=>{
+        btn.disabled=true;
+        try{ await fetch("/api/incident-ack",{method:"POST",headers:{"Content-Type":"application/json"},
+                                              body:JSON.stringify({key:it.key})}) }catch(e){}
+        loadIncidents();
+      });
+      div.append(btn);
+    }
+    box.append(div);
+  }
+}
+
+async function load(){
+  loadIncidents();
+  loadHealth();
+
+  const gen=++loadGen;
+
+  const sumP=getJson("/api/summary",15000).then(v=>(isObj(v)?v:null),()=>null);
+  sumP.then(v=>{if(v&&gen===loadGen){latestSummary=v; eaNames=mergeEaNames(v.ea_names||{});}});
+  let j;
+  try{j=await getJson("/api/verdict",30000)}
+  catch(e){if(gen===loadGen)failAll("取得できません（"+((e&&e.name==="AbortError")?"時間切れ":((e&&e.message)||"通信または形式の誤り"))+"）");return}
+  await Promise.race([sumP,new Promise(res=>setTimeout(res,3000))]);
+  if(gen!==loadGen) return;
+  if(!isObj(j)){failAll("取得した中身の形が違います");return}
+  if(j.error){failAll(String(j.error));return}
+  const why=checkShape(j);
+  if(why){failAll(why);return}
+  latestVerdict=j; healthFoot(); cusumLine();
+  if(document.activeElement&&document.activeElement.classList.contains("memo-box"))return;
+
+  try{render(j)}catch(e){failAll("表示の途中で誤り（"+((e&&e.message)||e)+"）")}
+}
+function render(j){
+  const st=document.getElementById("status");
+  MEMOS=j.memos||{};
+  BALANCE=j.balance||null;
+
+  const RISK=j.live_risk_percent;
+  const UNK=j.eas.reduce((a,e)=>a+UNK_KEYS.reduce((b,k)=>b+(e.live[k]||0),0),0);
+
+  const EXN=j.eas.reduce((a,e)=>a+(e.live.excluded_n||0),0);
+  const EXY=j.eas.reduce((a,e)=>a+(e.live.excluded_yen||0),0);
+  const APX=j.eas.reduce((a,e)=>a+(Number.isInteger(e.live.approx_balance)?e.live.approx_balance:0),0);
+  const APXMAX=j.eas.reduce((a,e)=>Math.max(a,isNum(e.live.approx_spread_max_pct)?e.live.approx_spread_max_pct:0),0);
+  document.getElementById("lead-bal").innerHTML=(BALANCE
+    ?`残高 <b>${Math.round(BALANCE).toLocaleString("ja-JP")}円</b>・1回の負けは約${RISK==null?"—":Math.round(BALANCE*RISK/100).toLocaleString("ja-JP")}円（リスク${RISK==null?"—":Number(RISK).toFixed(2)}%）。バックテストも同じ条件で回し直してあります。`:"")
+    +(j.risk_history_confirmed?"":`<br><b style="color:#b54708">リスクを上げた時刻が未確定のため、その日に建てた取引は数えていません。</b>`)
+    +(UNK?`<br>リスク・建てた時点の残高・損益・建てた時刻のどれかを決められない取引 <b>${UNK}件</b>は数えていません（UNKNOWN。建てた時点の残高の幅のせいで線の上か下か決まらない取引を含む）。`:"")
+    +(EXN?`<br>EA の出口ではない取引 <b>${EXN}件</b>（手動決済・計 ${yenAmt(EXY)}）は EA の評価から外しています（EA の行に件数と金額。注記にマウスを載せると番号・理由・承認・根拠。口座の残高・損益には含まれています）。`:"")
+    +(APX?`<br>建てた時点の残高を、同じ秒の決済や記録の間の入出金のために<b>幅</b>で持っている取引 <b>${APX}件</b>（R の差は最大 ${APXMAX.toFixed(1)}%。数字は中点で表示し、判定は幅の両端で線の同じ側にあるときだけ。5% を超える取引は数えない）。`:"")
+    +evalLine(j.evaluator).replace(/^<br>/," ／ ");
+  const L=j.labels; warnCount=0;
+
+  const unk=j.eas.filter(e=>e.bad.includes("unknown")), bad=j.eas.filter(e=>!e.bad.includes("unknown")&&e.bad.length), n=j.eas.reduce((a,e)=>a+(e.live.n_total??e.live.n),0), tot=j.eas.reduce((a,e)=>a+(e.live.sum_pct||0),0);
+  const ev=[];
+
+  const pairsNow=symbolByMagicMap();
+  const sorted=[...j.eas].sort((a,b)=>comparePairThenName(a.magic,b.magic,pairsNow));
+  for(const e of sorted) for(const [k,x] of Object.entries(e.events||{}))
+    ev.push({at:x.at,key:`${e.magic}:${k}:${x.at}`,html:`<tr><td style="text-align:center">${x.at}</td><td style="text-align:left">${badge(e)}</td><td style="text-align:center">${L[k]||k}</td><td class="profit-negative">${sg(x.value)}${x.unit||""}</td><td>${sg(x.line)}${x.unit||""}</td>${memo(`event:${e.magic}:${k}`)}</tr>`});
+
+  const p2=(top,bottom,klass="")=>`<td class="b-perf"><div class="vcell"><strong class="${klass}">${top}</strong><small>${bottom}</small></div></td>`;
+
+  const g2=(bt,lv,want,d=2)=>`<td class="b-goal ${(bt==null||want==null)?"":(bt>=want?"hit":"miss")}"><div class="vcell"><strong>${nm(bt,d)}</strong><small>${lv==null?"—":Number(lv).toFixed(d)}</small></div></td>`;
+  document.getElementById("rows").innerHTML=sorted.map(e=>{
+    const m=e.live,l=e.lines,b=new Set(e.bad),bt=e.bt,g=e.target||{};
+    const U=b.has("unknown");
+    const hit=!!g.qualified&&bt.pf_r>=g.pf_r&&bt.t>=g.t&&bt.mean_r>=g.exp_r&&(g.eff_r==null||bt.eff_r>=g.eff_r);
+    return `<tr>
+      <td><div class="ea-cell">${badge(e)}<small>${e.symbol} ${e.risk_percent}%</small></div></td>
+      <td class="b-ea">${b.has("unknown")?`<span class="judge" style="color:#b54708;background:var(--panel-amber);border:1px solid var(--line-strong)">判定できない</span><span class="judge-why" style="color:#b54708">決められない取引 ${UNK_KEYS.reduce((a,k)=>a+(m[k]||0),0)}件${b.has("gap")?"・取引無しが線を越えた":""}${(m.exclusion_errors||[]).length?"・"+esc(m.exclusion_errors.join("・")):""}</span>`:e.bad.length?`<span class="judge bad">疑う</span><span class="judge-why">${e.bad.map(k=>L[k]).join("・")}</span>`:'<span class="judge ok">想定内</span>'}${m.excluded_n?`<span class="judge-why" style="color:#475467;white-space:nowrap;cursor:help" title="${esc(m.excluded.map(x=>`#${x.ticket} ${x.label} ${yenAmt(x.profit)}（建玉 ${x.open_time}・決済 ${x.close_time}）\n理由: ${x.reason}\n承認: ${x.approved_by}\n根拠: ${x.evidence}`).join("\n\n")+"\n\nEA の評価からは外し、口座の残高・損益には含めています")}">除外 ${m.excluded_n}件・${esc([...new Set(m.excluded.map(x=>x.label))].join("・"))} ${yenAmt(m.excluded_yen)}</span>`:""}</td>
+      ${p2(U?`${m.n_total}*`:`${m.n}`,`${nm(bt.per_year,0)}件/年`)}
+      ${p2(pct(m.sum_pct),`${U||m.sum_yen==null?"—":yenAmt(m.sum_yen)}`,cls(m.sum_pct))}
+      ${p2(m.cagr==null?"—":pct(m.cagr,1),`${pct(bt.cagr,1)}`,cls(m.cagr))}
+      ${p2(m.n?nm(m.win*100,0)+"%":"—",`${nm(bt.win*100,0)}%`)}
+      ${p2(m.pf_r==null?"—":nm(m.pf_r,2),`${nm(bt.pf_r,2)}`)}
+      ${p2(m.rf==null?"—":nm(m.rf,1),`${nm(bt.rf,1)}`)}
+      ${p2(m.sr==null?"—":nm(m.sr,2),`${nm(bt.sr,2)}`)}
+      ${cellX(U,m.n?`${nm(m.dd_pct)}%`:"0.0%",`${nm(l.dd_pct)}%`,m.dd/l.dd,b.has("dd"))}
+      ${cellX(U,`${m.streak}${m.cur_streak?`(今${m.cur_streak})`:""}`,`${l.streak}回`,m.streak/l.streak,b.has("streak"))}
+      ${
+""}
+      ${cellX(U,m.n&&m.worst<0?`${pct(m.worst_pct)}`:"—",`${pct(l.worst_pct)}`,0,b.has("worst"))}
+      ${cellX(U,m.window_n?`${pct(m.window_pct)}`:"—",l.window_pct==null?"—":`${pct(l.window_pct)}`,(m.window_n&&m.window<0&&l.window<0)?m.window/l.window:0,b.has("window"))}
+      ${cellX(U,`${Math.round(m.under)}`,`${Math.round(l.under)}日`,m.under/l.under,b.has("under"))}
+      ${cell(`${nm(m.gap,0)}`,`${Math.round(l.gap)}日`,m.gap/l.gap,b.has("gap"))}
+      ${g2(bt.t,m.t,g.t,1)}
+      ${g2(bt.mean_r,m.n?m.mean:null,g.exp_r,3)}
+      ${g2(bt.eff_r,m.eff_r,g.eff_r)}
+      <td class="b-goal">${hit?'<span class="judge ok">満たす</span>':'<span class="judge" style="color:#b54708;background:var(--panel-amber);border:1px solid var(--line-strong)">届かない</span>'}<div style="font-size:.92rem;font-weight:800;color:var(--muted);margin-top:2px">${(g.tier||"").replace("以上","")}${g.qualified===false?"（回数不足）":""}</div></td>
+      ${memo(`ea:${e.magic}`)}
+    </tr>`}).join("");
+  ev.sort((a,b)=>b.at.localeCompare(a.at));
+  document.getElementById("events").innerHTML=ev.length?ev.map(x=>x.html).join(""):(unk.length?`<tr class="empty-row"><td colspan="6" style="color:#b54708">越えた記録はありません — ただし判定できない EA が ${unk.length}本あります</td></tr>`:'<tr class="empty-row"><td colspan="6">ありません — 全EAがバックテストの最悪の内側です</td></tr>');
+  const history=document.getElementById("events-card");
+  document.getElementById("events-count").textContent=ev.length+"件";
+  history.classList.toggle("has-events",ev.length>0);
+
+  const eventKeys=ev.map(x=>x.key);
+  if(eventKeys.some(k=>!knownEvents.has(k)))history.open=true;
+  knownEvents=new Set(eventKeys);
+  applyTableView();
+  fitEaCols();
+  document.getElementById("m-ea").textContent=`${j.eas.length}本`;
+  document.getElementById("m-ok").innerHTML=`<span class="profit-positive">${j.eas.length-bad.length-unk.length}本</span>`;
+  document.getElementById("m-unk").innerHTML=`<span style="${unk.length?"color:#b54708":""}">${unk.length}本</span>`;
+  document.getElementById("m-bad").innerHTML=`<span class="${bad.length?"profit-negative":""}">${bad.length}本</span>`;
+  document.getElementById("m-warn").textContent=`${warnCount}項目`;
+  document.getElementById("m-n").textContent=`${n}件`;
+  document.getElementById("m-sum").innerHTML=unk.length?`<span title="判定できない EA がある間は出さない">—</span>`:`<span class="${cls(tot)}">${pct(tot,2)}</span>`;
+  st.textContent=bad.length?`疑う ${bad.length}本${unk.length?`・判定できない ${unk.length}本`:""} ・ 最新 ${j.now}`:unk.length?`判定できない ${unk.length}本 ・ 最新 ${j.now}`:`全EA 想定内 ・ 最新 ${j.now}`;
+  st.className="status-pill "+(bad.length?"status-error":unk.length?"status-warn":"status-live");
+}
+let knownEvents=new Set();
+load(); setInterval(load,60000);
+</script>
+</body>
+</html>

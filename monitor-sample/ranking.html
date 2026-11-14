@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+
+(function(){
+  var FROZEN=1794573000000, _D=Date;
+  function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
+    return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
+  FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
+  window.Date=FD;
+  var PAGES={"/": "index.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/study": "study.html", "/analysis": "analysis.html", "/verdict": "verdict.html"};
+  var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=(typeof input==="string")?input:(input&&input.url)||"";
+    var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
+    if(!m) return _fetch(input,init);
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+    if(method!=="GET"){
+      return Promise.resolve(new Response(JSON.stringify({ok:false,error:"公開用サンプルのため操作できません"}),
+        {status:200,headers:{"Content-Type":"application/json"}}));
+    }
+    return _fetch(here+"api/"+m[1].replace(/\//g,"_")+".json",{cache:"no-cache"});
+  };
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("a[href]"); if(!a) return;
+    var h=a.getAttribute("href"); if(!h||h.charAt(0)!=="/"||h.indexOf("//")===0) return;
+    var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
+    if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
+  },true);
+  document.addEventListener("submit",function(e){ e.preventDefault(); alert("公開用サンプルのため操作できません"); },true);
+  document.addEventListener("DOMContentLoaded",function(){
+    var b=document.createElement("div");
+    b.textContent="公開用サンプル：数字はすべて作りものです（実在の口座・EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。";
+    b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
+    document.body.insertBefore(b,document.body.firstChild);
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ポートフォリオモニター｜ランキング</title>
+<link rel="stylesheet" href="static/style.css">
+<link rel="stylesheet" href="static/ui2.css">
+<style>a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+
+.rk-tbl td{vertical-align:middle}
+.rk-tbl tr.dim td{opacity:.78}
+.rk-tbl tr.sel td{background:rgba(37,99,235,.10)!important}
+.rkno{display:inline-block;min-width:28px;height:28px;line-height:28px;border-radius:50%;text-align:center;font-weight:900;font-size:1rem;color:#14213d}
+.rkno.top{background:#1e53ad;color:#fff}
+.rkbar-c{width:30%}
+.rkbar{position:relative;display:block;height:18px;min-width:70px;background:#ece5d7;border-radius:4px}
+.rkbar.sm{height:12px}
+.rkbar i{position:absolute;top:0;bottom:0;border-radius:4px}
+.rkbar b.z{position:absolute;top:-3px;bottom:-3px;width:2px;background:#6b7280}
+.rk-sm td{padding-top:5px!important;padding-bottom:5px!important}
+
+.rk-tbl td.few-n{color:#9a3412!important;font-weight:900}
+.few-n-key{display:inline-block;color:#9a3412;font-weight:900}
+
+#rkp-list .rkbar{min-width:48px}
+
+.rk-tbl .rkbar{min-width:220px}
+#rkp-list .rkbar{min-width:48px!important}
+</style>
+<style>
+
+.rk-desc{margin-top:8px}
+.rk-ctrl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.rk-ctrl .grp{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.rk-ctrl .lbl{font-size:12.5px;color:var(--ink2);font-weight:700}
+.rk-metrics{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.mchip,.pchip{appearance:none;border:0;font:inherit;font-size:12.5px;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--page);color:var(--ink2);cursor:pointer;box-shadow:0 0 0 1px var(--ring)}
+.mchip[aria-pressed="true"]{background:var(--ink);color:var(--surface);box-shadow:none}
+.pchip{display:inline-flex;align-items:center;gap:6px;background:var(--cs,var(--page))}
+.pchip i{width:8px;height:8px;border-radius:50%;background:var(--c,var(--muted))}
+.pchip[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
+.mchip:focus-visible,.pchip:focus-visible{outline:2px solid var(--up);outline-offset:2px}
+.rk-pairs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--grid)}
+.rk-desc{font-size:13.5px;color:var(--ink2);margin:10px 0 0}
+.rk-list{list-style:none;margin:0;padding:0}
+.rk-sec{font-size:12.5px;font-weight:800;color:var(--chip-ink);letter-spacing:.04em;margin:0 0 2px}
+.rk-sec2{margin-top:12px;padding-top:12px;border-top:2px solid var(--grid);color:var(--ink2)}
+.rk-cols{list-style:none;margin:0;padding:0}
+
+#rk-list .rk-main .rk{grid-template-columns:40px minmax(0,1fr) 92px;grid-template-areas:"no name sub" "no bar bar";row-gap:2px;padding:6px 2px}
+#rk-list .rk-main .rk .no{grid-area:no}
+#rk-list .rk-main .rk .nm{grid-area:name;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+#rk-list .rk-main .rk .bar{grid-area:bar}
+#rk-list .rk-main .rk .sub{grid-area:sub}
+#rk-list .rk-main .rk .pt{display:none}
+#rk-list .rk-main .pt-m{display:inline}
+.rkc{display:grid;grid-template-columns:26px minmax(0,1fr) auto;grid-template-areas:"no nm val" "no pp bar";align-items:center;gap:2px 8px;padding:6px 2px;border-bottom:1px solid var(--grid)}
+.rkc .no{grid-area:no;font-size:13.5px;font-weight:800;color:var(--ink2);text-align:center;font-variant-numeric:tabular-nums}
+.rkc .nm{grid-area:nm;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rkc .ea-link{font-size:13.5px}
+.rkc .val{grid-area:val;font-size:13.5px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rkc .pp{grid-area:pp;min-width:0}
+.rkc .pp .ptag{font-size:11.5px;line-height:18px}
+.rkc .mbar{grid-area:bar;width:64px;height:6px;border-radius:3px;background:var(--grid);overflow:hidden;justify-self:end}
+.rkc .mbar span{display:block;height:100%;border-radius:3px}
+.rkc.dim{}
+@media (max-width:1060px){.rk-c1,.rk-c3{grid-column:span 12}}
+
+details.rk-more{margin-top:10px;padding-top:10px;border-top:2px solid var(--grid)}
+details.rk-more summary{font-size:13.5px}
+details.rk-more .rk-list{margin-top:4px}
+
+#rk-list .rk-main .rk .no{font-size:17px}
+#rk-list .rk-main .rk.rk-top .no{width:34px;height:34px;line-height:34px;font-size:16px}
+#rk-list .rk-main .ea-link{font-size:16px}
+#rk-list .rk-main .ptag{font-size:13.5px;line-height:24px}
+#rk-list .rk-main .bar{height:26px}
+#rk-list .rk-main .bar span{top:4px;height:18px;border-radius:5px}
+#rk-list .rk-main .bar em{line-height:26px;font-size:16px}
+#rk-list .rk-main .rk .sub{font-size:13px}
+#rk-list .rk-more .rk{padding:5px 4px}
+#rk-list .rk-more .rk .no{font-size:13.5px}
+#rk-list .rk-more .ea-link{font-size:13.5px}
+#rk-list .rk-more .ptag{font-size:12px;line-height:19px}
+#rk-list .rk-more .bar{height:20px}
+#rk-list .rk-more .bar span{top:4px;height:12px}
+#rk-list .rk-more .bar em{line-height:20px;font-size:12.5px}
+
+#rkp-list .rk.rk-top{padding:10px 4px}
+#rkp-list .rk.rk-top .no{width:34px;height:34px;line-height:34px;font-size:16px}
+#rkp-list .rk.rk-top .ptag{font-size:14px;line-height:25px}
+#rkp-list .rk.rk-top .bar{height:28px}
+#rkp-list .rk.rk-top .bar span{top:4px;height:20px;border-radius:5px}
+#rkp-list .rk.rk-top .bar em{line-height:28px;font-size:16px}
+#rkp-list .rk.rk-top .sub{font-size:13px}
+#rkp-list .rk:not(.rk-top){padding:5px 4px}
+#rkp-list .rk:not(.rk-top) .no{font-size:13.5px}
+#rkp-list .rk:not(.rk-top) .ptag{font-size:12px;line-height:19px}
+#rkp-list .rk:not(.rk-top) .bar{height:18px}
+#rkp-list .rk:not(.rk-top) .bar span{top:3px;height:12px}
+#rkp-list .rk:not(.rk-top) .bar em{line-height:18px;font-size:12.5px}
+.rk{display:grid;grid-template-columns:44px 150px 150px minmax(0,1fr) 120px;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--grid)}
+.rk:last-child{border-bottom:0}
+.rk .no{font-size:15px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.rk.rk-top .no{color:var(--surface);background:var(--chip-ink);border-radius:999px;width:28px;height:28px;line-height:28px;margin:0 auto;font-size:13.5px}
+.rk .bar{position:relative;height:22px}
+.rk .bar span{position:absolute;top:3px;height:16px;border-radius:4px}
+.rk .bar em{position:absolute;top:0;line-height:22px;font-style:normal;font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rk .bar .zero{position:absolute;top:0;bottom:0;width:1px;background:var(--axis)}
+.rk .sub{font-size:12.5px;color:var(--ink2);text-align:right;line-height:1.35}
+.rk.dim{}
+.few{display:inline-block;font-size:11.5px;font-weight:800;line-height:19px;padding:0 8px;border-radius:6px;color:var(--ink);background:var(--grid);white-space:nowrap;vertical-align:1px}
+.pt-m{display:none}
+.rk-legend{font-size:12.5px;color:var(--ink2);display:inline-flex;align-items:center;gap:6px}
+
+.rkp .rk{grid-template-columns:34px minmax(0,1fr) 84px;grid-template-areas:"no name sub" "no bar bar";row-gap:3px}
+.rkp .rk .no{grid-area:no}.rkp .rk .nm{grid-area:name}.rkp .rk .bar{grid-area:bar}.rkp .rk .sub{grid-area:sub}
+.rkp .rk.sel{background:var(--cs);border-radius:8px}
+@media (max-width:860px){
+  .rk{grid-template-columns:36px minmax(0,1fr) 110px;grid-template-areas:"no name sub" "no bar bar";row-gap:4px}
+  .rk .no{grid-area:no}.rk .nm{grid-area:name;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.rk .bar{grid-area:bar}.rk .sub{grid-area:sub}
+  .rk .pt{display:none}
+  .pt-m{display:inline}
+}
+
+.mchip,.pchip{font-size:15px;padding:7px 14px}
+.rk-ctrl .lbl,.rk-desc{font-size:15px}
+.rk .sub,.rk-legend,.few{font-size:14px}
+.rk .bar em{font-size:15px}
+#rk-list .rk-main .ea-link{font-size:18px}
+#rk-list .rk-main .ptag{font-size:15px}
+#rk-list .rk-main .bar em{font-size:17px}
+#rk-list .rk-main .rk .sub{font-size:14.5px}
+.rkc .no,.rkc .ea-link,.rkc .val{font-size:15.5px}
+.rkc .pp .ptag{font-size:13.5px}
+#rkp-list .rk.rk-top .ptag{font-size:16px}
+#rkp-list .rk:not(.rk-top) .ptag,#rkp-list .rk:not(.rk-top) .bar em{font-size:14.5px}
+</style>
+<link rel="stylesheet" href="static/readable.css">
+<script src="static/tablealign.js" defer></script>
+</head>
+<body class="u2">
+<header class="page-header">
+  <div>
+    <h1>ポートフォリオモニター</h1>
+    <div class="subtitle">EA別リアルタイム監視</div>
+  </div>
+  <div id="status" class="status-pill status-live">ランキング</div>
+</header>
+
+<nav class="tab-bar" aria-label="表示切替">
+  <a class="tab-button" href="index.html#top">トップ</a>
+  <a class="tab-button" href="index.html#ea">EA別</a>
+  <a class="tab-button" href="analysis.html">市場分析</a>
+  <a class="tab-button" href="study.html">EA分析</a>
+  <a class="tab-button" href="verdict.html">EAの見極め</a>
+  <a class="tab-button" href="backtest.html">詳細データ</a>
+  <a class="tab-button active" href="ranking.html" aria-current="page">ランキング</a>
+</nav>
+
+<main class="u-wrap">
+<p class="u-note" data-u2-error hidden></p>
+<div class="u-grid">
+  <section class="u-card s12" aria-label="ランキングの条件">
+    <div class="rk-ctrl">
+      <div class="grp">
+        <span class="lbl">どの成績で</span>
+        <div class="u-seg" role="group" aria-label="成績の種類">
+          <button data-rsrc="live" aria-pressed="true">実運用</button>
+          <button data-rsrc="bt" aria-pressed="false">バックテスト</button>
+        </div>
+      </div>
+      <label class="u-lead" id="rk-min-wrap"><input type="checkbox" id="rk-min"> 取引 5 回以上の EA だけ</label>
+    </div>
+    <div class="rk-metrics" id="rk-metrics" role="group" aria-label="並べる指標"></div>
+    <div class="rk-pairs" id="rk-pairs" role="group" aria-label="通貨ペアで絞る"></div>
+    <p class="rk-desc" id="rk-desc"></p>
+  </section>
+  <section class="u-card s7 rk-c1" aria-label="EA の順位 トップ10">
+    <div class="u-h"><h2>EA の順位 トップ 10</h2></div>
+    <div id="rk-list"></div>
+  </section>
+  <section class="u-card s5 rk-c3" aria-label="通貨ペアの順位">
+    <div class="u-h"><h2>通貨ペアの順位</h2><p class="u-lead" id="rkp-lead"></p></div>
+    <div id="rkp-list"></div>
+    <p class="u-note" style="margin:8px 0 0" id="rkp-note"></p>
+  </section>
+  <section class="u-card s12 rk-c2" aria-label="EA の順位 11位以下">
+    <div class="u-h"><h2>11 位以下</h2></div>
+    <div id="rk-rest"></div>
+    <p class="rk-legend" id="rk-legend" style="margin:10px 0 0">行が薄く回数が<span class="few-n-key">橙</span>の EA＝取引がまだ 5 回未満（偶然で順位が動きやすい）</p>
+    <p class="u-note" style="margin:6px 0 0" id="rk-note"></p>
+  </section>
+</div>
+
+</main>
+<script src="static/ui2.js"></script>
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+var each=function(sel,f){Array.prototype.forEach.call(document.querySelectorAll(sel),f);};
+var H=UI2.h,pct=H.pct,cls=H.cls,esc=H.esc,ptag=H.ptag,pvars=H.pvars,pairRank=H.pairRank,PAIR_ORDER=H.PAIR_ORDER;
+function fmtN(v,dg){return v===null||v===undefined?"—":(+v).toFixed(dg===undefined?2:dg);}
+var D=null,E=[],started=false;
+
+var RK={src:"live",metric:"contrib",pair:"all",min:false};
+var RK_METRICS={
+  live:[
+    {k:"contrib",l:"寄与",d:"その EA の取引の損益率の合計（口座全体への貢献）",get:function(r){return r.n?r.contrib:null;},fmt:function(v){return pct(v);},signed:true},
+    {k:"net",l:"損益率",d:"その EA の取引を複利で積んだ値",get:function(r){return r.live?r.live.net_pct:null;},fmt:function(v){return pct(v);},signed:true},
+    {k:"cmp",l:"バックテストどおり度",d:"同じ回数のバックテストの中で、下から何 % の位置か（50% が平均的・高いほど上振れ）",get:function(r){return r.cmp&&r.cmp.verdict!=="few"?r.cmp.rank:null;},fmt:function(v){return "下から "+v+"%";},max:100},
+    {k:"pf",l:"PF",d:"利益の合計 ÷ 損失の合計。負けなしは一番上",get:function(r){return !r.n?null:(r.pf===null?(r.win>=100?999:null):r.pf);},fmt:function(v){return v>=999?"負けなし":v.toFixed(2);}},
+    {k:"win",l:"勝率",d:"利益で終わった取引の割合",get:function(r){return r.n?r.win:null;},fmt:function(v){return v.toFixed(1)+"%";},max:100},
+    {k:"dd",l:"最大ドローダウンの小ささ",d:"最高値からの最大の下げ（決済ベース）。小さいほど上",get:function(r){return r.live?r.live.max_dd_pct:null;},fmt:function(v){return v.toFixed(2)+"%";},low:true,loss:true},
+    {k:"n",l:"取引回数",d:"いままでに決済した回数",get:function(r){return r.n;},fmt:function(v){return v+"回";},nomin:true}],
+  bt:[
+    {k:"cagr",l:"年平均リターン",d:"バックテストで、複利で 1 年あたり",get:function(r){return r.bt?r.bt.stats.cagr_pct:null;},fmt:function(v){return pct(v,1);},signed:true},
+    {k:"rf",l:"リカバリーファクター",d:"累計の利益 ÷ 最大ドローダウン。下げに対して効率よく稼ぐほど上",get:function(r){return r.bt?r.bt.stats.recovery_factor:null;},fmt:function(v){return v.toFixed(1);}},
+    {k:"pf",l:"PF",d:"利益の合計 ÷ 損失の合計",get:function(r){return r.bt?r.bt.stats.pf:null;},fmt:function(v){return v.toFixed(2);}},
+    {k:"dd",l:"最大ドローダウンの小ささ",d:"最高値からの最大の下げ。小さいほど上",get:function(r){return r.bt?r.bt.stats.max_dd_pct:null;},fmt:function(v){return v.toFixed(1)+"%";},low:true,loss:true},
+    {k:"sharpe",l:"シャープレシオ",d:"日々のぶれに対するリターンの大きさ（日次）",get:function(r){return r.bt?r.bt.stats.sharpe_daily:null;},fmt:function(v){return v.toFixed(2);}},
+    {k:"win",l:"勝率",d:"利益で終わった取引の割合",get:function(r){return r.bt?r.bt.stats.win_pct:null;},fmt:function(v){return v.toFixed(1)+"%";},max:100},
+    {k:"yrs",l:"利益の出た年の割合",d:"利益で終わった年 ÷ 取引のあった年",get:function(r){var s=r.bt&&r.bt.stats;return s&&s.years_with_trades?100*s.profitable_years/s.years_with_trades:null;},fmt:function(v){return v.toFixed(0)+"%";},max:100},
+    {k:"per_year",l:"年あたりの取引回数",d:"1 年に何回取引するか",get:function(r){return r.bt?r.bt.stats.per_year:null;},fmt:function(v){return v.toFixed(0)+"回";}}]};
+function rkMetric(){var L=RK_METRICS[RK.src];for(var i=0;i<L.length;i++)if(L[i].k===RK.metric)return L[i];return L[0];}
+function drawRankCtrls(){
+  each("[data-rsrc]",function(b){b.setAttribute("aria-pressed",String(b.getAttribute("data-rsrc")===RK.src));});
+  var L=RK_METRICS[RK.src];if(!L.some(function(m){return m.k===RK.metric;}))RK.metric=L[0].k;
+  $("rk-metrics").innerHTML=L.map(function(m){return "<button class='mchip' data-rmetric='"+m.k+"' aria-pressed='"+(m.k===RK.metric)+"'>"+m.l+"</button>";}).join("");
+  var pairs=PAIR_ORDER.filter(function(p){return E.some(function(r){return r.pair===p;});});
+  $("rk-pairs").innerHTML="<button class='pchip' data-rpair='all' aria-pressed='"+(RK.pair==="all")+"'>すべての通貨ペア</button>"+
+    pairs.map(function(p){return "<button class='pchip' style='"+pvars(p)+"' data-rpair='"+esc(p)+"' aria-pressed='"+(RK.pair===p)+"'><i></i>"+esc(p)+"</button>";}).join("");
+  $("rk-min-wrap").hidden=RK.src!=="live";
+  $("rk-legend").hidden=RK.src!=="live"||RK.min;
+  each("[data-rmetric]",function(b){b.addEventListener("click",function(){RK.metric=b.getAttribute("data-rmetric");drawRank();});});
+  each("[data-rpair]",function(b){b.addEventListener("click",function(){RK.pair=b.getAttribute("data-rpair");drawRank();});});
+}
+
+function pslug(p){return p.replace(/[^A-Z]/g,"");}
+function rkHash(){return "#rank/"+RK.src+"/"+RK.metric+"/"+(RK.pair==="all"?"all":pslug(RK.pair))+"/"+(RK.min&&RK.src==="live"?"min5":"all");}
+function rkParse(view){
+  var parts=view.split("/").slice(1);if(!parts.length)return;
+  var src=parts[0]==="bt"?"bt":"live";RK.src=src;
+  if(parts[1]&&RK_METRICS[src].some(function(x){return x.k===parts[1];}))RK.metric=parts[1];else RK.metric=RK_METRICS[src][0].k;
+  RK.pair="all";RK.min=false;
+  parts.slice(2).forEach(function(q){if(q==="min5")RK.min=true;else PAIR_ORDER.forEach(function(p){if(pslug(p)===q)RK.pair=p;});});
+  $("rk-min").checked=RK.min;
+}
+function drawRank(){
+  drawRankCtrls();
+  var m=rkMetric(),rows=[],skipped=0;
+  E.forEach(function(r){
+    if(RK.pair!=="all"&&r.pair!==RK.pair)return;
+    var v=m.get(r);
+    if(v===null||v===undefined){skipped++;return;}
+    if(RK.src==="live"&&RK.min&&!m.nomin&&r.n<5){skipped++;return;}
+    rows.push({r:r,v:v});});
+  rows.sort(function(a,b){return (m.low?a.v-b.v:b.v-a.v)||a.r.id-b.r.id;});
+  $("rk-desc").innerHTML="<b>"+(RK.src==="live"?"実運用":"バックテスト")+"の「"+m.l+"」</b>で並べています。"+m.d+"。";
+  var vals=rows.map(function(x){return Math.min(x.v,m.k==="pf"&&x.v>=999?0:x.v);});
+
+  var finite=rows.slice(0,10).map(function(x){return x.v>=999?null:x.v;}).filter(function(v){return v!==null;});
+  var hi=m.max||Math.max.apply(null,finite.concat([0]).map(Math.abs))||1,lo=m.signed?Math.min(0,Math.min.apply(null,finite.concat([0]))):0;
+  hi=m.signed?Math.max(0,Math.max.apply(null,finite.concat([0]))):hi;
+  var span=(hi-lo)||1,zero=m.signed?(0-lo)/span*100:0;
+
+  var head=function(){return "<thead><tr><th>順位</th><th>EA</th><th>ペア</th><th>"+esc(m.l)+"</th><th></th>"+(RK.src==="live"?"<th>回数</th>":"<th>回数</th><th>年数</th>")+"</tr></thead>";};
+  var barHtml=function(v,scale){
+    var w,left,col;
+    if(v>=999){w=88;left=0;col="var(--up)";}
+    else if(m.signed){var a=(Math.min(0,v)-lo)/span*100,b=(Math.max(0,v)-lo)/span*100;left=a;w=Math.max(.6,(b-a));col=v>=0?"var(--up)":"var(--down)";}
+    else{left=0;w=Math.max(.6,Math.abs(v)/(scale||hi)*100);col=m.loss?"var(--down)":"var(--up)";}
+    return "<span class='bx rkbar'>"+(m.signed?"<b class='z' style='left:"+zero+"%'></b>":"")+"<i style='left:"+left+"%;width:"+Math.min(100-left,w)+"%;background:"+col+"'></i></span>";};
+  var rowHtml=function(x,i){
+    var r=x.r,v=x.v,few=RK.src==="live"&&!m.nomin&&r.n<5;
+    var sub=RK.src==="live"?"<td"+(few?" class='few-n'":"")+">"+r.n+"回</td>":(r.bt?"<td>"+r.bt.stats.trades+"回</td><td>"+fmtN(r.bt.stats.years,0)+"年</td>":"<td>—</td><td>—</td>");
+    return "<tr class='"+(i<3?"rk-top":"")+(few?" dim":"")+"'><td><span class='rkno"+(i<3?" top":"")+"'>"+(i+1)+"</span></td>"+
+      "<td><a class='ea-link' href='backtest.html#"+encodeURIComponent(r.key||r.name)+"'>"+esc(r.name)+"</a></td>"+
+      "<td>"+ptag(r.pair)+"</td><td><b class='"+(m.signed?cls(v):"")+"'>"+m.fmt(v)+"</b></td><td class='rkbar-c'>"+barHtml(v)+"</td>"+sub+"</tr>";};
+  var top10=rows.slice(0,10),rest=rows.slice(10);
+  var absMax=Math.max.apply(null,rows.map(function(x){return x.v>=999?0:Math.abs(x.v);}).concat([1e-9]));
+  var cellHtml=function(x,i){
+    var r=x.r,v=x.v,few=RK.src==="live"&&!m.nomin&&r.n<5;
+    var w=v>=999?100:Math.max(2,Math.abs(v)/(m.max||absMax)*100),col=v>=999?"var(--up)":m.signed?(v>=0?"var(--up)":"var(--down)"):(m.loss?"var(--down)":"var(--up)");
+    var sub=RK.src==="live"?"<td"+(few?" class='few-n'":"")+">"+r.n+"回</td>":(r.bt?"<td>"+r.bt.stats.trades+"回</td><td>"+fmtN(r.bt.stats.years,0)+"年</td>":"<td>—</td><td>—</td>");
+    return "<tr class='"+(few?"dim":"")+"'><td><span class='rkno'>"+(i+1)+"</span></td>"+
+      "<td><a class='ea-link' href='backtest.html#"+encodeURIComponent(r.key||r.name)+"'>"+esc(r.name)+"</a></td>"+
+      "<td>"+ptag(r.pair)+"</td><td><b class='"+(m.signed?cls(v):"")+"'>"+m.fmt(v)+"</b></td>"+
+      "<td class='rkbar-c'><span class='bx rkbar sm'><i style='left:0;width:"+w+"%;background:"+col+"'></i></span></td>"+sub+"</tr>";};
+  $("rk-list").innerHTML=!rows.length?"<p class='empty' style='padding:16px;text-align:center;color:var(--ink2)'>条件に合う EA がありません</p>":
+    "<div class='u-tbl-wrap'><table class='u-tbl rk-tbl'>"+head()+"<tbody>"+top10.map(function(x,i){return rowHtml(x,i);}).join("")+"</tbody></table></div>";
+  $("rk-rest").innerHTML=rest.length?"<div class='u-tbl-wrap'><table class='u-tbl rk-tbl rk-sm'>"+head()+"<tbody>"+rest.map(function(x,i){return cellHtml(x,i+10);}).join("")+"</tbody></table></div>":"<p class='empty' style='padding:12px 2px;color:var(--ink2)'>11 位以下の EA はありません</p>";
+  var h=rkHash().replace('#rank/','#');if(location.hash!==h)history.replaceState(null,"",h);
+  $("rk-note").textContent=(skipped?"この条件で数字がない EA（取引前・5 回未満など）"+skipped+" 本は載せていません。":"")+
+    (drawPairRank(m),"")+(RK.src==="live"?"実運用は期間が短いので、順位は参考程度に。":"バックテストは EA を選んだのと同じ期間で測った数字です。実運用の順位とは別物として見てください。");
+}
+
+var RKP={
+  live:{contrib:["contrib","寄与（ペアの合計）",true],net:["contrib","寄与（ペアの合計）",true],cmp:["contrib","寄与（ペアの合計）",true],
+        pf:["pf","PF（ペアの集計）"],win:["win","勝率（ペアの集計）"],dd:["contrib","寄与（ペアの合計）",true],n:["n","取引回数（ペアの合計）"]},
+  bt:{cagr:["cagr_pct","年平均リターン（EA の平均）",true],rf:["recovery_factor","リカバリーファクター（EA の平均）"],pf:["pf","PF（EA の平均）"],
+      dd:["max_dd_pct","最大ドローダウン（EA の平均・小さいほど上）",false,true],sharpe:["sharpe_daily","シャープレシオ（EA の平均）"],
+      win:["win_pct","勝率（EA の平均）"],yrs:["yrs","利益の出た年の割合（EA の平均）"],per_year:["per_year","年あたりの取引回数（ペアの合計）",false,false,true]}};
+function drawPairRank(m){
+  var def=RKP[RK.src][m.k]||RKP[RK.src][Object.keys(RKP[RK.src])[0]],key=def[0],signed=!!def[2],low=!!def[3],sum=!!def[4];
+  var rows=[],V0=D.views.now||D.views.all;
+  if(RK.src==="live"){
+    V0.pairs.forEach(function(p){var v=p[key];if(key==="pf"&&v===null)v=p.win>=100?999:null;if(v===null||v===undefined)return;
+      var cnt=E.filter(function(r){return r.pair===p.pair;}).length;rows.push({p:p.pair,v:v,sub:"<td>"+cnt+"本</td><td>"+p.n+"回</td>"});});
+  }else{
+    var g={};E.forEach(function(r){if(!r.bt)return;var st=r.bt.stats,v=key==="yrs"?(st.years_with_trades?100*st.profitable_years/st.years_with_trades:null):st[key];
+      if(v===null||v===undefined)return;(g[r.pair]=g[r.pair]||[]).push(v);});
+    Object.keys(g).forEach(function(p){var a=g[p],t=a.reduce(function(x,y){return x+y;},0);rows.push({p:p,v:sum?t:t/a.length,sub:"<td>"+a.length+"本</td>"});});
+  }
+  rows.sort(function(a,b){return (low?a.v-b.v:b.v-a.v)||pairRank(a.p)-pairRank(b.p);});
+  var fin=rows.map(function(x){return x.v;}).filter(function(v){return v<999;});
+  var hi=Math.max.apply(null,fin.concat([0]).map(Math.abs))||1,lo=signed?Math.min(0,Math.min.apply(null,fin.concat([0]))):0,top=signed?Math.max(0,Math.max.apply(null,fin.concat([0]))):hi,span=(top-lo)||1;
+  var fmt=function(v){if(v>=999)return "負けなし";if(key==="n")return v+"回";if(key==="per_year")return v.toFixed(0)+"回";
+    if(key==="pf"||key==="recovery_factor"||key==="sharpe_daily")return v.toFixed(2);if(signed)return pct(v,2);return v.toFixed(1)+"%";};
+  $("rkp-lead").textContent=def[1];
+
+  $("rkp-list").innerHTML="<div class='u-tbl-wrap'><table class='u-tbl rk-tbl'><thead><tr><th>順位</th><th>通貨ペア</th><th>値</th><th></th><th>本数</th>"+(RK.src==="live"?"<th>回数</th>":"")+"</tr></thead><tbody>"+rows.map(function(x,i){
+    var v=x.v,w,left,col;
+    if(v>=999){left=0;w=80;col="var(--up)";}
+    else if(signed){var a=(Math.min(0,v)-lo)/span*100,b=(Math.max(0,v)-lo)/span*100;left=a;w=Math.max(.6,(b-a));col=v>=0?"var(--up)":"var(--down)";}
+    else{left=0;w=Math.max(.6,Math.abs(v)/hi*100);col=low?"var(--down)":"var(--up)";}
+    return "<tr class='"+(i<3?"rk-top":"")+(RK.pair===x.p?" sel":"")+"'><td><span class='rkno"+(i<3?" top":"")+"'>"+(i+1)+"</span></td><td>"+ptag(x.p)+"</td>"+
+      "<td><b class='"+(signed?cls(v):"")+"'>"+fmt(v)+"</b></td>"+
+      "<td class='rkbar-c'><span class='bx rkbar sm'>"+(signed?"<b class='z' style='left:"+((0-lo)/span*100)+"%'></b>":"")+"<i style='left:"+left+"%;width:"+Math.min(100-left,w)+"%;background:"+col+"'></i></span></td>"+
+      x.sub+"</tr>";}).join("")+"</tbody></table></div>";
+  $("rkp-note").textContent=(RK.src==="live"?"今の顔ぶれの取引を通貨ペアごとに集計。":"そのペアの EA のバックテストの値を平均（取引回数は合計）。")+
+    (RKP[RK.src][m.k]&&RKP[RK.src][m.k][1].indexOf(m.l)<0&&RK.src==="live"?"「"+m.l+"」はペア単位で出せないので、寄与で比べています。":"");
+}
+each("[data-rsrc]",function(b){b.addEventListener("click",function(){RK.src=b.getAttribute("data-rsrc");drawRank();});});
+$("rk-min").addEventListener("change",function(){RK.min=this.checked;drawRank();});
+
+UI2.onData=function(data){
+  D=data;E=(D.eas||[]).filter(function(r){return r.status==="live"||r.status==="unknown";});
+  if(!started){started=true;var hv=location.hash.slice(1);if(hv)rkParse("rank/"+hv);}
+  drawRank();
+};
+})();
+</script>
+</body>
+</html>

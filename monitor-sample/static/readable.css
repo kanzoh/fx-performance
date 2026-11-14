@@ -1,0 +1,366 @@
+
+:root{--u-muted:#374151;--u-ink2:#1f2937}
+.mut{color:#374151!important}
+#alert-count{font-size:1.02rem!important}
+#events-count{font-size:1.02rem!important}
+#health-card .health-explain{font-size:1.02rem!important}
+#health-card .health-foot{font-size:1.02rem!important}
+#health-card .health-legend{font-size:1.02rem!important}
+#health-card .hg-cusum{font-size:1.02rem!important}
+#health-card .hg-details{font-size:1.02rem!important}
+#health-card .hg-details .hg-caveat{font-size:1.02rem!important}
+#health-card .hg-details .hg-why{font-size:1.02rem!important}
+#health-card .hg-short-note{font-size:1.02rem!important}
+#health-card .hg-speed{font-size:1.02rem!important}
+#health-card .hl-items li{font-size:1.02rem!important}
+#health-card .hl-seen{font-size:1.02rem!important}
+#health-card .hl-top b{font-size:1.02rem!important}
+#health-card .hl-watchline{font-size:1.02rem!important}
+#health-card>.section-title span{font-size:1.02rem!important}
+#health-readiness{font-size:1.02rem!important}
+#incidents .inc{font-size:0.97rem!important}
+#incidents .inc .body{font-size:0.97rem!important}
+#incidents .inc b{font-size:0.97rem!important}
+#incidents .inc button{font-size:0.97rem!important}
+#lead-bal{font-size:1.02rem!important}
+#rk-list .rk-main .ptag{font-size:1.02rem!important}
+#rk-list .rk-main .rk .sub{font-size:1.02rem!important}
+#rk-list .rk-more .bar em{font-size:0.97rem!important}
+#rk-list .rk-more .ea-link{font-size:1.02rem!important}
+#rk-list .rk-more .ptag{font-size:0.97rem!important}
+#rk-list .rk-more .rk .no{font-size:1.02rem!important}
+#rkp-list .rk.rk-top .sub{font-size:1.02rem!important}
+#rkp-list .rk:not(.rk-top) .bar em{font-size:0.97rem!important}
+#rkp-list .rk:not(.rk-top) .no{font-size:1.02rem!important}
+#rkp-list .rk:not(.rk-top) .ptag{font-size:0.97rem!important}
+#verdict-table .ea-cell small{font-size:1.02rem!important}
+#verdict-table .judge{font-size:1.02rem!important}
+#verdict-table .judge-why{font-size:1.02rem!important}
+#verdict-table .memo-box{font-size:1.02rem!important}
+#verdict-table .vcell small{font-size:1.02rem!important}
+.account-item span{font-size:1.02rem!important}
+.alert-group-cell > span:last-child{font-size:1.02rem!important}
+.alert-item span{font-size:1.02rem!important}
+.alert-item span b{font-size:1.02rem!important}
+.cc .vs .k{font-size:1.02rem!important}
+.cc .vs .v small{font-size:1.02rem!important}
+.chart-mode-button{font-size:1.02rem!important}
+.chart-tip{font-size:1.02rem!important}
+.collapse-button{font-size:1.02rem!important}
+.dd-cap{font-size:1.02rem!important}
+.ea-cell small{font-size:1.02rem!important}
+.ea-chip small{font-size:1.02rem!important}
+.ea-exit-countdown small{font-size:1.02rem!important}
+.ea-row p{font-size:1.02rem!important}
+.ea-tbl th small{font-size:0.97rem!important}
+.events-panel .history-note{font-size:1.02rem!important}
+.events-panel>summary::before{font-size:1.02rem!important}
+.few{font-size:0.97rem!important}
+.health-explain{font-size:1.02rem!important}
+.health-foot{font-size:1.02rem!important}
+.health-legend{font-size:1.02rem!important}
+.hg-caveat{font-size:1.02rem!important}
+.hg-coverage{font-size:1.02rem!important}
+.hg-cusum{font-size:1.02rem!important}
+.hg-details{font-size:1.02rem!important}
+.hg-details .hg-caveat{font-size:1.02rem!important}
+.hg-details .hg-why{font-size:1.02rem!important}
+.hg-short-note{font-size:1.02rem!important}
+.hg-speed{font-size:0.97rem!important}
+.hg-status-row .hg-state{font-size:1.02rem!important}
+.hg-summary-row{font-size:1.02rem!important}
+.hg-updated{font-size:1.02rem!important}
+.hl-items li{font-size:1.02rem!important}
+.hl-seen{font-size:1.02rem!important}
+.hl-top b{font-size:1.02rem!important}
+.hl-watchline{font-size:1.02rem!important}
+.is .lv{font-size:1.02rem!important}
+.kv-table td small{font-size:1.02rem!important}
+.kv-table td.kv-memo{font-size:1.02rem!important}
+.kv-table thead th{font-size:1.02rem!important}
+.mchip{font-size:0.97rem!important}
+.mech-card>h3 .mech-count{font-size:1.02rem!important}
+.mech-wrap>.mech-card:not(.mech-card-side):not(.span-all)>h3{font-size:1.02rem!important}
+.mech-wrap>.mech-card:not(.mech-card-side):not(.span-all)>ul>li{font-size:1.02rem!important}
+.metrics-grid .metric-label{font-size:1.02rem!important}
+.metrics-grid .metric-value small{font-size:1.02rem!important}
+.mini-button{font-size:1.02rem!important}
+.mk-chart .lvl{font-size:0.97rem!important}
+.mk-chart .tick{font-size:0.97rem!important}
+.nm2 small{font-size:1.02rem!important}
+.out-strip .v small{font-size:1.02rem!important}
+.overview-item span{font-size:1.02rem!important}
+.page-header .subtitle{font-size:1.02rem!important}
+.pcard-h .meta{font-size:0.97rem!important}
+.pchip{font-size:0.97rem!important}
+.pr .stt{font-size:1.02rem!important}
+.ptag{font-size:1.02rem!important}
+.rk .bar em{font-size:1.02rem!important}
+.rk .no{font-size:1.02rem!important}
+.rk .sub{font-size:0.97rem!important}
+.rk-ctrl .lbl{font-size:0.97rem!important}
+.rk-desc{font-size:1.02rem!important}
+.rk-legend{font-size:0.97rem!important}
+.rk-sec{font-size:0.97rem!important}
+.rk.rk-top .no{font-size:1.02rem!important}
+.rkc .ea-link{font-size:1.02rem!important}
+.rkc .no{font-size:1.02rem!important}
+.rkc .pp .ptag{font-size:0.97rem!important}
+.rkc .val{font-size:1.02rem!important}
+.section-title span{font-size:1.02rem!important}
+.side-pill{font-size:1.02rem!important}
+.src-note{font-size:1.02rem!important}
+.table-explain{font-size:1.02rem!important}
+.table-key{font-size:1.02rem!important}
+.tip{font-size:0.97rem!important}
+.tr{font-size:1.02rem!important}
+.u-chart .tick{font-size:0.97rem!important}
+.u-h .u-lead{font-size:1.02rem!important}
+.u-minis .d{font-size:0.97rem!important}
+.u-minis .k{font-size:0.97rem!important}
+.u-note{font-size:0.97rem!important}
+.u-seg button{font-size:1.02rem!important}
+.u-select{font-size:1.02rem!important}
+.u-stats .stat .k{font-size:0.97rem!important}
+.u-stats .stat .v small{font-size:0.97rem!important}
+.u-strip .d{font-size:0.97rem!important}
+.u-strip .k{font-size:0.97rem!important}
+.u-sub{font-size:0.97rem!important}
+.u-tabs .tab-button{font-size:1.02rem!important}
+.u-tabs a{font-size:1.02rem!important}
+.u-top .status-pill{font-size:0.97rem!important}
+.u-top .u-brand small{font-size:0.97rem!important}
+.vb{font-size:0.97rem!important}
+.vcell small{font-size:1.02rem!important}
+.vd-sm{font-size:1.02rem!important}
+.view-switch button{font-size:1.02rem!important}
+.vol{font-size:1.02rem!important}
+.zoom-ctl .zoom-arrow{font-size:1.02rem!important}
+.zoom-ctl button{font-size:1.02rem!important}
+.zoom-ctl label{font-size:1.02rem!important}
+.zoom-ctl output{font-size:1.02rem!important}
+body.u2 #ea-table .ea-exit-countdown small{font-size:1.02rem!important}
+body.u2 .mini-button{font-size:0.97rem!important}
+body.u2 .u-chart .tick{font-size:1.02rem!important}
+body.u2 .u-h .u-lead{font-size:1.02rem!important}
+body.u2 .u-minis .d{font-size:1.02rem!important}
+body.u2 .u-minis .k{font-size:1.02rem!important}
+body.u2 .u-note{font-size:1.02rem!important}
+body.u2 .u-stats .stat .v small{font-size:1.02rem!important}
+body.u2 .u-strip .d{font-size:1.02rem!important}
+body.u2 .u-strip .rate-pill{font-size:0.97rem!important}
+body.u2 .u-sub{font-size:1.02rem!important}
+body.u2 .vb{font-size:1.02rem!important}
+details.rk-more summary{font-size:1.02rem!important}
+table.u-tbl th{font-size:0.97rem!important}
+.alert-basis-text{color:#1f2937!important}
+.alert-level-none{color:#1f2937!important}
+.alert-measure-none{color:#1f2937!important}
+.alert-row-idle td{color:#1f2937!important}
+.alert-table td.alert-basis-text{color:#1f2937!important}
+.events-panel .history-note{color:#1f2937!important}
+.hg-coverage{color:#1f2937!important}
+.hg-summary-row .layer-name{color:#1f2937!important}
+.hg-summary-row.h-summary-blind .layer-result{color:#1f2937!important}
+.hg-summary-row.h-summary-unknown .layer-result{color:#1f2937!important}
+.hg-updated{color:#1f2937!important}
+.hl-unknown{color:#1f2937!important}
+.lv.low{color:#1f2937!important}
+.memo-box:empty::before{color:#374151!important}
+.memo-muted{color:#1f2937!important}
+.memo-sep{color:#374151!important}
+.mini-button-muted{color:#1f2937!important}
+.profit-flat{color:#1f2937!important}
+.rate-flat{color:#1f2937!important}
+.semantic-muted{color:#1f2937!important}
+.table-key{color:#1f2937!important}
+.tr.s0{color:#1f2937!important}
+.vd.ok{color:#1f2937!important}
+.view-switch button{color:#1f2937!important}
+.vol.lo{color:#1f2937!important}
+.zt.ok{color:#1f2937!important}
+details>summary{color:#1f2937!important}
+
+:root{--amber:#8d4107;--blue:#124ac6;--cyan:#0b5e74;--green:#10612e;--pc-0:#6e510c;--pc-1:#1e53ad;--pc-2:#7831aa;--pc-3:#a52334;--pc-4:#1d6234;--pc-5:#125c68;--pc-6:#8b3f14;--pc-x:#515761;--red:#a62016;--rose:#ab1036;--teal:#0c5f59;--u-amber:#8d4107;--u-blue:#124ac6;--u-down:#a62016;--u-teal:#0c5f59;--u-up:#10612e;--u-violet:#6b26d6;--violet:#6b26d6}
+#ea-table .ea-exit-countdown.exit-due{color:#a62016!important}
+#ea-table .ea-exit-countdown.exit-soon{color:#6e4d0f!important}
+#ea-table .ea-exit-countdown.exit-unknown{color:#764f00!important}
+#incidents .inc.normal{color:#933a06!important}
+#incidents .inc.urgent{color:#a62016!important}
+.alert-action-warn{color:#7b4900!important}
+.alert-current-warn{color:#7b4900!important}
+.alert-level-none{color:#4a5667!important}
+.alert-measure-none{color:#4a5667!important}
+.alert-row-idle td{color:#4a5667!important}
+.alert-table td.alert-action-warn{color:#7b4900!important}
+.alert-table td.alert-current-warn{color:#7b4900!important}
+.big-table th.g-perf{color:#156132!important}
+.big-table th.g-watch{color:#804500!important}
+.dd-cap{color:#a62016!important}
+.events-panel .history-note{color:#4e5565!important}
+.events-panel.has-events #events-count{color:#a62016!important}
+.hg-caveat b{color:#a62016!important}
+.hg-summary-row.h-summary-bad .layer-result{color:#a62016!important}
+.hg-summary-row.h-summary-watch .layer-result{color:#933a06!important}
+.hl-bad{color:#a62016!important}
+.hl-ok{color:#026139!important}
+.hl-watch{color:#933a06!important}
+.lv.high{color:#a62016!important}
+.mech-block h3.key{color:#156132!important}
+.memo-box:empty::before{color:#4c5666!important}
+.memo-muted{color:#4a5667!important}
+.memo-sep{color:#47566c!important}
+.memo-warn{color:#7b4900!important}
+.month-table td.none{color:#4b5667!important}
+.seg button:disabled{color:#4b5667!important}
+.semantic-muted{color:#4a5667!important}
+.semantic-warn{color:#7b4900!important}
+.status-warn{color:#933a06!important}
+.table-key{color:#4e5565!important}
+.tr.s-1{color:#a62016!important}
+.tr.s1{color:#10612e!important}
+.vd.hi1{color:#10612e!important}
+.vd.lo1{color:#a62016!important}
+.vol.hi{color:#8d3e0e!important}
+.zoom-ctl .zoom-arrow{color:#124ac6!important}
+.zoom-ctl .zoom-arrow:disabled{color:#49556b!important}
+.zt.hi1{color:#10612e!important}
+.zt.lo1{color:#a62016!important}
+
+.account-grid{background:#fdfbf6!important}
+.account-item{background:#fdfbf6!important}
+.account-item:nth-child(1){background:#fdfbf6!important}
+.account-item:nth-child(2){background:#fdfbf6!important}
+.account-item:nth-child(3){background:#fdfbf6!important}
+.account-item:nth-child(4){background:#fdfbf6!important}
+.account-item:nth-child(5){background:#fdfbf6!important}
+.account-item:nth-child(6){background:#fdfbf6!important}
+.alert-empty{background:#f4efe5!important}
+.alert-empty-cell{background:#f4efe5!important}
+.alert-group{background:#fdfbf6!important}
+.alert-item{background:#fdfbf6!important}
+.alert-measure-none{background:#f4efe5!important}
+.alert-table tbody tr:nth-child(odd){background:#fdfbf6!important}
+.alert-table-wrap{background:#fdfbf6!important}
+.big-table td:first-child{background:#fdfbf6!important}
+.big-table th:first-child{background:#fdfbf6!important}
+.cc{background:#fdfbf6!important}
+.chart-empty{background:#f4efe5!important}
+.chart-legend-item{background:#fdfbf6!important}
+.chart-svg-wrap{background:#fdfbf6!important}
+.data-table{background:#fdfbf6!important}
+.data-table tbody tr:nth-child(odd){background:#fdfbf6!important}
+.decision-table{background:#fdfbf6!important}
+.empty{background:#f4efe5!important}
+.hg{background:#fdfbf6!important}
+.hg-cusum{background:#f4efe5!important}
+.hg:first-child{background:#fdfbf6!important}
+.hl-unknown{background:#f4efe5!important}
+.kv-table th{background:#f4efe5!important}
+.kv-table tr:nth-child(even) td{background:#f4efe5!important}
+.mech-card{background:#fdfbf6!important}
+.mech-card>h3{background:#f4efe5!important}
+.memo-box{background:#fdfbf6!important}
+.metric{background:#fdfbf6!important}
+.metric.accent-amber{background:#fdfbf6!important}
+.metric.accent-blue{background:#fdfbf6!important}
+.metric.accent-green{background:#fdfbf6!important}
+.metric.accent-purple{background:#fdfbf6!important}
+.metric.accent-red{background:#fdfbf6!important}
+.metric.accent-teal{background:#fdfbf6!important}
+.month-table td.none{background:#f4efe5!important}
+.one-table td:first-child{background:#fdfbf6!important}
+.one-table th:first-child{background:#fdfbf6!important}
+.out-card{background:#f4efe5!important}
+.overview-grid{background:#fdfbf6!important}
+.overview-item{background:#fdfbf6!important}
+.overview-item:nth-child(1){background:#fdfbf6!important}
+.overview-item:nth-child(2){background:#fdfbf6!important}
+.overview-item:nth-child(3){background:#fdfbf6!important}
+.overview-item:nth-child(4){background:#fdfbf6!important}
+.overview-item:nth-child(5){background:#fdfbf6!important}
+.overview-item:nth-child(6){background:#fdfbf6!important}
+.overview-item:nth-child(7){background:#fdfbf6!important}
+.overview-item:nth-child(8){background:#fdfbf6!important}
+.page-header{background:#fdfbf6!important}
+.panel{background:#fdfbf6!important}
+.pcard{background:#fdfbf6!important}
+.pr{background:#fdfbf6!important}
+.table-wrap{background:#fdfbf6!important}
+.u-card{background:#fdfbf6!important}
+.u-minis .m{background:#fdfbf6!important}
+.u-top{background:#fdfbf6!important}
+body.u2 .u-card{background:#fdfbf6!important}
+table.u-tbl tbody tr:hover td{background:#f4efe5!important}
+
+:root{--bg:#e2ddd2;--u-page:#e2ddd2}
+body,body.u2{background:#e2ddd2!important}
+
+.u-card,.panel,.pcard,.metric,.alert-group,.table-wrap,.alert-table-wrap{box-shadow:0 0 0 1px #a89f8e,0 2px 5px rgba(15,23,42,.10)!important}
+
+.u-card > .u-h{border-bottom:1px solid #d8cfbf;padding-bottom:9px;margin-bottom:12px!important}
+
+.cc,.pr,.mech-card,.hg,.alert-item,.chart-svg-wrap{box-shadow:0 0 0 1px #b9af9c!important}
+.u-minis{background:#b3c0cf!important;border-color:#b9af9c!important}
+.u-strip .c{border-right-color:#d8cfbf!important;border-bottom-color:#d8cfbf!important}
+.empty{border-color:#b9af9c!important;background:#eef2f7!important}
+
+table.u-tbl th{background:#ece5d7!important;border-bottom:1px solid #b9af9c!important}
+table.u-tbl td{border-bottom:1px solid #d3dbe5!important}
+
+body,body.u2{color:#14213d}
+
+.data-table tbody tr:nth-child(even){background:#f4efe5!important}
+.data-table tbody tr:nth-child(odd){background:#fdfbf6!important}
+table.u-tbl tbody tr:nth-child(even){background:#f4efe5}
+.kv-table th{background:#ece5d7!important}
+.kv-table td{background:#fdfbf6}
+.month-table td.year{background:#ece5d7!important}
+
+table.u-tbl{border-collapse:collapse!important;border:1px solid #c9bfad!important}
+table.u-tbl th,table.u-tbl td{border:1px solid #ddd3c2!important;vertical-align:middle}
+table.u-tbl thead th{border-bottom:2px solid #b9af9c!important}
+
+table.data-table{border:1px solid #c9bfad}
+table.data-table th,table.data-table td{border-bottom-color:#d6ccba;border-right-color:#d6ccba}
+
+body.u2 #ea-table td{font-size:1.125rem!important}
+body.u2 #ea-table th{font-size:1.03rem!important}
+body.u2 #ea-table .ea-badge,body.u2 #ea-table .rate-pill{font-size:1.06rem!important}
+body.u2 #ea-table .ea-exit-countdown,body.u2 #ea-table .ea-exit-countdown strong{font-size:1.06rem!important}
+
+body.u2 #ea-positions-table td,body.u2 #ea-orders-table td,body.u2 #ea-trades-table td,body.u2 #account-positions-table td,body.u2 #account-orders-table td,body.u2 #account-trades-table td,body.u2 #t-tf td,body.u2 #t-lv td,body.u2 #t-corr td,body.u2 #rc-tbl td,body.u2 #u-cmp-table td,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl td,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl td{font-size:1.125rem!important}
+body.u2 #ea-positions-table th,body.u2 #ea-orders-table th,body.u2 #ea-trades-table th,body.u2 #account-positions-table th,body.u2 #account-orders-table th,body.u2 #account-trades-table th,body.u2 #t-tf th,body.u2 #t-lv th,body.u2 #t-corr th,body.u2 #rc-tbl th,body.u2 #u-cmp-table th,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl th,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl th{font-size:1.03rem!important}
+body.u2 #ea-positions-table .ea-badge,body.u2 #ea-positions-table .rate-pill,body.u2 #ea-positions-table .fit,body.u2 #ea-positions-table .vd,body.u2 #ea-positions-table .zt,body.u2 #ea-orders-table .ea-badge,body.u2 #ea-orders-table .rate-pill,body.u2 #ea-orders-table .fit,body.u2 #ea-orders-table .vd,body.u2 #ea-orders-table .zt,body.u2 #ea-trades-table .ea-badge,body.u2 #ea-trades-table .rate-pill,body.u2 #ea-trades-table .fit,body.u2 #ea-trades-table .vd,body.u2 #ea-trades-table .zt,body.u2 #account-positions-table .ea-badge,body.u2 #account-positions-table .rate-pill,body.u2 #account-positions-table .fit,body.u2 #account-positions-table .vd,body.u2 #account-positions-table .zt,body.u2 #account-orders-table .ea-badge,body.u2 #account-orders-table .rate-pill,body.u2 #account-orders-table .fit,body.u2 #account-orders-table .vd,body.u2 #account-orders-table .zt,body.u2 #account-trades-table .ea-badge,body.u2 #account-trades-table .rate-pill,body.u2 #account-trades-table .fit,body.u2 #account-trades-table .vd,body.u2 #account-trades-table .zt,body.u2 #t-tf .ea-badge,body.u2 #t-tf .rate-pill,body.u2 #t-tf .fit,body.u2 #t-tf .vd,body.u2 #t-tf .zt,body.u2 #t-lv .ea-badge,body.u2 #t-lv .rate-pill,body.u2 #t-lv .fit,body.u2 #t-lv .vd,body.u2 #t-lv .zt,body.u2 #t-corr .ea-badge,body.u2 #t-corr .rate-pill,body.u2 #t-corr .fit,body.u2 #t-corr .vd,body.u2 #t-corr .zt,body.u2 #rc-tbl .ea-badge,body.u2 #rc-tbl .rate-pill,body.u2 #rc-tbl .fit,body.u2 #rc-tbl .vd,body.u2 #rc-tbl .zt,body.u2 #u-cmp-table .ea-badge,body.u2 #u-cmp-table .rate-pill,body.u2 #u-cmp-table .fit,body.u2 #u-cmp-table .vd,body.u2 #u-cmp-table .zt,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl .ea-badge,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl .rate-pill,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl .fit,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl .vd,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl .zt,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl .ea-badge,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl .rate-pill,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl .fit,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl .vd,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl .zt{font-size:1.06rem!important}
+body.u2 section[aria-label="通貨ペアの順位"] table.u-tbl td{font-size:1.06rem!important}
+body.u2 section[aria-label="通貨ペアの順位"] table.u-tbl th{font-size:1rem!important}
+body.u2 section[aria-label="通貨ペアの順位"] table.u-tbl .ea-badge,body.u2 section[aria-label="通貨ペアの順位"] table.u-tbl .rate-pill,body.u2 section[aria-label="通貨ペアの順位"] table.u-tbl .fit,body.u2 section[aria-label="通貨ペアの順位"] table.u-tbl .vd,body.u2 section[aria-label="通貨ペアの順位"] table.u-tbl .zt{font-size:1.03rem!important}
+
+:lang(ja) h1,:lang(ja) h2,:lang(ja) h3,:lang(ja) h4,:lang(ja) th,:lang(ja) td,:lang(ja) p,:lang(ja) li,:lang(ja) summary,:lang(ja) label,
+:lang(ja) .k,:lang(ja) .d,:lang(ja) small,:lang(ja) .metric-label,:lang(ja) .u-lead,:lang(ja) .src-note,:lang(ja) .u-note,:lang(ja) .kl{word-break:auto-phrase}
+
+body.u2 .u-minis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body.u2 .u-minis.c3{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body.u2 .u-minis.c2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body.u2 .u-minis .k{white-space:normal!important}
+
+body.u2 .u-minis{gap:0!important;background:#fdfbf6!important;border:1px solid #a89f8e!important}
+body.u2 .u-minis>.m{border-right:1px solid #c9bea9!important;border-bottom:1px solid #c9bea9!important}
+body.u2 .u-minis:not(.c3):not(.c2)>.m:nth-child(4n),body.u2 .u-minis.c3>.m:nth-child(3n),body.u2 .u-minis.c2>.m:nth-child(2n){border-right:0!important}
+body.u2 .u-minis:not(.c3):not(.c2)>.m:nth-last-child(-n+4),body.u2 .u-minis.c3>.m:nth-last-child(-n+3),body.u2 .u-minis.c2>.m:nth-last-child(-n+2){border-bottom:0!important}
+
+body.u2 .u-minis.c3{grid-template-columns:repeat(3,minmax(max-content,1fr))!important}
+body.u2 .u-minis.c3 .k{white-space:nowrap!important}
+body.u2 .u-minis .m{padding-left:11px!important;padding-right:11px!important}
+
+@media (max-width:1500px){
+body.u2 #t-all th,body.u2 #t-all td{padding-left:5px!important;padding-right:5px!important}
+body.u2 #t-all .posbar{width:56px!important}
+body.u2 #t-all td.env{min-width:120px!important;max-width:140px!important}
+body.u2 #t-tf th,body.u2 #t-tf td{padding-left:7px!important;padding-right:7px!important}
+}
+
+body.u2 table .rate-pill{display:inline-block!important;min-width:4.5em!important;text-align:right!important;font-variant-numeric:tabular-nums}
+.vol{min-width:3.6em!important;text-align:right!important;font-variant-numeric:tabular-nums}
+.pp{display:inline-block;min-width:2.45em;text-align:right;font-variant-numeric:tabular-nums}
+.pc b{min-width:2.6em!important;text-align:right!important;font-variant-numeric:tabular-nums}

@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+
+(function(){
+  var FROZEN=1794573000000, _D=Date;
+  function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
+    return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
+  FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
+  window.Date=FD;
+  var PAGES={"/": "index.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/study": "study.html", "/analysis": "analysis.html", "/verdict": "verdict.html"};
+  var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=(typeof input==="string")?input:(input&&input.url)||"";
+    var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
+    if(!m) return _fetch(input,init);
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+    if(method!=="GET"){
+      return Promise.resolve(new Response(JSON.stringify({ok:false,error:"公開用サンプルのため操作できません"}),
+        {status:200,headers:{"Content-Type":"application/json"}}));
+    }
+    return _fetch(here+"api/"+m[1].replace(/\//g,"_")+".json",{cache:"no-cache"});
+  };
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("a[href]"); if(!a) return;
+    var h=a.getAttribute("href"); if(!h||h.charAt(0)!=="/"||h.indexOf("//")===0) return;
+    var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
+    if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
+  },true);
+  document.addEventListener("submit",function(e){ e.preventDefault(); alert("公開用サンプルのため操作できません"); },true);
+  document.addEventListener("DOMContentLoaded",function(){
+    var b=document.createElement("div");
+    b.textContent="公開用サンプル：数字はすべて作りものです（実在の口座・EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。";
+    b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
+    document.body.insertBefore(b,document.body.firstChild);
+  });
+})();
+</script>
+
+<meta charset="UTF-8">
+<title>ポートフォリオモニター</title>
+<link rel="stylesheet" href="static/style.css">
+<link rel="stylesheet" href="static/ui2.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}</style>
+<style>
+body.u2 .u-strip .c .d,body.u2 #u-risk .d{display:none!important}
+</style>
+<style>
+a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.verdict-lead{margin:0;color:var(--muted);font-size:1rem;font-weight:700;line-height:1.6}
+.verdict-lead b{color:var(--text)}
+.verdict-table{min-width:1212px}
+.watch-table{min-width:1054px}
+.sub-head{margin:26px 0 0;font-size:1.05rem;font-weight:900;color:var(--text)}
+.events-table{min-width:860px}
+.lines-table{min-width:1500px}
+td.memo{text-align:left!important;white-space:normal!important;vertical-align:middle}
+.memo-box{min-height:30px;padding:4px 8px;border:1px dashed var(--line-strong);border-radius:5px;background:#fff;font-size:1rem;font-weight:650;color:var(--text);outline:none;cursor:text;white-space:pre-wrap;word-break:break-word}
+.memo-box:empty::before{content:'メモを書く';color:#98a2b3;font-weight:700}
+.memo-box:focus{border-style:solid;border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-soft)}
+.memo-box.saved{border-color:var(--green)}
+.verdict-table td:first-child{text-align:left}
+.verdict-table td:nth-child(2){text-align:center}
+.verdict-table td{font-size:1.1rem}
+.vcell{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.vcell strong{font-size:1.2rem;font-weight:900}
+.vcell small{font-size:.86rem;font-weight:800;color:var(--muted)}
+td.lv-ok{background:var(--panel-green)!important}
+td.lv-warn{background:var(--panel-amber)!important}
+td.lv-over{background:var(--red-soft)!important;box-shadow:inset 0 0 0 2px #f97066}
+td.lv-over strong{color:var(--red)}
+.judge{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border-radius:6px;font-weight:900;font-size:1.05rem;white-space:nowrap}
+.judge.ok{color:var(--green);background:var(--green-soft);border:1px solid var(--border-green)}
+.judge.bad{color:#fff;background:var(--red);border:1px solid var(--red)}
+.judge-why{display:block;margin-top:4px;font-size:.86rem;font-weight:850;color:var(--red);white-space:normal}
+.sym{display:inline-flex;padding:3px 9px;border-radius:5px;font-weight:850;font-size:.95rem;border:1px solid}
+.sym.gold{color:var(--amber);background:var(--amber-soft);border-color:var(--border-amber)}
+.sym.fx{color:var(--cyan);background:var(--cyan-soft);border-color:var(--border-cyan)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px;font-size:.92rem;font-weight:800;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:18px;height:14px;border-radius:3px;border:1px solid var(--line-strong)}
+.verdict-panel{border-top:4px solid var(--rose)}
+.events-panel{border-top:4px solid var(--violet)}
+.lines-panel{border-top:4px solid var(--teal)}
+.target-panel{border-top:4px solid var(--blue)}
+.target-table{min-width:1080px}
+.target-table td:first-child{text-align:left}
+td.hit strong{color:var(--green)}
+td.miss strong{color:var(--red)}
+.empty-row td{text-align:center!important;color:var(--green);font-weight:850}
+
+.one-table{min-width:1960px;border-collapse:separate;border-spacing:0}
+.one-table thead th{position:sticky;top:0;z-index:3;background:var(--panel-head,#f4f6fa)}
+.one-table thead tr:nth-child(2) th{top:34px}
+.one-table th.grp{text-align:center;font-size:.95rem;letter-spacing:.04em}
+.one-table th.grp-a{background:#eef3ff}.one-table th.grp-b{background:#eefaf3}
+.one-table th.grp-c{background:#fff6e6}.one-table th.grp-d{background:#f3eefe}
+.one-table td:first-child,.one-table th:first-child{position:sticky;left:0;z-index:4;background:#fff;box-shadow:1px 0 0 var(--line-strong)}
+.one-table thead th:first-child{z-index:5}
+.one-table td{font-size:1.06rem;padding:7px 9px}
+.one-table tbody tr:hover td{background:#fbfcff}
+.one-table tbody tr:hover td:first-child{background:#fbfcff}
+.ea-cell{display:flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1.25}
+.ea-cell small{font-size:.84rem;font-weight:800;color:var(--muted)}
+.sub-head{margin:26px 0 0;font-size:1.05rem;font-weight:900;color:var(--text)}
+
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+@media (max-width:1560px){.cards{grid-template-columns:1fr}}
+.cards .panel{margin:0}
+.card-table{width:100%;table-layout:fixed}
+.card-table th,.card-table td{padding:6px 8px;font-size:1.05rem}
+.card-table th:first-child,.card-table td:first-child{text-align:left}
+.card-table td{white-space:nowrap}
+.ea-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;line-height:1.2}
+.ea-cell small{font-size:.82rem;font-weight:800;color:var(--muted)}
+.card-note{margin:0 0 8px;color:var(--muted);font-size:.94rem;font-weight:750;line-height:1.5}
+.earn-panel{border-top:4px solid var(--green,#12b76a)}
+.qual-panel{border-top:4px solid var(--blue,#2e90fa)}
+.watch-panel{border-top:4px solid var(--rose,#f63d68)}
+.goal-panel{border-top:4px solid var(--violet,#7a5af8)}
+
+.card-table th,.card-table td{padding:9px 10px;font-size:1.22rem}
+.card-table thead th{font-size:1.06rem}
+.card-table .vcell{flex-direction:row;align-items:baseline;justify-content:flex-end;gap:7px;white-space:nowrap}
+.card-table .vcell strong{font-size:1.3rem;font-weight:900}
+.card-table .vcell small{font-size:1.02rem;font-weight:800}
+.card-table .ea-cell{flex-direction:row;align-items:baseline;gap:8px}
+.card-table .ea-cell small{font-size:1.0rem}
+.card-table .ea-badge{font-size:1.12rem}
+.judge{min-height:28px;padding:3px 10px;font-size:1.06rem}
+.judge-why{display:inline;margin-left:6px;font-size:.98rem}
+.card-note{font-size:1.0rem}
+.section-title h2{font-size:1.35rem}
+
+.card-table{width:auto;table-layout:auto}
+.card-table th,.card-table td{padding:9px 14px;white-space:nowrap}
+.cards{grid-template-columns:repeat(2,max-content);justify-content:start}
+@media (max-width:1560px){.cards{grid-template-columns:max-content}}
+.cards .panel{width:max-content;max-width:100%;overflow-x:auto}
+.card-note{max-width:62ch;white-space:normal}
+.section-title span{white-space:normal}
+
+.card-table th,.card-table td{padding:8px 11px;font-size:1.14rem}
+.card-table .vcell strong{font-size:1.2rem}
+.card-table .vcell small{font-size:.98rem}
+.card-table thead th{font-size:1.0rem}
+.cards{gap:14px}
+
+.cards{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+@media (max-width:1560px){.cards{display:flex}}
+.cards .panel{flex:0 0 auto}
+
+.card-table th,.card-table td{padding:8px 8px}
+.card-table td:first-child,.card-table th:first-child{padding-left:12px}
+
+.cards{display:block}
+.big-table{width:100%;table-layout:auto;border-collapse:separate;border-spacing:0}
+.big-table th,.big-table td{padding:7px 7px;font-size:1.10rem;white-space:nowrap}
+.big-table thead th{position:sticky;top:0;z-index:3;font-size:1.0rem;background:#eef1f6}
+.big-table thead tr:first-child th{z-index:4}
+.big-table thead tr:nth-child(2) th{top:35px}
+.big-table th.grp{text-align:center;font-size:1.06rem;font-weight:900;letter-spacing:.06em;padding:7px 9px}
+.big-table th.g-ea{background:#e6edfb;color:#1e3a8a}
+.big-table th.g-perf{background:#dff5e8;color:#166534}
+.big-table th.g-watch{background:#ffeccc;color:#8a4b00}
+.big-table th.g-goal{background:#ece5ff;color:#4c1d95}
+.big-table td.b-perf{background:#f5fcf8}
+.big-table td.b-goal{background:#faf7ff}
+.big-table td.b-ea{background:#fafbff}
+.big-table tbody tr:hover td{filter:brightness(.985)}
+.big-table td:first-child,.big-table th:first-child{position:sticky;left:0;z-index:2;background:#fff;box-shadow:1px 0 0 var(--line-strong)}
+.big-table thead th:first-child{z-index:5;background:#e6edfb}
+.big-table td:first-child,.big-table th:first-child{padding-left:12px}
+.big-table .vcell{flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px}
+.big-table .vcell strong{font-size:1.2rem;font-weight:900}
+.big-table .vcell small{font-size:.98rem;font-weight:800}
+.big-table .ea-cell{flex-direction:row;align-items:baseline;gap:8px}
+.big-table .memo-box{min-width:104px}
+.band-note{display:flex;flex-wrap:wrap;gap:8px 18px;margin:8px 0 0;font-size:1.0rem;font-weight:750;color:var(--muted)}
+.band-note b{color:var(--text)}
+
+.big-table td.memo,.big-table th:last-child{width:100%}
+.big-table .memo-box{min-width:120px;white-space:normal}
+.events-panel{border-top:4px solid var(--red,#f04438)}
+.events-panel .empty-row td{color:var(--green)}
+
+.cards{display:block!important}
+.cards .panel{width:auto!important;max-width:none!important;overflow-x:auto}
+.cards .panel + .panel{margin-top:16px}
+
+.big-table th,.big-table td{padding:10px 14px}
+.big-table td:first-child,.big-table th:first-child{padding-left:16px;padding-right:18px}
+.big-table .vcell{gap:9px}
+
+.cards .panel{overflow:visible!important;max-width:100%!important}
+.cards .panel .table-wrap{overflow-x:auto;max-width:100%}
+
+.cards,.cards .panel,.cards .panel .table-wrap{min-width:0!important}
+</style>
+<style>
+#ea-table .col-exit-countdown{width:190px}
+#ea-table .ea-exit-countdown{text-align:left;white-space:normal;line-height:1.35;font-size:.95rem}
+.ea-exit-countdown strong{display:block;font-variant-numeric:tabular-nums;font-size:1.05rem}
+.ea-exit-countdown small{display:block;color:var(--muted,#667085);font-size:.82rem}
+#ea-table .ea-exit-countdown.exit-soon{background:#fff8e8;color:#805a12}
+#ea-table .ea-exit-countdown.exit-due{background:#fff0ee;color:#b42318}
+#ea-table .ea-exit-countdown.exit-unknown{color:#9a6700}
+</style>
+<style>
+
+#ea-table th:nth-child(2),#ea-table td:nth-child(2),#ea-table th:nth-child(10),#ea-table td:nth-child(10){display:none}
+#ea-table col{display:none}
+body.u2:not(.u-ops) #ea-table th.grp-action,body.u2:not(.u-ops) #ea-table td.ea-reset-cell{display:none}
+#ea-table td.ea-memo{white-space:normal;min-width:140px;text-align:left}
+.decision-table{width:100%;border-collapse:collapse}
+.decision-table th{white-space:nowrap;text-align:left;vertical-align:top;background:var(--u-head)}
+.decision-table td{white-space:normal;border-bottom:1px solid var(--u-line-soft)}
+
+.u-strip .c:has(#top-equity){background:rgba(37,99,235,.12)}
+
+#top-equity-cell.eq-red{background:#fde2df!important;box-shadow:inset 0 0 0 2px #c0392b}
+#top-equity-cell.eq-red #top-equity{color:#b42318;font-weight:800}
+#top-equity-cell.eq-stop-on{background:#e6e6e6!important;box-shadow:inset 0 0 0 2px #8a8a8a}
+#top-equity-cell.eq-stop-on #top-equity{color:#555;font-weight:800}
+#top-equity-stop[hidden]{display:none!important}
+#top-equity-cell .eq-stop{color:#b42318!important;font-weight:800;font-size:1.02rem;line-height:1.35;margin-top:4px}
+</style>
+<link rel="stylesheet" href="static/readable.css">
+<script src="static/tablealign.js" defer></script>
+</head>
+<body class="u2">
+<header class="page-header">
+  <div>
+    <h1>ポートフォリオモニター</h1>
+    <div class="subtitle">EA別リアルタイム監視</div>
+  </div>
+  <div id="status" class="status-pill"></div>
+</header>
+
+<nav class="tab-bar" aria-label="表示切替">
+  <button class="tab-button active" type="button" data-tab="top">トップ</button>
+  <button class="tab-button" type="button" data-tab="ea">EA別</button>
+  <a class="tab-button" href="analysis.html">市場分析</a>
+  <a class="tab-button" href="study.html">EA分析</a>
+  <a class="tab-button" href="verdict.html">EAの見極め</a>
+  <a class="tab-button" href="backtest.html">詳細データ</a>
+  <a class="tab-button" href="ranking.html">ランキング</a>
+</nav>
+<main class="u-wrap">
+<p class="u-note" data-u2-error hidden></p>
+
+<section id="tab-top" class="tab-panel active">
+<div class="u-grid">
+  
+  <section class="u-card u-strip s12" aria-label="サマリー">
+    <div class="c wide"><div class="k" id="u-gain-k">損益率（入出金の影響を除く）</div><div class="v big" id="u-gain">—</div><div class="d" id="u-gain-d"></div></div>
+    <div class="c"><div class="k" id="u-maxdd-k">最大ドローダウン</div><div class="v" id="u-maxdd">—</div><div class="d" id="u-maxdd-d"></div></div>
+    <div class="c"><div class="k" id="u-month-k">今月</div><div class="v" id="u-month">—</div><div class="d">直近7日 <b id="u-g7">—</b>・30日 <b id="u-g30">—</b></div></div>
+    <div class="c"><div class="k">稼働EA</div><div class="v"><span id="metric-ea-count">-</span>本</div><div class="d">要注意 <b><span id="metric-alert-ea-count">-</span></b>本</div></div>
+    <div class="c"><div class="k">残高（決済した分まで）</div><div class="v"><span id="top-balance">-</span></div></div>
+    <div class="c" id="top-equity-cell"><div class="k">有効額（含み損益込み）</div><div class="v"><span id="top-equity">-</span></div><div class="eq-stop" id="top-equity-stop" hidden>取引を停止してください</div></div>
+    <div class="c"><div class="k" title="MT5口座の含み損益（手動注文・スワップ込み）">含み損益</div><div class="v"><span id="top-account-profit">-</span></div><div class="d">保有 <span id="metric-open-count">-</span>件</div></div>
+    <div class="c"><div class="k" id="today-day-label">本日</div><div class="v"><span id="today-realized">-</span></div><div class="d"><span id="today-trades">-</span>回・勝率 <span id="today-win-rate">-</span></div></div>
+    <div class="c"><div class="k">証拠金率</div><div class="v"><span id="top-margin-level">-</span></div><div class="d">証拠金 <span id="top-margin">-</span></div></div>
+  </section>
+
+  
+  <section class="u-card s7 u-fill" aria-label="損益率の推移">
+    <div class="u-h">
+      <h2 id="u-view-title">損益率の推移</h2>
+      <span class="u-lead" id="u-view-lead">入金・出金の影響を除いた損益率（時間加重）</span>
+      <div class="u-right">
+        <div class="u-seg" role="group" aria-label="グラフの種類">
+          <button type="button" data-u-view="growth">推移</button><button type="button" data-u-view="month">月ごと</button><button type="button" data-u-view="pair">通貨ペア</button>
+        </div>
+        <div class="u-seg" role="group" aria-label="集計の範囲">
+          <button type="button" data-perf-scope="lineup">今の顔ぶれ</button>
+          <button type="button" data-perf-scope="all">今まで全部</button>
+        </div>
+        <div class="u-seg" role="group" aria-label="グラフの単位">
+          <button type="button" data-u-period="day">日</button><button type="button" data-u-period="week">週</button><button type="button" data-u-period="month">月</button><button type="button" data-u-period="year">年</button>
+        </div>
+      </div>
+    </div>
+    <div class="u-chart-area" id="u-chart-area">
+      <div id="u-view-growth">
+        <div class="u-chart" id="u-growth"></div>
+        <div class="u-sub" id="u-dd-label">ドローダウン</div>
+        <div class="u-chart" id="u-dd"></div>
+      </div>
+      <div class="u-chart" id="u-month-bars" hidden></div>
+      <div class="u-chart" id="u-pair-bars" hidden></div>
+    </div>
+  </section>
+  <div class="s5 u-stack">
+    <section class="u-card" aria-label="成績の要約">
+      <div class="u-h"><h2>成績の要約</h2><span class="u-lead">決済した取引から（基準日以降）</span></div>
+      <div class="u-minis">
+        <div class="m"><div class="k">PF</div><div class="v"><span id="top-pf">-</span></div></div>
+        <div class="m"><div class="k">RF</div><div class="v"><span id="top-rf">-</span></div></div>
+        <div class="m"><div class="k">勝率</div><div class="v"><span id="top-win-rate">-</span></div></div>
+        <div class="m"><div class="k">取引</div><div class="v"><span id="top-trades">-</span></div></div>
+        <div class="m"><div class="k">SR</div><div class="v"><span id="top-sr">-</span></div></div>
+        <div class="m"><div class="k">期待利得</div><div class="v"><span id="top-expectancy">-</span></div></div>
+        <div class="m"><div class="k">年利</div><div class="v"><span id="top-annual">-</span></div></div>
+        <div class="m"><div class="k">決済損益</div><div class="v"><span id="metric-realized">-</span></div></div>
+      </div>
+      <p class="u-note" id="top-detached"></p>
+    </section>
+    <section class="u-card" aria-label="リスクの目安">
+      <div class="u-h"><h2>リスクの目安</h2></div>
+      <div class="u-minis c3" id="u-risk"></div>
+    </section>
+  </div>
+
+  
+  <section class="u-card s12 ea-panel" aria-label="EA別概要">
+    <div class="u-h"><h2>EA別概要</h2><span class="u-lead" id="ea-exit-countdown-status">時間決済は日本時間（JST）</span>
+      <div class="u-right"><label class="u-lead"><input type="checkbox" id="u-show-ops"> 再集計・削除の操作を出す</label></div></div>
+    <div class="table-wrap">
+        <table id="ea-table" class="data-table ea-table">
+          <colgroup>
+            <col class="col-ea">
+            <col class="col-magic">
+            <col class="col-symbol">
+            <col class="col-count">
+            <col class="col-side">
+            <col class="col-lot">
+            <col class="col-count">
+            <col class="col-profit">
+            <col class="col-realized">
+            <col class="col-percent">
+            <col class="col-rate">
+            <col class="col-exit-countdown">
+            <col class="col-ea-actions">
+            <col class="col-memo">
+          </colgroup>
+          <thead><tr>
+            <th class="grp-id">EA名</th><th class="grp-id">Magic</th><th class="grp-id grp-end">銘柄</th>
+            <th class="grp-count">保有</th><th class="grp-count">売買</th><th class="grp-count">Lot</th><th class="grp-count grp-end">決済</th>
+            <th class="grp-money">含み損益</th><th class="grp-money">決済損益</th>
+            <th class="grp-percent">含み損益率</th><th class="grp-percent grp-end">勝率</th>
+            <th title="週末・休日前の強制決済を含む最も近い予定。保有期限は目安で、TP/SL・価格条件の決済が先行する場合があります。">次の時間決済（JST）</th><th class="grp-action">計測</th><th>メモ</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+  </section>
+</div>
+</section>
+
+<section id="tab-ea" class="tab-panel">
+<div class="u-grid">
+  <section class="u-card s12">
+    <div class="u-h" style="margin:0">
+      <div class="u-stats" id="u-ea-stats"></div>
+      <div class="u-right">
+        <div class="u-seg" role="group" aria-label="表示"><button type="button" data-eaview="cards">通貨ペア別</button><button type="button" data-eaview="month">月別の表</button></div>
+        <label class="u-lead" id="u-ea-sort-wrap">並べ方 <select class="u-select" id="u-ea-sort"><option value="num">通貨ペア・稼働順</option><option value="contrib">寄与の大きい順</option><option value="n">回数の多い順</option><option value="since">新しく入った順</option></select></label>
+      </div>
+    </div>
+    <p class="u-note">EA の名前を押すと、詳細データ（バックテストとフォワードの比べ）が開きます。「BT比」は、実運用をバックテストで同じ回数続けたときの広がり（90%）と比べた位置です（5回未満は判定しない）。</p>
+  </section>
+  <div class="s12 pcards" id="u-ea-cards"></div>
+  <section class="u-card s12" id="u-ea-month-wrap" hidden>
+    <div class="u-h"><h2>EA × 月の損益率</h2><span class="u-lead">* は今月。合計は稼働開始からの複利。緑はプラス・赤はマイナス、濃いほど大きい</span></div>
+    <div class="u-tbl-wrap"><table class="u-tbl" id="u-ea-month"></table></div>
+  </section>
+  <div class="s12"><section class="u-card ea-positions-panel">
+      <div class="u-h">
+        <h2>EA別 保有中ポジション</h2>
+        <span>現在オープン中</span>
+      </div>
+      <div class="table-wrap">
+        <table id="ea-positions-table" class="data-table trades-table">
+          <colgroup>
+            <col class="col-ea"><col class="col-magic"><col class="col-account"><col class="col-ticket"><col class="col-symbol"><col class="col-lot"><col class="col-price"><col class="col-money"><col class="col-profit"><col class="col-time"><col class="col-comment col-position-comment">
+          </colgroup>
+          <thead><tr>
+            <th class="grp-id">EA名</th><th class="grp-id">Magic</th><th class="grp-id grp-end">口座</th>
+            <th class="grp-detail">Ticket</th><th class="grp-detail">銘柄</th><th class="grp-detail grp-end">ロット</th>
+            <th class="grp-money">建値</th><th class="grp-money">スワップ</th><th class="grp-money grp-end">含み損益</th>
+            <th class="grp-time grp-end">開始時刻</th><th>コメント</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section></div>
+  <div class="s12"><section class="u-card ea-orders-panel">
+      <div class="u-h">
+        <h2>EA別 未約定オーダー</h2>
+        <span>現在発注中</span>
+      </div>
+      <div class="table-wrap">
+        <table id="ea-orders-table" class="data-table trades-table"><thead><tr></tr></thead><tbody></tbody></table>
+      </div>
+    </section></div>
+  <div class="s12"><section class="u-card ea-trades-panel">
+      <div class="u-h">
+        <h2>EA別 直近トレード</h2>
+        <label class="filter-control">EA <select id="ea-trade-filter"></select></label>
+      </div>
+      <div class="table-wrap">
+        <table id="ea-trades-table" class="data-table trades-table">
+          <colgroup>
+            <col class="col-ea">
+            <col class="col-magic">
+            <col class="col-account">
+            <col class="col-ticket">
+            <col class="col-position">
+            <col class="col-symbol">
+            <col class="col-lot">
+            <col class="col-time">
+            <col class="col-time">
+            <col class="col-comment">
+          </colgroup>
+          <thead><tr>
+            <th class="grp-id">EA名</th><th class="grp-id">Magic</th><th class="grp-id grp-end">口座</th>
+            <th class="grp-detail">Ticket</th><th class="grp-detail">建玉ID</th><th class="grp-detail">銘柄</th><th class="grp-detail grp-end">ロット</th>
+            <th class="grp-money grp-end">損益</th>
+            <th class="grp-time">開始時刻</th><th class="grp-time grp-end">決済時刻</th>
+            <th>コメント</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section></div>
+</div>
+</section>
+
+<section id="tab-account" class="tab-panel" hidden>
+  <main class="detail-layout">
+    <section class="panel account-status-panel">
+      <div class="section-title">
+        <h2>口座別 資金・証拠金状況</h2>
+        <span>残高・有効額・余力ベース</span>
+      </div>
+      <div class="table-wrap">
+        <table id="account-status-table" class="data-table account-status-table">
+          <colgroup>
+            <col class="account-col-login">
+            <col class="account-col-money">
+            <col class="account-col-money">
+            <col class="account-col-money">
+            <col class="account-col-money">
+            <col class="account-col-money">
+            <col class="account-col-rate">
+            <col class="account-col-count">
+            <col class="account-col-count">
+            <col class="account-col-lot">
+            <col class="account-col-actions">
+            <col class="account-col-memo">
+          </colgroup>
+          <thead><tr>
+            <th class="grp-id grp-end">口座</th>
+            <th class="grp-money">残高</th><th class="grp-money">有効額</th><th class="grp-money">損益</th><th class="grp-money">証拠金</th><th class="grp-money grp-end">可能額</th>
+            <th class="grp-percent grp-end">証拠金率</th>
+            <th class="grp-count">稼働EA</th><th class="grp-count">保有</th><th class="grp-count grp-end">Lot</th>
+            <th class="grp-action">操作</th>
+            <th>メモ</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel account-ea-panel">
+      <div class="section-title">
+        <h2>口座内 EA別</h2>
+        <span>口座ごとのEA分解・合計行つき</span>
+      </div>
+      <div class="table-wrap">
+        <table id="account-ea-performance-table" class="data-table performance-table">
+          <thead><tr><th>口座</th><th>EA名</th><th>Magic</th><th>銘柄</th><th>PF</th><th>RF</th><th>取引</th><th>DD%</th><th>SR</th><th>勝率</th><th>損益</th><th>期待利得</th><th>年利</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel account-positions-panel">
+      <div class="section-title">
+        <h2>口座別 保有中ポジション</h2>
+        <span>現在オープン中</span>
+      </div>
+      <div class="table-wrap">
+        <table id="account-positions-table" class="data-table trades-table">
+          <colgroup>
+            <col class="col-account"><col class="col-ea"><col class="col-magic"><col class="col-ticket"><col class="col-symbol"><col class="col-lot"><col class="col-price"><col class="col-money"><col class="col-profit"><col class="col-time"><col class="col-comment col-position-comment">
+          </colgroup>
+          <thead><tr>
+            <th class="grp-id">口座</th><th class="grp-id">EA名</th><th class="grp-id grp-end">Magic</th>
+            <th class="grp-detail">Ticket</th><th class="grp-detail">銘柄</th><th class="grp-detail grp-end">ロット</th>
+            <th class="grp-money">建値</th><th class="grp-money">スワップ</th><th class="grp-money grp-end">含み損益</th>
+            <th class="grp-time grp-end">開始時刻</th><th>コメント</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    
+    <section class="panel account-orders-panel">
+      <div class="section-title">
+        <h2>口座別 未約定オーダー</h2>
+        <span>現在発注中</span>
+      </div>
+      <div class="table-wrap">
+        <table id="account-orders-table" class="data-table trades-table"><thead><tr></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+<section class="panel account-trades-panel">
+      <div class="section-title">
+        <h2>口座別 直近トレード</h2>
+        <label class="filter-control">口座 <select id="account-trade-filter"></select></label>
+      </div>
+      <div class="table-wrap">
+        <table id="account-trades-table" class="data-table trades-table">
+          <colgroup>
+            <col class="col-account">
+            <col class="col-ea">
+            <col class="col-magic">
+            <col class="col-ticket">
+            <col class="col-position">
+            <col class="col-symbol">
+            <col class="col-lot">
+            <col class="col-time">
+            <col class="col-time">
+            <col class="col-comment">
+          </colgroup>
+          <thead><tr>
+            <th class="grp-id">口座</th><th class="grp-id">EA名</th><th class="grp-id grp-end">Magic</th>
+            <th class="grp-detail">Ticket</th><th class="grp-detail">建玉ID</th><th class="grp-detail">銘柄</th><th class="grp-detail grp-end">ロット</th>
+            <th class="grp-money grp-end">損益</th>
+            <th class="grp-time">開始時刻</th><th class="grp-time grp-end">決済時刻</th>
+            <th>コメント</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</section>
+
+
+<script src="static/operational_panel.js"></script>
+  <script src="static/dashboard.js"></script>
+<script>(function(){var t=location.hash.slice(1);if(!t)return;var b=document.querySelector('.tab-button[data-tab="'+t+'"]');if(b)b.click();})();</script>
+<script src="static/exit_countdown.js"></script>
+<script src="static/ui2.js"></script>
+<script>document.getElementById("u-show-ops").addEventListener("change",function(){document.body.classList.toggle("u-ops",this.checked);});</script>
+</main>
+<script>
+
+(function(){
+  var RED = 150000, STOP = 105000;
+  function paint(){
+    var v = document.getElementById("top-equity"), c = document.getElementById("top-equity-cell"), m = document.getElementById("top-equity-stop");
+    if (!v || !c || !m) return;
+    var t = (v.textContent || "").replace(/[^0-9.\-]/g, "");
+    var n = t === "" || t === "-" ? NaN : Number(t);
+    var stop = isFinite(n) && n < STOP, red = isFinite(n) && n < RED && !stop;
+    c.classList.toggle("eq-red", red);
+    c.classList.toggle("eq-stop-on", stop);
+    m.hidden = !stop;
+  }
+  function start(){
+    var v = document.getElementById("top-equity");
+    if (!v) return;
+    new MutationObserver(paint).observe(v, {childList: true, characterData: true, subtree: true});
+    paint();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+</script>
+</body>
+</html>
