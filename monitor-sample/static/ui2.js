@@ -5,7 +5,9 @@
 var U = window.UI2 = {};
 var $ = function (id) { return document.getElementById(id); };
 var each = function (sel, f) { Array.prototype.forEach.call(document.querySelectorAll(sel), f); };
-function sgn(v, dg) { if (v === null || v === undefined) return "—"; var s = Math.abs(v).toFixed(dg === undefined ? 2 : dg); return (v > 0 ? "+" : v < 0 ? "−" : "") + s; }
+
+function nf(v, d) { d = d || 0; return (+v).toLocaleString("ja-JP", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function sgn(v, dg) { if (v === null || v === undefined) return "—"; var s = nf(Math.abs(v), dg === undefined ? 2 : dg); return (v > 0 ? "+" : v < 0 ? "−" : "") + s; }
 function pct(v, dg) { return v === null || v === undefined ? "—" : sgn(v, dg) + "%"; }
 function cls(v) { return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
 function syen(v) { if (v === null || v === undefined) return "—"; return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)).toLocaleString("ja-JP") + "円"; }
@@ -255,9 +257,9 @@ function drawTop() {
   var ddl = $("u-dd-label"); if (ddl) ddl.textContent = "ドローダウン（直前の最高値からの下げ・" + (v.equity_dd ? "含み損込み" : "決済で測定") + "）";
 
   if (uview === "month") barChart($("u-month-bars"), { label: "月ごとの損益率", h: full, rows: v.months.map(function (r) {
-    return { label: (+r.m.slice(5)) + "月", v: r.g, tip: "<div class='t'>" + mlabel(r.m) + "</div><b>" + pct(r.g) + "</b>・" + syen(r.yen) + "・" + r.n + "回" }; }) });
+    return { label: (+r.m.slice(5)) + "月", v: r.g, tip: "<div class='t'>" + mlabel(r.m) + "</div><b>" + pct(r.g) + "</b>・" + syen(r.yen) + "・" + nf(r.n) + "回" }; }) });
   if (uview === "pair") barChart($("u-pair-bars"), { label: "通貨ペアごとの寄与", horizontal: true, h: full, rows: v.pairs.map(function (r) {
-    return { label: r.pair, v: r.contrib, color: pcol(r.pair), tip: "<div class='t'>" + esc(r.pair) + "</div>寄与 <b>" + pct(r.contrib) + "</b>・" + syen(r.yen) + "<br>" + r.n + "回・勝率 " + r.win.toFixed(1) + "%・PF " + (r.pf === null ? "—" : r.pf.toFixed(2)) }; }) });
+    return { label: r.pair, v: r.contrib, color: pcol(r.pair), tip: "<div class='t'>" + esc(r.pair) + "</div>寄与 <b>" + pct(r.contrib) + "</b>・" + syen(r.yen) + "<br>" + nf(r.n) + "回・勝率 " + r.win.toFixed(1) + "%・PF " + (r.pf === null ? "—" : r.pf.toFixed(2)) }; }) });
 }
 function markTop() {
   each("[data-perf-scope]", function (b) { var on = (b.getAttribute("data-perf-scope") === "all" ? "all" : "now") === scope; b.setAttribute("aria-pressed", String(on)); });
@@ -299,10 +301,10 @@ function drawEA() {
     var g = groups[p].sort(function (a, b) { return cmp(a, b) || a.id - b.id; });
     var n = 0, c = 0, y = 0, plus = 0, tr = 0; g.forEach(function (r) { n += r.n; c += r.contrib; y += r.yen || 0; if (r.n) { tr++; if (r.contrib > 0) plus++; } });
     return "<article class='pcard' style='" + pvars(p) + "'>" +
-      "<div class='pcard-h'><h3><i></i>" + esc(p) + "</h3><div class='meta'>" + g.length + "本・" + n + "回・<b class='" + cls(y) + "'>" + syen(y) + "</b><br>寄与 <b class='" + cls(c) + "'>" + (n ? pct(c) : "—") + "</b>・プラス " + plus + " / " + tr + "</div></div>" +
+      "<div class='pcard-h'><h3><i></i>" + esc(p) + "</h3><div class='meta'>" + g.length + "本・" + nf(n) + "回・<b class='" + cls(y) + "'>" + syen(y) + "</b><br>寄与 <b class='" + cls(c) + "'>" + (n ? pct(c) : "—") + "</b>・プラス " + plus + " / " + tr + "</div></div>" +
       "<div class='u-tbl-wrap'><table class='u-tbl'><thead><tr><th>EA</th><th>回数</th><th>勝率</th><th>PF</th><th>損益</th><th>寄与</th><th>BT比</th><th>推移</th></tr></thead><tbody>" +
       g.map(function (r) {
-        return "<tr><td>" + eaLink(r) + "</td><td>" + r.n + "</td><td>" + (r.n ? r.win.toFixed(0) + "%" : "—") + "</td><td>" + pfText(r) + "</td>" +
+        return "<tr><td>" + eaLink(r) + "</td><td>" + nf(r.n) + "</td><td>" + (r.n ? r.win.toFixed(0) + "%" : "—") + "</td><td>" + pfText(r) + "</td>" +
           "<td class='" + cls(r.yen) + "'>" + (r.n ? syen(r.yen) : "—") + "</td><td class='" + cls(r.contrib) + "'>" + (r.n ? pct(r.contrib) : "—") + "</td>" +
           "<td>" + badge(r) + "</td><td>" + spark(r.spark) + "</td></tr>";
       }).join("") + "</tbody></table></div></article>";
@@ -351,9 +353,9 @@ U.compare = function (name) {
   $("u-cmp-title").innerHTML = "バックテストと実運用の比べ — " + esc(r.name) + " " + ptag(r.pair);
   var days = r.since ? Math.max(1, (Date.now() - new Date(r.since + "T00:00:00+09:00").getTime()) / 86400000) : null;
   var liveYear = r.n && days && days >= 14 ? r.n / days * 365 : null;
-  var f2 = function (v, d) { return v === null || v === undefined ? "—" : (+v).toFixed(d === undefined ? 2 : d); };
+  var f2 = function (v, d) { return v === null || v === undefined ? "—" : nf(v, d === undefined ? 2 : d); };
   var rows = [
-    ["取引回数", b ? b.trades + "回（" + f2(b.years, 1) + "年）" : "—", r.n + "回（" + (r.since ? md(r.since) + "から" : "—") + "）", null],
+    ["取引回数", b ? nf(b.trades) + "回（" + f2(b.years, 1) + "年）" : "—", nf(r.n) + "回（" + (r.since ? md(r.since) + "から" : "—") + "）", null],
     ["年あたりの回数", b ? f2(b.per_year, 0) + "回" : "—", liveYear === null ? "—" : f2(liveYear, 0) + "回", null, b ? b.per_year : null, liveYear, 0],
     ["勝率", b ? f2(b.win_pct, 1) + "%" : "—", r.n ? f2(r.win, 1) + "%" : "—", 1, b ? b.win_pct : null, r.n ? r.win : null],
     ["PF", b ? f2(b.pf) : "—", !r.n ? "—" : r.pf === null ? (r.win >= 100 ? "負けなし" : "—") : f2(r.pf), 1, b ? b.pf : null, r.pf],
@@ -395,7 +397,7 @@ U.compare = function (name) {
   if (!c) { v.innerHTML = "<span class='vb few'>比べられません</span> バックテストの1回ごとの記録がありません。"; $("u-cmp-fan").innerHTML = ""; }
   else {
     var txt = { "in": ["ok", "バックテストの範囲内"], high: ["ok", "バックテストより上振れ"], low: ["ng", "バックテストより下振れ"], few: ["few", "まだ判定しない（5回未満）"] }[c.verdict];
-    v.innerHTML = "<span class='vb " + txt[0] + "'>" + txt[1] + "</span> 実運用 " + c.n + "回の合計 <b class='" + cls(c.total_r) + "'>" + sgn(c.total_r, 2) + "R</b>" +
+    v.innerHTML = "<span class='vb " + txt[0] + "'>" + txt[1] + "</span> 実運用 " + nf(c.n) + "回の合計 <b class='" + cls(c.total_r) + "'>" + sgn(c.total_r, 2) + "R</b>" +
       (c.rank !== null && c.rank !== undefined ? "・同じ回数のバックテストの中で下から <b>" + c.rank + "%</b>" : "");
   }
   $("u-cmp-note").textContent = "率は口座残高に対する割合（実運用は決済直前の残高・バックテストはリスク" + (r.bt ? r.bt.risk : "—") + "%の複利）。実運用は回数が少ないうちは大きくぶれます。帯は、バックテストで同じ回数だけ続けて取引したときの広がり（濃い帯 50%・薄い帯 90%）。";
