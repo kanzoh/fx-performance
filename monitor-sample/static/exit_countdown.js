@@ -59,7 +59,8 @@
                       : (offset === null ? Date.now() / 1000 : Date.now() / 1000 + offset);
     let carried = 0;
     const rows = new Map((snapshot?.rows || []).map(row => [String(row.magic), row]));
-    for (const cell of table.querySelectorAll('[data-exit-magic]')) {
+
+    for (const cell of document.querySelectorAll('[data-exit-magic]')) {
       cell.replaceChildren(); cell.className = 'ea-exit-countdown'; cell.title = '';
       const key = cell.dataset.exitAccount + ':' + cell.dataset.exitMagic;
       const open = Number(cell.dataset.exitOpen);
@@ -88,8 +89,8 @@
       if (left <= 3600) cell.classList.add(left <= 0 ? 'exit-due' : 'exit-soon');
     }
     if (status) {
-      status.textContent = 'magic number単位・時間決済は日本時間（JST）' +
-        (fresh ? (snapshot.market_closed ? '・市場休場中' : '・自動更新') : (carried ? '・前回の確認から数えています' : '・更新待ち'));
+      status.textContent = '時間決済：' +
+        (fresh ? (snapshot.market_closed ? '市場休場中' : '自動更新') : (carried ? '前回の確認から数えています' : '更新待ち'));
       const forced = snapshot?.next_forced;
       status.title = fresh && forced?.known ? `次の強制決済予定（参考）：${date(forced.due_utc)} JST（${forced.reason}）` : '';
     }

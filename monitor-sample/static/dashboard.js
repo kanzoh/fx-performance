@@ -2646,10 +2646,118 @@ function renderOrderTables() {
   }
 }
 
+function liveJstMs(value) {
+  const w = serverWallMs(value);
+  if (w === null) return null;
+  return w - fxServerOffsetHours(w) * 36e5;
+}
+function liveFmtJst(ms) {
+  if (ms === null) return "-";
+  const d = new Date(ms + 9 * 36e5);
+  const p2 = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+}
+function liveFmtSpan(ms) {
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return "-";
+  const m = Math.floor(ms / 60000), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60;
+  if (d > 0) return `${d}日${h}時間`;
+  if (h > 0) return `${h}時間${mm}分`;
+  return `${mm}分`;
+}
+function liveSetText(id, text, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.textContent !== text) el.textContent = text;
+  if (cls !== undefined && el.className !== cls) el.className = cls;
+}
+
+function liveNum(v) { return v === null || v === undefined || v === "" ? NaN : Number(v); }
+function liveYenPerPrice(rows) {
+  const by = new Map();
+  for (const p of rows) {
+    const open = liveNum(p.open_price), sl = liveNum(p.sl), slYen = liveNum(p.sl_profit_account_currency), vol = liveNum(p.volume);
+    if (vol > 0 && sl > 0 && sl !== open && Number.isFinite(slYen)) by.set(p.symbol, Math.abs(slYen / ((sl - open) * vol)));
+  }
+  return by;
+}
+function liveDistanceCell(p, bySymbol) {
+  const open = liveNum(p.open_price), sl = liveNum(p.sl), tp = liveNum(p.tp), vol = liveNum(p.volume), profit = liveNum(p.profit);
+  const slYenRaw = liveNum(p.sl_profit_account_currency);
+  const sign = p.type === 1 || String(p.type_text).toUpperCase() === "SELL" ? -1 : 1;
+  let k = NaN;
+  if (vol > 0 && open > 0) {
+    if (sl > 0 && sl !== open && Number.isFinite(slYenRaw)) k = slYenRaw / ((sl - open) * vol);
+    else if (bySymbol.has(p.symbol)) k = sign * bySymbol.get(p.symbol);
+    else {
+      const cur = liveNum(p.current_price);
+      if (Math.abs(cur - open) / open >= 0.0005 && Number.isFinite(profit)) k = profit / ((cur - open) * vol);
+    }
+  }
+  const toTp = tp > 0 && Number.isFinite(k) && Number.isFinite(profit) ? k * vol * (tp - open) - profit : null;
+  let toSl = null, slGain = false;
+  if (sl > 0 && Number.isFinite(profit)) {
+    const slYen = Number.isFinite(slYenRaw) ? slYenRaw : k * vol * (sl - open);
+    if (Number.isFinite(slYen)) { toSl = slYen - profit; slGain = slYen >= 0; }
+  }
+  return `<span class="to-tp">利確 ${toTp === null ? (tp > 0 ? "未確認" : "TPなし") : fmtSignedYen(toTp)}</span>` +
+    `<span class="to-sl">損切 ${toSl === null ? (sl > 0 ? "未確認" : "SLなし") : fmtSignedYen(toSl)}</span>` +
+    (slGain ? "<small>損切でも建値以上</small>" : "");
+}
+
+function livePrice(v, symbol) {
+  const n = Number(v);
+  if (v === null || v === undefined || v === "" || !Number.isFinite(n)) return "-";
+  const s = String(symbol || "").toUpperCase();
+  const d = s.startsWith("XAU") ? 2 : s.includes("JPY") ? 3 : 5;
+  return n.toLocaleString("ja-JP", { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function renderTopLive() {
+  const posBody = document.querySelector("#u-live-pos tbody");
+  if (!posBody) return;
+  const now = Date.now();
+  const pos = (latestPositions || []).slice().sort((a, b) => (liveJstMs(b.open_time) || 0) - (liveJstMs(a.open_time) || 0));
+  let pl = 0, sl = 0, slKnown = 0;
+  const yenPerPrice = liveYenPerPrice(pos);
+  const posRows = pos.map((p) => {
+    const total = Number(p.profit || 0) + Number(p.swap || 0);
+    pl += total;
+    const slp = p.sl_profit_account_currency;
+    if (slp !== null && slp !== undefined && slp !== "" && Number(p.sl) > 0) { sl += Number(slp); slKnown += 1; }
+    const t = liveJstMs(p.open_time);
+    const side = String(p.type_text || "").toUpperCase();
+    return {
+      key: `live-pos:${p.account_login}:${p.ticket}`,
+      html: `<td class="ea">${eaNameCell(p.magic)}</td><td>${(p.symbol || "-").replace(/-m$/, "")}</td>
+        <td>${side === "BUY" ? '<span class="u-side u-buy">買い</span>' : side === "SELL" ? '<span class="u-side u-sell">売り</span>' : "-"}</td>
+        <td>${Number.isFinite(Number(p.volume)) ? Number(p.volume).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}</td>
+        <td class="${profitClass(total)}"><b>${fmtSignedYen(total)}</b></td>
+        <td class="u-dist">${liveDistanceCell(p, yenPerPrice)}</td>
+        <td class="ea-exit-countdown" data-exit-account="${Number(p.account_login)}" data-exit-magic="${Number(p.magic)}" data-exit-open="1">確認中</td>
+        <td>${livePrice(p.open_price, p.symbol)}</td><td>${livePrice(p.current_price, p.symbol)}</td><td class="u-memo"></td>`,
+
+    };
+  });
+
+  if (!posRows.length) posRows.push({ key: "live-pos:none", html: '<td class="u-live-none" colspan="10">今は建玉がありません</td>' });
+
+  for (let i = posRows.length; i < 10; i++) posRows.push({ key: `live-pos:blank:${i}`, html: "<td></td>".repeat(10) });
+  reconcileRows(posBody, posRows, (r) => r.key, (r) => r.html);
+  window.renderEaExitCountdown?.();
+  const empty = document.getElementById("u-live-pos-empty");
+  if (empty) empty.hidden = true;
+  posBody.closest("table").hidden = false;
+  liveSetText("u-live-n", `${pos.length.toLocaleString("ja-JP")}件`);
+  liveSetText("u-live-pl", pos.length ? fmtSignedYen(pl) : "-", pos.length ? profitClass(pl) : "");
+  liveSetText("u-live-sl", !pos.length || !slKnown ? "-" : fmtSignedYen(sl), pos.length && slKnown ? profitClass(sl) : "");
+  liveSetText("u-live-sl-d", pos.length && slKnown < pos.length ? `ほかに損切りのない建玉 ${pos.length - slKnown}件` : "");
+
+}
+
 async function refreshPositions() {
   latestPositions = await fetchJSON("/api/positions");
   updateAdaptiveColumnWidths();
   renderPositionTables();
+  renderTopLive();
 }
 
 async function refreshOrders() {

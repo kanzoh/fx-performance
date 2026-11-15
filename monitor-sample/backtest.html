@@ -448,12 +448,14 @@ async function getJson(url,ms){
 
 function buildSeries(e){
   const f=DATA.live_risk_percent/100, t=e.trades.t, r=e.trades.r, n=r.length;
+
+  const rs=(isPort(e)&&Array.isArray(e.trades.rs)&&e.trades.rs.length===n)?e.trades.rs:r;
   const x=new Array(n+1), comp=new Array(n+1), simple=new Array(n+1), ddc=new Array(n+1), dds=new Array(n+1);
   const start=Date.parse(e.judge_period[0]+"T00:00:00Z")/1000;
   x[0]=Math.min(start,t[0]); comp[0]=1; simple[0]=1; ddc[0]=0; dds[0]=0;
   let pc=1, ps=1;
   for(let i=0;i<n;i++){
-    x[i+1]=t[i]; comp[i+1]=comp[i]*(1+f*r[i]); simple[i+1]=simple[i]+f*r[i];
+    x[i+1]=t[i]; comp[i+1]=comp[i]*(1+f*r[i]); simple[i+1]=simple[i]+f*rs[i];
     pc=Math.max(pc,comp[i+1]); ps=Math.max(ps,simple[i+1]);
     ddc[i+1]=(1-comp[i+1]/pc)*100; dds[i+1]=ps>0?(1-simple[i+1]/ps)*100:0;
   }
@@ -462,12 +464,15 @@ function buildSeries(e){
   return {x,comp,simple,ddc,dds,maxddc:Math.max(...ddc),maxdds:Math.max(...dds)};
 }
 
-function valueOf(v){return UNIT==="yen"?DATA.initial_balance*v:(v-1)*100;}
+const IB=()=>(CUR&&isPort(CUR)&&isNum(CUR.start_balance))?CUR.start_balance:DATA.initial_balance;
+function valueOf(v){return UNIT==="yen"?IB()*v:(v-1)*100;}
 
 const PORT="ポートフォリオ全体";
 const isPort=e=>!!(e&&e.name===PORT&&DATA&&DATA.portfolio===e);
 let PORT_SEEN=false, SCALE_BEFORE_PORT=null;
-function findEA(name){ if(DATA&&DATA.portfolio&&name===PORT) return DATA.portfolio; return DATA.eas.find(x=>x.name===name)||null; }
+
+const PAGE=e=>(e&&e.page)?Object.assign({},e,e.page,{trades_exact:e.trades}):e;
+function findEA(name){ if(DATA&&DATA.portfolio&&name===PORT) return DATA.portfolio; return PAGE(DATA.eas.find(x=>x.name===name)||null); }
 function hasName(name){ return !!findEA(name); }
 function niceStep(span,count){const raw=span/count;const p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3.5?2:m<7.5?5:10)*p;}
 
@@ -510,7 +515,7 @@ function drawEquity(){
   for(let yr=y0+1; yr<=y1; yr++){ if((yr-y0)%every) continue; const t=Date.UTC(yr,0,1)/1000; const x=X(t);
     g.beginPath(); g.moveTo(x,PAD.t); g.lineTo(x,h-PAD.b); g.stroke(); g.fillText(String(yr),x,h-PAD.b+6);}
 
-  const base=UNIT==="yen"?DATA.initial_balance:0; if(base>=lo&&base<=hi){g.strokeStyle="#94a3b8"; g.setLineDash([4,4]); g.beginPath(); g.moveTo(PAD.l,Y(base)); g.lineTo(w-PAD.r,Y(base)); g.stroke(); g.setLineDash([]);}
+  const base=UNIT==="yen"?IB():0; if(base>=lo&&base<=hi){g.strokeStyle="#94a3b8"; g.setLineDash([4,4]); g.beginPath(); g.moveTo(PAD.l,Y(base)); g.lineTo(w-PAD.r,Y(base)); g.stroke(); g.setLineDash([]);}
 
   if(EQ_HL){const a=Math.max(x0,EQ_HL[0]), b=Math.min(x1,EQ_HL[1]); g.fillStyle="rgba(180,35,24,.13)"; g.fillRect(X(a),PAD.t,Math.max(2,X(b)-X(a)),h-PAD.t-PAD.b);}
 
@@ -544,11 +549,11 @@ function hover(ev){
     let j=i; while(j>0&&new Date(xs[j-1]*1000).getUTCFullYear()===yr) j--;
     const v0=j>0?ys[j-1]:ys[0], yp=MODE==="comp"?(v/v0-1)*100:(v-v0)*100;
     tip.innerHTML=`<b>${ymd(xs[i])}</b><br>`+(MODE==="comp"
-      ?`残高 ${fmtYen(DATA.initial_balance*v)}（始めの ${fmtX(v)}）`
-      :`始めから ${fmtPct((v-1)*100,0)}（残高 ${fmtYen(DATA.initial_balance*v)}）`)+
+      ?`残高 ${fmtYen(IB()*v)}（始めの ${fmtX(v)}）`
+      :`始めから ${fmtPct((v-1)*100,0)}（残高 ${fmtYen(IB()*v)}）`)+
       `<br>${yr}年の初めから ${fmtPct(yp,1)}<br>山からの落ち込み −${dd.toFixed(1)}%`;
   } else
-  tip.innerHTML=`${ymd(SERIES.x[i])}<br>${fmtPct((v-1)*100,1)}・${fmtYen(DATA.initial_balance*v)}<br>山からの落ち込み −${dd.toFixed(1)}%`;
+  tip.innerHTML=`${ymd(SERIES.x[i])}<br>${fmtPct((v-1)*100,1)}・${fmtYen(IB()*v)}<br>山からの落ち込み −${dd.toFixed(1)}%`;
   tip.style.display="block"; const tx=Math.min(px+12, rect.width-tip.offsetWidth-4); tip.style.left=tx+"px"; tip.style.top="8px";
 }
 
@@ -594,15 +599,15 @@ function renderStatsPort(e){
   document.getElementById("stats-table").innerHTML=kv([
     ["顔ぶれ",`${n}本`,"いま実弾で動いている本だけ（見極めの台と同じ顔ぶれ）"],
     ["取引数",`${s.trades.toLocaleString("ja-JP")}件`,`年あたり ${nf(s.per_year,0)}件（全本の合計・期間 ${s.years.toFixed(1)}年で割る）`],
-    ["年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,0)}</span>`,`1年で残高が約 ${nf(1+s.cagr_pct/100,1)}倍になる速さ（毎回そのときの残高の${rk}%を賭けて積んだとき。全本で年 ${nf(s.per_year,0)}件あるので大きい。ロット上限・証拠金・約定の厚みは入っていない）`],
+    ["年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,0)}</span>`,`1年で残高が約 ${nf(1+s.cagr_pct/100,1)}倍になる速さ（毎回そのときの残高の${rk}%を賭けて積んだとき。始めの残高 ${fmtYen(s.start_balance)}・建てた時点の残高でロットを決め、1注文の上限（ブレード口座の FX 100・金 50 ロット）で切る。証拠金・約定の厚みは入っていない）`],
     ["年利（単利）",`<span class="${s.simple_annual_pct>=0?"pos":"neg"}">${fmtPct(s.simple_annual_pct,0)}</span>`,`期間全体 ${fmtPct(s.simple_net_pct,0)}（最初の残高×リスク${rk}%を1件ごとに足す）`],
     ["最大ドローダウン（残高比）",`<span class="neg">${fmtDD(s.max_dd_pct)}</span>`,`毎回そのときの残高の${rk}%を賭けたときの、山からの最大の落ち込み（決済だけ・含み損は入らない）`],
     ["最大ドローダウン（R の合計）",`<span class="neg">−${nf(s.max_dd_r,1)}R</span>`,"全本の損益を R（1回の損切り幅）で足した山からの落ち込み。本数やリスク%に依らずに深さを比べる物差し"],
     ["プロフィットファクター",fmtNum(s.pf,2)],
     ["勝率",fmtPct(s.win_pct,1,false),`買い ${s.long_trades.toLocaleString("ja-JP")}件（勝率 ${fmtPct(s.long_win_pct,1,false)}）・売り ${s.short_trades.toLocaleString("ja-JP")}件（勝率 ${fmtPct(s.short_win_pct,1,false)}）`],
     ["1取引の平均",`${s.mean_r>=0?"+":""}${nf(s.mean_r,3)}R`,`残高比 ${fmtPct(s.expected_pct,3)}`],
-    ["黒字の月",`${s.positive_months}／${s.months_full}か月`,"完成した暦月だけ"],
-    ["最悪の月",isNum(s.worst_month_r)?`${s.worst_month_r>=0?"+":"−"}${nf(Math.abs(s.worst_month_r),1)}R`:"—",s.worst_month_key?`${s.worst_month_key}（全本の R の合計・完成した暦月だけ）`:""],
+    ["黒字の月",`${s.positive_months}／${s.months_full}か月`,`完成した暦月だけ・ロット上限を入れた残高比で数える${isNum(s.positive_months_r)?`（R の合計で数えると ${s.positive_months_r}か月が黒字）`:""}`],
+    ["最悪の月",isNum(s.worst_month_real_pct)?`<span class="${s.worst_month_real_pct>=0?"pos":"neg"}">${fmtPct(s.worst_month_real_pct,2)}</span>`:"—",s.worst_month_key?`${s.worst_month_key}（ロット上限を入れた残高比・完成した暦月だけ）`:""],
     ["黒字の年",`${s.profitable_years}／${s.years_with_trades}年`,"取引のあった年のうち"],
     ["1日の最悪",`<span class="neg">${s.worst_day_r>=0?"+":"−"}${nf(Math.abs(s.worst_day_r),1)}R</span>`,`${s.worst_day}（UTC の日付）に ${s.worst_day_trades}件が決済。損切りが重なった日の大きさ`],
     ["1日に決済が重なった最多",`${s.max_trades_one_day}件`,"全本の決済が同じ日（UTC）に重なった最多"],
@@ -613,11 +618,12 @@ function renderStatsPort(e){
     ["最大の勝ち／負け（1件）",`${fmtPct(s.best_trade_pct,2)}／${fmtPct(s.worst_trade_pct,2)}`,`平均の勝ち ${fmtPct(s.avg_win_pct,2)}・平均の負け ${fmtPct(s.avg_loss_pct,2)}`],
     ["保有時間",`平均 ${fmtHours(s.hold_avg_hours)}`,`最長 ${fmtHours(s.hold_max_hours)}・最短 ${fmtHours(s.hold_min_hours)}`],
     ["上位5%の大勝ちが総利益に占める割合",fmtPct(s.top5_share_pct_r,1,false),`R 基準。抜いたときの PF ${fmtNum(s.pf_without_top5_r,2)}`],
-    ["ロット上限に張り付いた取引",`${s.lot_cap_trades.toLocaleString("ja-JP")}件`,"各本のバックテストの残高で上限に当たった件（その件は R が小さく記録されている）。1つの口座にまとめたときの当たり方とは違う"],
+    ["ロット上限で切られた取引",`${s.lot_cap_trades.toLocaleString("ja-JP")}件`,`ブレード口座の1注文の上限（FX 100・金 50 ロット）に当たった件。最初は ${s.lot_cap_first||"—"}。残高が大きくなるとロットが上限で止まり、増え方は一定になる`],
   ]);
   document.getElementById("stats-note").innerHTML=`出どころ: 各本の<b>正本の台帳</b>（手数料控除後・受取スワップは0・決済だけ）を、全本がそろう期間 <b>${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}</b> で切り、`+
     `決済の時刻の順に1本に並べて<b>リスク${rk}%</b>で1つの残高に積み直した。各本の成績と同じ関数で数えている。`+
-    `<b>近い値であることに注意</b>：1件ごとに決済の順で残高に掛けている（実際は建てた時点の残高でロットが決まる）・同時に持つ建玉の証拠金は見ていない。`;
+    `<b>ロットの決め方</b>：始めの残高 ${fmtYen(e.start_balance)}・ロットは建てた時点の残高（それより前に決済した分だけ入った残高）から決め、ブレード口座の1注文の上限（FX 100・金 50 ロット）で切る。`+
+    `バックテストの中でテスターの上限（100ロット）に当たった取引は、切られる前の R に戻してから積んでいる。同時に持つ建玉の証拠金は見ていない。<b>参考資料</b>（ブレード口座の設定。実際の運用は今の資金に合わせてマイクロ口座）。`;
 }
 function renderStats(e){
   if(isPort(e)) return renderStatsPort(e);
@@ -765,7 +771,7 @@ function renderMetrics(e){
       mm('<span class="kl">黒字の月</span>',`${s.positive_months}／${s.months_full}`,"amber");
     document.getElementById("metrics-note").innerHTML=
       `<b>今の顔ぶれ ${(e.members||[]).length}本を1つの口座で同時に動かした</b>ときのバックテスト（全本がそろう期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}・リスク${DATA.live_risk_percent.toFixed(1)}%・手数料控除後・受取スワップは0・決済だけ）。`+
-      `年利（複利）は毎回そのときの残高の${DATA.live_risk_percent.toFixed(1)}%を賭けて積んだ値で、全本で年 ${nf(s.per_year,0)}件あるので桁が大きい（ロット上限・証拠金・約定の厚みは入っていない）。単利は最初の残高に対する%を足した値。最大DD（残高比）は複利のときの山からの落ち込み。含み損込みの値は MT5 の報告書が本ごとにしか無いので出していない。`;
+      `年利（複利）は毎回そのときの残高の${DATA.live_risk_percent.toFixed(1)}%を賭けて積んだ値で、全本で年 ${nf(s.per_year,0)}件ある。始めの残高は100万円で、ロットは建てた時点の残高から決め、ブレード口座の1注文の上限で切る（証拠金・約定の厚みは入っていない）。単利は最初の残高に対する%を足した値。最大DD（残高比）は複利のときの山からの落ち込み。含み損込みの値は MT5 の報告書が本ごとにしか無いので出していない。`;
     return;
   }
   const m=(label,val,accent,sub)=>`<div class="metric accent-${accent}"><div class="metric-label">${label}</div><div class="metric-value">${val}${sub?`<small>${sub}</small>`:""}</div></div>`;
@@ -781,16 +787,18 @@ function renderMetrics(e){
   const win=(/\(([^)]*)\)/.exec(f["期間"]||"")||[])[1]||f["期間"]||"—";
   const bal=/^\s*([\d.]+)\s*%/.exec(f["残高相対ドローダウン"]||"");
   document.getElementById("metrics-note").innerHTML=
+    (e.page_source?`<b>出どころ：${esc(e.page_source)}</b>。`:"")+
     `カードの値は<b>正本の台帳</b>（判定期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}・リスク${DATA.live_risk_percent.toFixed(1)}%の複利・手数料控除後・受取スワップは0・決済だけ・${capText(e)}）。`+
+    (e.page_source?`報告書の数字との差は、テスターが取らない手数料をあとから引いた分と、判定期間の外（${esc(e.judge_period[1])} より後）の決済だけ。`:"")+
     `<b>「含み損込みの最大DD」だけは MT5 報告書</b>の「証拠金相対ドローダウン」（窓 ${esc(win)}・リスク${e.report_risk_percent.toFixed(1)}%の複利・${e.report_fee_included?"手数料込み":"後控除の手数料なし"}・受取スワップ込み・整数の%）。`+
     (bal?`同じ報告書の決済だけ（残高相対ドローダウン）は −${esc(bal[1])}%。窓と手数料が違うので、比べるなら報告書の中の2つで比べる。`:"");
 }
 
 function capText(e){const s=e.stats;
-  if(isPort(e)) return `ロット上限は各本のバックテストの残高で当たった ${s.lot_cap_trades.toLocaleString("ja-JP")}件がそのまま入っている`;
+  if(isPort(e)) return `ブレード口座の1注文の上限（FX 100・金 50 ロット）で切った ${s.lot_cap_trades.toLocaleString("ja-JP")}件を入れてある`;
   if(!isNum(s.lot_cap)) return "ロットは実口座の記録に無いので、上限に張り付いた取引は数えていない";
   return s.lot_cap_trades?`ロット上限 ${s.lot_cap}ロットに張り付いた ${s.lot_cap_trades}件は実際のリスクが${DATA.live_risk_percent.toFixed(1)}%より低く、その縮んだ損益のまま`:`ロット上限 ${s.lot_cap}ロットに届いた取引は無い`;}
-const fmtInit=()=>DATA.initial_balance%10000===0?`${(DATA.initial_balance/10000).toLocaleString("ja-JP")}万円`:fmtYen(DATA.initial_balance);
+const fmtInit=()=>IB()%10000===0?`${(IB()/10000).toLocaleString("ja-JP")}万円`:fmtYen(IB());
 
 let EQ_HL=null;
 function eqEpisodes(S){
@@ -827,7 +835,7 @@ function renderEqSide(e){
   const mon=comp&&last>0?(Math.pow(last,1/(yrs*12))-1)*100:(last-1)*100/(yrs*12);
   const huge=comp&&last>=1e4;
   if(!huge) rows.push(["期間全体の増え",fmtPct((last-1)*100,0),
-    comp?`${yrs.toFixed(1)}年で残高が ${nf(last,1)}倍（初期${init}なら ${fmtYen(DATA.initial_balance*last)}）`
+    comp?`${yrs.toFixed(1)}年で残高が ${nf(last,1)}倍（初期${init}なら ${fmtYen(IB()*last)}）`
         :`${yrs.toFixed(1)}年で、最初の残高の ${fmtPct((last-1)*100,0)}ぶん増えた（単利）`]);
   if(ann===null) rows.push(["1年あたりの増え","—","1年未満なので出さない（短い期間を年に直すと大げさになる）"]);
   else rows.push(["1年あたりの増え",fmtPct(ann,1),
@@ -867,7 +875,7 @@ function drawAll(){ if(!SERIES) return; drawEquity(); drawDD(); renderEqSide(CUR
   document.getElementById("chart-note").innerHTML=`出どころ: <b>正本の台帳</b>の取引ごとの列（${S.x.length-1}件・手数料控除後・受取スワップは0）を<b>目標のリスク${rk}%</b>で積み直した曲線（${capText(e)}）。`+
     (MODE==="comp"&&last>=1e4
       ?`1年あたり ${fmtPct((Math.pow(last,1/Math.max((S.x[S.x.length-1]-S.x[0])/(365.25*86400),1e-9))-1)*100,0)}（期間全体は複利で積むと桁が大きすぎるので出さない）`
-      :`終わりの値 ${fmtPct((last-1)*100,0)}（初期${fmtInit()}なら ${fmtYen(DATA.initial_balance*last)}）`)+
+      :`終わりの値 ${fmtPct((last-1)*100,0)}（初期${fmtInit()}なら ${fmtYen(IB()*last)}）`)+
     `・最大の落ち込み −${(MODE==="comp"?S.maxddc:S.maxdds).toFixed(1)}%`+
     (isPort(e)?"（残高比＝毎回そのときの残高のリスク%を賭けたとき）":"")+`。`+
     (isPort(e)?`<b>含み損は入らない</b>（含み損込みの値は MT5 の報告書が本ごとにしか無いので、全体では出せない）。`
@@ -877,7 +885,8 @@ function drawAll(){ if(!SERIES) return; drawEquity(); drawDD(); renderEqSide(CUR
 function msWindows(r,k){const out=[];let s=0;for(let i=0;i<r.length;i++){s+=r[i];if(i>=k)s-=r[i-k];if(i>=k-1)out.push(s);}return out;}
 function msMonths(e){
   const pm=new Set(e.partial_months||[]), mo={};
-  e.trades.t.forEach((t,i)=>{const d=new Date(t*1000), k=d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0"); mo[k]=(mo[k]||0)+e.trades.r[i];});
+  const tx=e.trades_exact||e.trades;
+  tx.t.forEach((t,i)=>{const d=new Date(t*1000), k=d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0"); mo[k]=(mo[k]||0)+tx.r[i];});
   const keys=Object.keys(mo).filter(k=>!pm.has(k)).sort();
   let run=0,maxNeg=0,plus=0; keys.forEach(k=>{if(mo[k]>0)plus++; run=mo[k]<0?run+1:0; maxNeg=Math.max(maxNeg,run);});
   let worst=null;
@@ -892,7 +901,7 @@ function renderMonthSide(e){
   const show=!isFwd() && e && e.trades && e.trades.r && e.trades.r.length;
   box.style.display=show?"":"none"; if(two) two.classList.toggle("only",!show);
   if(!show) return;
-  const r=e.trades.r, rows=[], f=(v,d)=>isNum(v)?(v>0?"+":v<0?"−":"")+nf(Math.abs(v),d):"—";
+  const r=(e.trades_exact||e.trades).r, rows=[], f=(v,d)=>isNum(v)?(v>0?"+":v<0?"−":"")+nf(Math.abs(v),d):"—";
   let lr=null; try{ lr=(window.UI2&&UI2.data&&UI2.data.eas||[]).filter(x=>(x.key||x.name)===e.name)[0]; }catch(_){ lr=null; }
   const c=lr&&lr.cmp, n=isPort(e)?-1:(lr?(lr.n||0):null);
   if(n===-1) rows.push(["今の実弾","—","全体の実弾の成績はトップのページ（ここは BT だけ）"]);
@@ -918,7 +927,8 @@ function renderMonthSide(e){
   document.getElementById("month-side-note").textContent="今のマイナスが「BT でもよくある負け方」か「BT ではめったに無い負け方」かを見るための表。R は1回の損切り幅（BT は統一基準K の台帳）。";
 }
 function select(name){
-  const e=findEA(name)||DATA.portfolio||DATA.eas[0]; CUR=e;
+  const e=findEA(name)||DATA.portfolio||PAGE(DATA.eas[0]); CUR=e;
+  {const ub=document.querySelector('[data-unit="yen"]'); if(ub) ub.textContent=`円（初期${fmtInit()}）`;}
 
   if(isPort(e)&&!PORT_SEEN){ PORT_SEEN=true; MODE="comp"; setSeg("mode",MODE); }
   if(isPort(e)&&MODE==="comp"){ if(SCALE_BEFORE_PORT===null) SCALE_BEFORE_PORT=SCALE; SCALE="log"; setSeg("scale",SCALE); }

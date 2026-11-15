@@ -280,7 +280,7 @@ body.u2 .notes{background:#f4efe5;border:1px solid #c6d0dc;border-radius:9px;pad
 
   
   <section class="u-card s12" aria-label="分かったこと">
-    <div class="u-h"><h2>分かったこと</h2><span class="u-lead">研究の部屋のまとめ</span><div class="u-right"><span class="u-lead" id="asof"></span></div></div>
+    <div class="u-h"><h2>分かったこと</h2><span class="u-lead">数字は決済や入れ替えのたびに自動で数え直す</span><div class="u-right"><span class="u-lead" id="asof"></span></div></div>
     <div class="cc-grid" id="concl"></div>
   </section>
 
@@ -299,7 +299,7 @@ body.u2 .notes{background:#f4efe5;border:1px solid #c6d0dc;border-radius:9px;pad
 
   
   <section class="u-card s12" aria-label="提案">
-    <div class="u-h"><h2>提案：質の高い EA を量産するために</h2><span class="u-lead">Codex と合議した案。採るかどうかはユーザーの判断</span></div>
+    <div class="u-h"><h2>提案：質の高い EA を量産するために</h2><span class="u-lead">Codex と合議した案（11-13 研究・自動では変わらない）。採るかどうかはユーザーの判断</span></div>
     <div class="pr-grid" id="props"></div>
   </section>
 
@@ -329,7 +329,7 @@ body.u2 .notes{background:#f4efe5;border:1px solid #c6d0dc;border-radius:9px;pad
 
   
   <section class="u-card s12 out-card" id="out-card" aria-label="外した本" hidden>
-    <div class="u-h"><h2>外した本</h2><span class="u-lead">別枠：上の数字（今の顔ぶれ）には入れていません</span><div class="u-right"><span class="u-lead" id="out-n"></span></div></div>
+    <div class="u-h"><h2>外した本</h2><span class="u-lead">別枠：上の数字（今の顔ぶれ）には入れていません。研究の部屋が 11-13 に数えたもの</span><div class="u-right"><span class="u-lead" id="out-n"></span></div></div>
     <p class="out-note" id="out-note" hidden></p>
     <div class="out-strip" id="out-strip"></div>
     <div class="twin" id="twin-out"></div>
@@ -374,13 +374,14 @@ function curRows() { return (D.eas || []).filter(function (r) { return r.cur; })
 function outRows() { return (D.eas || []).filter(function (r) { return !r.cur; }); }
 
 function drawHero() {
-  var done = D.status === "確定", s = D.summary || {}, cr = curRows();
+
+  var auto = D.status === "自動", done = auto || D.status === "確定", s = D.summary || {}, cr = curRows();
 
   if (cr.length && s.eas !== cr.length) s = agg(cr);
   $("st").className = "st-badge " + (done ? "done" : "wip");
-  $("st").textContent = done ? "確定版" : "途中の数字";
-  $("status").textContent = "EA分析・" + (done ? "確定版" : "途中");
-  $("asof").textContent = D.as_of ? "実弾の書き出し " + D.as_of + " まで" : "";
+  $("st").textContent = auto ? "自動で更新" : done ? "確定版" : "途中の数字";
+  $("status").textContent = "EA分析・" + (auto ? "自動で更新" : done ? "確定版" : "途中");
+  $("asof").textContent = D.as_of ? (auto ? D.as_of + " 時点（決済や入れ替えのたびに自動で数え直す）" : "実弾の書き出し " + D.as_of + " まで") : "";
   var lv = s.live_r1, bt = s.bt_r1, ratio = (nz(lv) && nz(bt) && bt > 0) ? lv / bt : null;
   var tone = !nz(ratio) ? "var(--u-ink)" : ratio >= 0.8 ? "var(--u-up)" : ratio >= 0.5 ? "var(--u-amber)" : "var(--u-down)";
   $("ans").style.setProperty("--tone", tone);
@@ -564,7 +565,7 @@ function load() {
 }
 var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
 document.addEventListener("visibilitychange", function () { if (!document.hidden) load(); });
-load(); setInterval(load, 10 * 60 * 1000);
+load(); setInterval(load, 2 * 60 * 1000);
 })();
 </script>
 </body>

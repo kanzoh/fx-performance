@@ -25,7 +25,6 @@ function pairRank(p) { var i = PAIR_ORDER.indexOf(p); return i < 0 ? 99 : i; }
 function heatBg(v, mx) { var a = Math.min(.5, .07 + .43 * Math.abs(v) / mx); return v >= 0 ? "rgba(21,128,61," + a.toFixed(2) + ")" : "rgba(180,35,24," + a.toFixed(2) + ")"; }
 U.h = { sgn: sgn, pct: pct, cls: cls, syen: syen, jdate: jdate, md: md, mlabel: mlabel, hours: hours, esc: esc, pvars: pvars, pcol: pcol, ptag: ptag, pairRank: pairRank, heatBg: heatBg, PAIR_ORDER: PAIR_ORDER };
 
-
 var NS = "http://www.w3.org/2000/svg";
 function el(n, a, parent) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); if (parent) parent.appendChild(e); return e; }
 function niceTicks(lo, hi, n) {
@@ -170,7 +169,6 @@ function spark(v, W, H) {
 }
 U.chart = { lineChart: lineChart, barChart: barChart, fanChart: fanChart, spark: spark };
 
-
 var UNIT_NAME = { day: "日", week: "週", month: "月", year: "年" };
 function pkey(d, unit) {
   if (unit === "day") return d;
@@ -198,7 +196,6 @@ function plabel(p, unit, long) {
 
 function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } return null; }
 
-
 U.data = null;
 function load() {
   return fetch("/api/perf-data?_=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
@@ -206,7 +203,6 @@ function load() {
     .then(function (j) { U.data = j; drawAll(); })
     .catch(function (e) { each("[data-u2-error]", function (x) { x.textContent = "成績の数字を読めません: " + e.message; x.hidden = false; }); });
 }
-
 
 var scope = store("perfScope") === "all" ? "all" : "now";
 var period = store("ui2_period") || "day";
@@ -243,10 +239,11 @@ function drawTop() {
   $("u-view-growth").hidden = uview !== "growth"; $("u-month-bars").hidden = uview !== "month"; $("u-pair-bars").hidden = uview !== "pair";
   each("[data-u-period]", function (b) { b.parentElement.style.visibility = uview === "growth" ? "" : "hidden"; });
 
-
-  var area = $("u-chart-area"), side = area ? area.closest(".u-card").nextElementSibling : null, stacked = !side || window.innerWidth <= 1280;
+  var area = $("u-chart-area"), card = area ? area.closest(".u-card") : null, inSide = !!(card && card.classList.contains("u-in-side"));
+  var side = card && !inSide ? card.nextElementSibling : null, stacked = !side || window.innerWidth <= 1280;
   ["u-growth", "u-dd", "u-month-bars", "u-pair-bars"].forEach(function (id) { if ($(id)) $(id).innerHTML = ""; });
-  var full = stacked ? Math.max(300, Math.min(420, (area.clientWidth || 800) * 0.42)) : Math.max(280, area.clientHeight - 2);
+  var full = inSide ? Math.max(200, Math.min(280, (area.clientWidth || 700) * 0.27))
+    : stacked ? Math.max(300, Math.min(420, (area.clientWidth || 800) * 0.42)) : Math.max(280, area.clientHeight - 2);
   var gh = Math.max(180, full - 70 - 26);
   lineChart($("u-growth"), { data: G, y: function (d) { return d.g; }, h: gh,
     color: "var(--u-blue)", soft: "var(--u-blue-soft)", xaxis: true, ticks: 5, label: "損益率の推移（" + UNIT_NAME[period] + "単位）",
@@ -272,7 +269,6 @@ function bindTop() {
   each("[data-u-view]", function (b) { b.addEventListener("click", function () { uview = b.getAttribute("data-u-view"); store("ui2_view", uview); markTop(); drawTop(); }); });
   markTop();
 }
-
 
 var eaSort = store("ui2_ea_sort") || "num", eaView = store("ui2_ea_view") || "cards";
 function pfText(r) { if (!r.n) return "—"; if (r.pf === null) return r.win >= 100 ? "負けなし" : "—"; return r.pf.toFixed(2); }
@@ -331,16 +327,15 @@ function drawEA() {
 function setEAView(v) {
   eaView = v; store("ui2_ea_view", v);
   each("[data-eaview]", function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-eaview") === v)); });
-  if ($("u-ea-cards")) $("u-ea-cards").hidden = v !== "cards";
-  if ($("u-ea-month-wrap")) $("u-ea-month-wrap").hidden = v !== "month";
-  if ($("u-ea-sort-wrap")) $("u-ea-sort-wrap").hidden = v !== "cards";
+
+  if ($("u-ea-cards")) $("u-ea-cards").hidden = false;
+  if ($("u-ea-month-wrap")) $("u-ea-month-wrap").hidden = false;
+  if ($("u-ea-sort-wrap")) $("u-ea-sort-wrap").hidden = false;
 }
 function bindEA() {
   each("[data-eaview]", function (b) { b.addEventListener("click", function () { setEAView(b.getAttribute("data-eaview")); }); });
   var s = $("u-ea-sort"); if (s) { s.value = eaSort; s.addEventListener("change", function () { eaSort = s.value; store("ui2_ea_sort", eaSort); drawEA(); }); }
 }
-
-
 
 U.compare = function (name) {
   U._curCompare = name;
@@ -375,7 +370,6 @@ U.compare = function (name) {
     return d > 0 ? "<span class='pos'>▲ 上</span>" : "<span class='neg'>▼ 下</span>";
   };
 
-
   var MEMO = {
     "取引回数": "実運用は動かし始めてからの決済の数。少ないうちは下の比べが大きくぶれる",
     "年あたりの回数": "実運用は2週間以上動かしてから年に直す。差は建てる回数の違い",
@@ -402,7 +396,6 @@ U.compare = function (name) {
   }
   $("u-cmp-note").textContent = "率は口座残高に対する割合（実運用は決済直前の残高・バックテストはリスク" + (r.bt ? r.bt.risk : "—") + "%の複利）。実運用は回数が少ないうちは大きくぶれます。帯は、バックテストで同じ回数だけ続けて取引したときの広がり（濃い帯 50%・薄い帯 90%）。";
 
-
   if (c) {
     var fan = $("u-cmp-fan"), fc = fan.closest(".u-card"), tc = $("u-cmp-table").closest(".u-card"), fh = 230;
     fan.innerHTML = "";
@@ -423,7 +416,7 @@ window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeou
 document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest(".tab-button[data-tab]"); if (b) setTimeout(drawAll, 30); });
 function watchSide() {
   var area = $("u-chart-area"); if (!area || !window.ResizeObserver) return;
-  var side = area.closest(".u-card").nextElementSibling, last = 0, tmr = null;
+  var card = area.closest(".u-card"), side = card.classList.contains("u-in-side") ? null : card.nextElementSibling, last = 0, tmr = null;
   if (!side) return;
   new ResizeObserver(function () { var h = side.offsetHeight; if (Math.abs(h - last) < 2) return; last = h; clearTimeout(tmr); tmr = setTimeout(drawTop, 80); }).observe(side);
 }

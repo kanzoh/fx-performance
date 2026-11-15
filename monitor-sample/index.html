@@ -227,6 +227,126 @@ body.u2:not(.u-ops) #ea-table th.grp-action,body.u2:not(.u-ops) #ea-table td.ea-
 #top-equity-cell.eq-stop-on #top-equity{color:#555;font-weight:800}
 #top-equity-stop[hidden]{display:none!important}
 #top-equity-cell .eq-stop{color:#b42318!important;font-weight:800;font-size:1.02rem;line-height:1.35;margin-top:4px}
+
+.u-card.u-live{align-self:stretch;display:flex;flex-direction:column;min-height:0}
+.u-live-body{position:relative;flex:1 1 auto;min-height:260px}
+.u-live-scroll{position:absolute;inset:0;overflow:auto}
+.u-live-tbl thead th{position:sticky;top:0;z-index:1}
+.u-live-tbl td.ea{font-weight:800}
+.u-live-tbl .u-side{display:inline-block!important;padding:1px 10px!important;border-radius:6px;font-weight:800;color:#fff!important}
+.u-live-tbl .u-buy{background:#0b7a35!important}.u-live-tbl .u-sell{background:#c62828!important}
+.u-live-tbl td.u-live-none{text-align:left!important;font-size:1.05rem;font-weight:800;color:var(--u-ink2);padding:14px 12px!important}
+.u-live-tbl td.ea-exit-countdown,.u-live-tbl td.u-dist,.u-live-tbl td.u-held{text-align:left!important;white-space:nowrap;line-height:1.3;font-variant-numeric:tabular-nums}
+.u-live-tbl td.ea-exit-countdown strong{display:block;font-weight:850}
+.u-live-tbl td.ea-exit-countdown small,.u-live-tbl td.u-dist small,.u-live-tbl td.u-held small{display:block;font-size:.92rem!important;font-weight:700;color:var(--u-ink2)}
+.u-live-tbl td.ea-exit-countdown.exit-soon{background:#fff8e8;color:#6e4d0f}
+.u-live-tbl td.ea-exit-countdown.exit-due{background:#fff0ee;color:#a62016}
+.u-live-tbl td.ea-exit-countdown.exit-unknown{color:#764f00}
+.u-live-tbl td.u-dist span{display:block;font-weight:800}
+
+body.u2 main.u-wrap{max-width:none!important}
+
+#tab-top .u-cards-grid{display:block;min-width:0}
+#tab-top .u-cards-grid #u-ea-cards{display:flex!important;gap:10px;align-items:flex-start}
+
+#tab-top #u-ea-cards .u-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:18px}
+
+#tab-top .u-leftcol .u-card.u-live{align-self:auto}
+#tab-top .u-leftcol .u-live-body{min-height:0}
+#tab-top .u-leftcol .u-live-scroll{position:static;max-height:460px}
+
+#u-live-pos th,#u-live-pos td{padding-left:6px!important;padding-right:6px!important}
+#u-live-pos th:first-child,#u-live-pos td:first-child{padding-left:10px!important}
+.u-live-tbl .u-side{padding:1px 7px!important}
+@media (min-width:1281px) and (max-width:2299px){ #tab-top .u-leftcol.s5{grid-column:span 7!important} #tab-top .u-cards-grid.s7{grid-column:span 5!important} #tab-top .u-strip.s5{grid-column:span 12!important} #tab-top .u-seiseki-top.s4,#tab-top .u-risk-top.s3{grid-column:span 6!important} }
+
+#tab-top .u-card.u-tag{position:relative;padding-left:34px!important;border-top:4px solid var(--tag)!important}
+#tab-top .u-tag::before{content:attr(data-tag);position:absolute;left:0;top:0;bottom:0;width:34px;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;letter-spacing:.25em;font-weight:900;font-size:1rem;color:#fff;background:var(--tag)}
+#tab-top .u-tag-acct{--tag:#1d4ed8}
+#tab-top .u-tag-perf{--tag:#15803d}
+#tab-top .u-tag-risk{--tag:#b45309}
+
+#tab-top .u-strip.u-tag .c{padding-top:6px!important;padding-bottom:6px!important}
+
+#tab-top .u-strip.u-tag{align-self:stretch!important;grid-template-rows:1fr 1fr!important;align-content:stretch!important;padding-top:0!important;padding-bottom:0!important}
+#tab-top .u-strip.u-tag > .c{display:flex;flex-direction:column;justify-content:center}
+#tab-top .u-seiseki-top .u-minis .m{padding-top:5px!important;padding-bottom:5px!important}
+#tab-top .u-risk-top #u-risk .m{padding-top:5px!important;padding-bottom:5px!important}
+
+#tab-top .u-strip.s5 .k{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.3}
+
+#tab-top .u-risk-top{align-self:stretch;display:flex;flex-direction:column;padding:0!important;overflow:hidden}
+#tab-top .u-risk-top #u-risk{flex:1 1 auto;grid-auto-rows:1fr;border:0!important;border-radius:0!important;margin:0}
+#tab-top .u-risk-top #u-risk .m{display:flex;flex-direction:column;justify-content:center;padding:12px 16px!important}
+#tab-top .u-risk-top #u-risk .k{font-size:.95rem!important;font-weight:800;white-space:normal}
+#tab-top .u-risk-top #u-risk .v{font-size:1.75rem!important;font-weight:900}
+
+#tab-top .u-seiseki-top{align-self:stretch;display:flex;flex-direction:column;padding:0!important;overflow:hidden}
+#tab-top .u-seiseki-top .u-minis{flex:1 1 auto;grid-auto-rows:1fr;border:0!important;border-radius:0!important;margin:0}
+#tab-top .u-seiseki-top .u-note:empty{display:none}
+#tab-top .u-seiseki-top .u-minis .m{display:flex;flex-direction:column;justify-content:center;padding:10px 16px!important}
+#tab-top .u-seiseki-top .u-minis .k{font-size:1.05rem!important}
+#tab-top .u-seiseki-top .u-minis .v{font-size:2rem!important;line-height:1.25}
+#tab-top .u-seiseki-top .u-minis .rate-pill{font-size:1.5rem!important}
+
+#u-live-pos{width:100%;min-width:960px;table-layout:fixed;border-collapse:collapse;border:1px solid #c9bfad;font-size:1rem;font-variant-numeric:tabular-nums}
+#u-live-pos th{background:#ece5d7;border:1px solid #ddd3c2;border-bottom:2px solid #b9af9c;font-size:.97rem;font-weight:800;color:var(--u-ink2);padding:8px 6px;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:1}
+#u-live-pos td{border:1px solid #ddd3c2;padding:4px 6px;vertical-align:middle;white-space:nowrap;overflow:hidden;height:56px}
+#u-live-pos tbody tr:nth-child(even){background:#f4efe5}
+#u-live-pos td:nth-child(1),#u-live-pos td:nth-child(3){text-align:center}
+#u-live-pos td:nth-child(2),#u-live-pos td:nth-child(6),#u-live-pos td:nth-child(7),#u-live-pos td:nth-child(10){text-align:left}
+#u-live-pos td:nth-child(4),#u-live-pos td:nth-child(5),#u-live-pos td:nth-child(8),#u-live-pos td:nth-child(9){text-align:right}
+#u-live-pos td.ea-exit-countdown{white-space:normal!important}
+#u-live-pos td.u-live-none{text-align:left!important}
+#tab-top .u-leftcol .u-live-scroll{min-height:0;max-height:none;overflow-x:auto;overflow-y:auto}
+#tab-top .u-leftcol .u-live-scroll{height:calc(42px + 56px * 10)}
+
+#tab-ea #ea-table td{padding-top:8px!important;padding-bottom:8px!important}
+#tab-ea #ea-table .ea-badge,#tab-ea #ea-table .rate-pill{padding-top:1px!important;padding-bottom:1px!important}
+#tab-ea .u-trades-col{display:flex;align-self:stretch;min-height:0;contain:size}
+#tab-ea .u-trades-col .ea-trades-panel{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;margin:0}
+#tab-ea .ea-trades-panel .table-wrap{flex:1 1 0;min-height:0;max-height:none!important;overflow:auto}
+#tab-ea #ea-trades-table thead th{position:sticky;top:0;z-index:1}
+#tab-ea #ea-trades-table th:nth-child(2),#tab-ea #ea-trades-table td:nth-child(2),
+#tab-ea #ea-trades-table th:nth-child(3),#tab-ea #ea-trades-table td:nth-child(3),
+#tab-ea #ea-trades-table th:nth-child(4),#tab-ea #ea-trades-table td:nth-child(4),
+#tab-ea #ea-trades-table th:nth-child(5),#tab-ea #ea-trades-table td:nth-child(5),
+#tab-ea #ea-trades-table th:nth-child(11),#tab-ea #ea-trades-table td:nth-child(11){display:none!important}
+#tab-ea #ea-trades-table col{display:none}
+@media (max-width:1280px){ #tab-ea .u-trades-col{contain:none} #tab-ea .ea-trades-panel .table-wrap{flex:none;max-height:640px} }
+
+#tab-top .u-cards-head{margin:0 0 10px;padding-top:8px!important;padding-bottom:8px!important}
+#tab-top .u-leftcol .u-card{padding-top:10px!important;padding-bottom:10px!important}
+body.u2 main.u-wrap{padding-bottom:10px!important}
+#tab-top .u-cards-head .u-stats .stat{display:flex;align-items:baseline;gap:8px}
+
+#u-ea-cards .u-tbl td{padding-top:8px!important;padding-bottom:8px!important}
+#u-ea-cards .u-tbl th{padding-top:5px!important;padding-bottom:5px!important}
+
+#u-ea-cards .u-tbl td,#u-ea-cards .u-tbl th{padding-left:12px!important;padding-right:12px!important}
+#u-ea-cards .u-tbl th:first-child,#u-ea-cards .u-tbl td:first-child{padding-left:14px!important}
+
+#u-ea-cards .u-tbl td{color:#14213d!important;font-weight:700!important;font-size:1.08rem!important}
+
+#u-ea-cards .u-tbl th{color:#111827!important;font-weight:800!important}
+#u-ea-cards .u-tbl td.pos,#u-ea-cards .u-tbl .pos{color:#0a5c27!important}
+#u-ea-cards .u-tbl td.neg,#u-ea-cards .u-tbl .neg{color:#9b1c12!important}
+#u-ea-cards .u-tbl .mut{color:#374151!important}
+#u-ea-cards a.ea-link{color:#1e3a8a!important;font-weight:900!important}
+#u-ea-cards .pcard-h .meta{color:#111827!important;font-weight:700!important}
+#u-ea-cards .pcard-h h3{font-weight:900!important;filter:brightness(.75)}
+#u-ea-cards .vb{font-weight:800!important}
+
+#u-ea-cards svg.spark{--u-up:#1d4ed8;--u-up-soft:rgba(29,78,216,.14)}
+#u-ea-cards .pcard-h{padding-top:4px!important;padding-bottom:4px!important}
+#tab-top .u-leftcol{gap:12px!important}
+#tab-top .u-leftcol .u-card .u-h{margin-bottom:6px!important}
+#tab-top .u-leftcol .u-minis .m{padding-top:6px!important;padding-bottom:6px!important}
+body.u2:has(> main.u-wrap) .tab-bar{max-width:none!important}
+.u-live-tbl td.u-dist .to-tp{color:#067647}.u-live-tbl td.u-dist .to-sl{color:#b42318}
+
+#ea-table .th-side,#ea-table td.side-cell,#ea-table .th-exit,#ea-table td.ea-exit-countdown,#ea-table .th-exit-distance,#ea-table td.ea-exit-distance{display:none!important}
+@media (max-width:1280px){.u-live-body{min-height:0}.u-live-scroll{position:static}}
 </style>
 <link rel="stylesheet" href="static/readable.css">
 <script src="static/tablealign.js" defer></script>
@@ -255,7 +375,7 @@ body.u2:not(.u-ops) #ea-table th.grp-action,body.u2:not(.u-ops) #ea-table td.ea-
 <section id="tab-top" class="tab-panel active">
 <div class="u-grid">
   
-  <section class="u-card u-strip s12" aria-label="サマリー">
+  <section class="u-card u-strip s5 u-tag u-tag-acct" data-tag="口座" aria-label="サマリー" title="口座と損益">
     <div class="c wide"><div class="k" id="u-gain-k">損益率（入出金の影響を除く）</div><div class="v big" id="u-gain">—</div><div class="d" id="u-gain-d"></div></div>
     <div class="c"><div class="k" id="u-maxdd-k">最大ドローダウン</div><div class="v" id="u-maxdd">—</div><div class="d" id="u-maxdd-d"></div></div>
     <div class="c"><div class="k" id="u-month-k">今月</div><div class="v" id="u-month">—</div><div class="d">直近7日 <b id="u-g7">—</b>・30日 <b id="u-g30">—</b></div></div>
@@ -266,9 +386,28 @@ body.u2:not(.u-ops) #ea-table th.grp-action,body.u2:not(.u-ops) #ea-table td.ea-
     <div class="c"><div class="k" id="today-day-label">本日</div><div class="v"><span id="today-realized">-</span></div><div class="d"><span id="today-trades">-</span>回・勝率 <span id="today-win-rate">-</span></div></div>
     <div class="c"><div class="k">証拠金率</div><div class="v"><span id="top-margin-level">-</span></div><div class="d">証拠金 <span id="top-margin">-</span></div></div>
   </section>
+  
+  
+  <section class="u-card s4 u-seiseki-top u-tag u-tag-perf" data-tag="成績" aria-label="成績の要約" title="成績の要約：決済した取引から（基準日以降）">
+    <div class="u-minis">
+      <div class="m"><div class="k">PF</div><div class="v"><span id="top-pf">-</span></div></div>
+      <div class="m"><div class="k">RF</div><div class="v"><span id="top-rf">-</span></div></div>
+      <div class="m"><div class="k">勝率</div><div class="v"><span id="top-win-rate">-</span></div></div>
+      <div class="m"><div class="k">取引</div><div class="v"><span id="top-trades">-</span></div></div>
+      <div class="m"><div class="k">SR</div><div class="v"><span id="top-sr">-</span></div></div>
+      <div class="m"><div class="k">期待利得</div><div class="v"><span id="top-expectancy">-</span></div></div>
+      <div class="m"><div class="k">年利</div><div class="v"><span id="top-annual">-</span></div></div>
+      <div class="m"><div class="k">決済損益</div><div class="v"><span id="metric-realized">-</span></div></div>
+    </div>
+    <p class="u-note" id="top-detached"></p>
+  </section>
+  <section class="u-card s3 u-risk-top u-tag u-tag-risk" data-tag="リスク" aria-label="リスクの目安" title="リスクの目安">
+    <div class="u-minis c3" id="u-risk"></div>
+  </section>
 
   
-  <section class="u-card s7 u-fill" aria-label="損益率の推移">
+  <div class="s5 u-stack u-leftcol">
+    <section class="u-card u-in-side" aria-label="損益率の推移">
     <div class="u-h">
       <h2 id="u-view-title">損益率の推移</h2>
       <span class="u-lead" id="u-view-lead">入金・出金の影響を除いた損益率（時間加重）</span>
@@ -294,31 +433,41 @@ body.u2:not(.u-ops) #ea-table th.grp-action,body.u2:not(.u-ops) #ea-table td.ea-
       <div class="u-chart" id="u-month-bars" hidden></div>
       <div class="u-chart" id="u-pair-bars" hidden></div>
     </div>
-  </section>
-  <div class="s5 u-stack">
-    <section class="u-card" aria-label="成績の要約">
-      <div class="u-h"><h2>成績の要約</h2><span class="u-lead">決済した取引から（基準日以降）</span></div>
-      <div class="u-minis">
-        <div class="m"><div class="k">PF</div><div class="v"><span id="top-pf">-</span></div></div>
-        <div class="m"><div class="k">RF</div><div class="v"><span id="top-rf">-</span></div></div>
-        <div class="m"><div class="k">勝率</div><div class="v"><span id="top-win-rate">-</span></div></div>
-        <div class="m"><div class="k">取引</div><div class="v"><span id="top-trades">-</span></div></div>
-        <div class="m"><div class="k">SR</div><div class="v"><span id="top-sr">-</span></div></div>
-        <div class="m"><div class="k">期待利得</div><div class="v"><span id="top-expectancy">-</span></div></div>
-        <div class="m"><div class="k">年利</div><div class="v"><span id="top-annual">-</span></div></div>
-        <div class="m"><div class="k">決済損益</div><div class="v"><span id="metric-realized">-</span></div></div>
-      </div>
-      <p class="u-note" id="top-detached"></p>
     </section>
-    <section class="u-card" aria-label="リスクの目安">
-      <div class="u-h"><h2>リスクの目安</h2></div>
-      <div class="u-minis c3" id="u-risk"></div>
+    <section class="u-card u-live" aria-label="リアルタイムの取引">
+    <div class="u-h">
+      <h2>リアルタイムの取引</h2>
+      <span class="u-lead">保有中のポジション・時刻は日本時間・0.5秒ごとに更新</span>
+      <span class="u-lead" id="ea-exit-countdown-status"></span>
+    </div>
+    <div class="u-live-body"><div class="u-tbl-wrap u-live-scroll"><table class="u-live-tbl u-live-fixed" id="u-live-pos"><colgroup><col style="width:96px"><col style="width:86px"><col style="width:66px"><col style="width:62px"><col style="width:118px"><col style="width:160px"><col style="width:200px"><col style="width:86px"><col style="width:86px"><col></colgroup>
+      <thead><tr><th>EA</th><th>銘柄</th><th>売買</th><th>ロット</th><th>含み損益</th><th title="今の含み損益から、利確（TP）・損切（SL）に届いたときまでの差（口座通貨）。損切の額は MT5 が建値から計算した値、利確の額はその比で出した目安。スワップは含まない。">利確・損切まで</th><th title="週末・休日前の強制決済を含む最も近い予定。保有期限は目安で、TP/SL・価格条件の決済が先行する場合があります。">次の時間決済</th><th>建値</th><th>今の値</th><th>メモ</th></tr></thead>
+      <tbody></tbody>
+    </table></div></div>
     </section>
   </div>
-
   
-  <section class="u-card s12 ea-panel" aria-label="EA別概要">
-    <div class="u-h"><h2>EA別概要</h2><span class="u-lead" id="ea-exit-countdown-status">時間決済は日本時間（JST）</span>
+  <div class="s7 u-cards-grid">
+    <section class="u-card u-cards-head" title="EA の名前を押すと、詳細データ（バックテストとフォワードの比べ）が開きます。「BT比」は、実運用をバックテストで同じ回数続けたときの広がり（90%）と比べた位置です（5回未満は判定しない）。">
+      <div class="u-h" style="margin:0">
+        <div class="u-stats" id="u-ea-stats"></div>
+        <div class="u-right">
+        
+          <label class="u-lead" id="u-ea-sort-wrap">並べ方 <select class="u-select" id="u-ea-sort"><option value="num">通貨ペア・稼働順</option><option value="contrib">寄与の大きい順</option><option value="n">回数の多い順</option><option value="since">新しく入った順</option></select></label>
+        </div>
+      </div>
+    </section>
+    <div id="u-ea-cards" class="u-cards-items"></div>
+  </div>
+
+</div>
+</section>
+
+<section id="tab-ea" class="tab-panel">
+<div class="u-grid">
+  
+  <section class="u-card s7 ea-panel" aria-label="EA別概要">
+    <div class="u-h"><h2>EA別概要</h2><span class="u-lead" title="magic number単位。売買・利確・損切まで・次の時間決済はトップの「リアルタイムの取引」に">月の列＝その月の損益率（* は今月）・合計＝稼働開始からの複利</span>
       <div class="u-right"><label class="u-lead"><input type="checkbox" id="u-show-ops"> 再集計・削除の操作を出す</label></div></div>
     <div class="table-wrap">
         <table id="ea-table" class="data-table ea-table">
@@ -340,67 +489,20 @@ body.u2:not(.u-ops) #ea-table th.grp-action,body.u2:not(.u-ops) #ea-table td.ea-
           </colgroup>
           <thead><tr>
             <th class="grp-id">EA名</th><th class="grp-id">Magic</th><th class="grp-id grp-end">銘柄</th>
-            <th class="grp-count">保有</th><th class="grp-count">売買</th><th class="grp-count">Lot</th><th class="grp-count grp-end">決済</th>
+            <th class="grp-count">保有</th><th class="grp-count th-side">売買</th><th class="grp-count">Lot</th><th class="grp-count grp-end">決済</th>
             <th class="grp-money">含み損益</th><th class="grp-money">決済損益</th>
             <th class="grp-percent">含み損益率</th><th class="grp-percent grp-end">勝率</th>
-            <th title="週末・休日前の強制決済を含む最も近い予定。保有期限は目安で、TP/SL・価格条件の決済が先行する場合があります。">次の時間決済（JST）</th><th class="grp-action">計測</th><th>メモ</th>
+            <th class="th-exit" title="週末・休日前の強制決済を含む最も近い予定。保有期限は目安で、TP/SL・価格条件の決済が先行する場合があります。">次の時間決済（JST）</th><th class="grp-action">計測</th><th>メモ</th>
           </tr></thead>
           <tbody></tbody>
         </table>
       </div>
   </section>
-</div>
-</section>
-
-<section id="tab-ea" class="tab-panel">
-<div class="u-grid">
-  <section class="u-card s12">
-    <div class="u-h" style="margin:0">
-      <div class="u-stats" id="u-ea-stats"></div>
-      <div class="u-right">
-        <div class="u-seg" role="group" aria-label="表示"><button type="button" data-eaview="cards">通貨ペア別</button><button type="button" data-eaview="month">月別の表</button></div>
-        <label class="u-lead" id="u-ea-sort-wrap">並べ方 <select class="u-select" id="u-ea-sort"><option value="num">通貨ペア・稼働順</option><option value="contrib">寄与の大きい順</option><option value="n">回数の多い順</option><option value="since">新しく入った順</option></select></label>
-      </div>
-    </div>
-    <p class="u-note">EA の名前を押すと、詳細データ（バックテストとフォワードの比べ）が開きます。「BT比」は、実運用をバックテストで同じ回数続けたときの広がり（90%）と比べた位置です（5回未満は判定しない）。</p>
-  </section>
-  <div class="s12 pcards" id="u-ea-cards"></div>
-  <section class="u-card s12" id="u-ea-month-wrap" hidden>
-    <div class="u-h"><h2>EA × 月の損益率</h2><span class="u-lead">* は今月。合計は稼働開始からの複利。緑はプラス・赤はマイナス、濃いほど大きい</span></div>
-    <div class="u-tbl-wrap"><table class="u-tbl" id="u-ea-month"></table></div>
-  </section>
-  <div class="s12"><section class="u-card ea-positions-panel">
+  
+  <table id="u-ea-month" hidden></table>
+  <div class="s5 u-trades-col"><section class="u-card ea-trades-panel">
       <div class="u-h">
-        <h2>EA別 保有中ポジション</h2>
-        <span>現在オープン中</span>
-      </div>
-      <div class="table-wrap">
-        <table id="ea-positions-table" class="data-table trades-table">
-          <colgroup>
-            <col class="col-ea"><col class="col-magic"><col class="col-account"><col class="col-ticket"><col class="col-symbol"><col class="col-lot"><col class="col-price"><col class="col-money"><col class="col-profit"><col class="col-time"><col class="col-comment col-position-comment">
-          </colgroup>
-          <thead><tr>
-            <th class="grp-id">EA名</th><th class="grp-id">Magic</th><th class="grp-id grp-end">口座</th>
-            <th class="grp-detail">Ticket</th><th class="grp-detail">銘柄</th><th class="grp-detail grp-end">ロット</th>
-            <th class="grp-money">建値</th><th class="grp-money">スワップ</th><th class="grp-money grp-end">含み損益</th>
-            <th class="grp-time grp-end">開始時刻</th><th>コメント</th>
-          </tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section></div>
-  <div class="s12"><section class="u-card ea-orders-panel">
-      <div class="u-h">
-        <h2>EA別 未約定オーダー</h2>
-        <span>現在発注中</span>
-      </div>
-      <div class="table-wrap">
-        <table id="ea-orders-table" class="data-table trades-table"><thead><tr></tr></thead><tbody></tbody></table>
-      </div>
-    </section></div>
-  <div class="s12"><section class="u-card ea-trades-panel">
-      <div class="u-h">
-        <h2>EA別 直近トレード</h2>
+        <h2>直近の決済</h2>
         <label class="filter-control">EA <select id="ea-trade-filter"></select></label>
       </div>
       <div class="table-wrap">
@@ -573,6 +675,100 @@ body.u2:not(.u-ops) #ea-table th.grp-action,body.u2:not(.u-ops) #ea-table td.ea-
     paint();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+</script>
+<script>
+
+(function(){
+  var box = document.getElementById("u-ea-cards");
+  if (!box) return;
+  var mo;
+  function weight(card){ return card.querySelectorAll("tbody tr").length + 3; }
+  function lay(force){
+    if (!force && !box.querySelector(":scope > .pcard")) return;
+    var cards = Array.prototype.slice.call(box.querySelectorAll(".pcard"));
+    if (!cards.length) return;
+    var n = box.clientWidth >= 1160 ? 2 : 1;
+    mo.disconnect();
+    var cols = [], h = [];
+    for (var i = 0; i < n; i++) { var c = document.createElement("div"); c.className = "u-col"; cols.push(c); h.push(0); }
+
+    var pick = cards.map(function(card, i){ return {card: card, i: i, w: weight(card)}; });
+    pick.slice().sort(function(a, b){ return b.w - a.w || a.i - b.i; }).forEach(function(x){ var k = h.indexOf(Math.min.apply(null, h)); x.col = k; h[k] += x.w; });
+    pick.forEach(function(x){ cols[x.col].appendChild(x.card); });
+    box.replaceChildren.apply(box, cols);
+    mo.observe(box, {childList: true});
+  }
+  mo = new MutationObserver(function(){ lay(false); });
+  mo.observe(box, {childList: true});
+
+  var t = null;
+  function recheck(){
+    var want = box.clientWidth >= 1160 ? 2 : 1;
+    if (box.querySelectorAll(":scope > .u-col").length === want) return;
+    clearTimeout(t); t = setTimeout(function(){ lay(true); }, 120);
+  }
+  if (window.ResizeObserver) new ResizeObserver(recheck).observe(box);
+  window.addEventListener("resize", recheck);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ lay(false); }); else lay(false);
+})();
+</script>
+<script>
+
+(function(){
+  var t = document.getElementById("ea-table");
+  if (!t) return;
+  var mo = null;
+  function pct(v){ return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2) + "%"; }
+  function bg(v, mx){ var a = Math.min(1, Math.abs(v) / mx) * 0.45 + 0.06; return v > 0 ? "rgba(21,128,61," + a.toFixed(3) + ")" : v < 0 ? "rgba(180,35,24," + a.toFixed(3) + ")" : "transparent"; }
+  function inject(){
+    var d = window.UI2 && window.UI2.data; if (!d || !d.views) return;
+    var ms = (d.views.now || d.views.all).months.map(function(r){ return r.m; });
+    var cur = String(d.asof || "").slice(0, 7);
+    var by = {}; (d.eas || []).forEach(function(e){ by[e.name] = e; });
+    var mx = 0; (d.eas || []).forEach(function(e){ if (e.live) ms.forEach(function(m){ var v = e.live.monthly[m]; if (v !== undefined) mx = Math.max(mx, Math.abs(v)); }); }); mx = mx || 1;
+    if (mo) mo.disconnect();
+    var hr = t.querySelector("thead tr");
+    if (hr) {
+      hr.querySelectorAll("th.u-m").forEach(function(x){ x.remove(); });
+      var memo = Array.prototype.slice.call(hr.children).filter(function(th){ return th.textContent.trim() === "メモ"; })[0] || null;
+      ms.concat(["合計"]).forEach(function(m, i){
+        var th = document.createElement("th"); th.className = "u-m grp-percent" + (i === ms.length ? " grp-end" : "");
+        th.textContent = m === "合計" ? "合計" : (+m.slice(5)) + "月" + (m === cur ? "*" : "");
+        if (m === "合計") th.title = "稼働開始からの複利の損益率";
+        hr.insertBefore(th, memo);
+      });
+    }
+    t.querySelectorAll("tbody tr").forEach(function(tr){
+      tr.querySelectorAll("td.u-m").forEach(function(x){ x.remove(); });
+      var memo = tr.querySelector("td.ea-memo");
+      var name = tr.cells[0] ? tr.cells[0].textContent.trim() : "";
+      var e = by[name];
+      ms.forEach(function(m){
+        var td = document.createElement("td"); td.className = "u-m grp-percent";
+        var v = e && e.live ? e.live.monthly[m] : undefined;
+        if (v === undefined) { td.textContent = "·"; td.style.color = "var(--u-muted)"; }
+        else { td.textContent = pct(v); td.style.background = bg(v, mx); }
+        tr.insertBefore(td, memo);
+      });
+      var tt = document.createElement("td"); tt.className = "u-m grp-percent grp-end";
+      var n = e && e.live ? e.live.net_pct : null;
+      tt.textContent = n === null || n === undefined ? "—" : pct(n);
+      tt.style.fontWeight = "800"; tt.style.color = n > 0 ? "var(--u-up)" : n < 0 ? "var(--u-down)" : "";
+      tr.insertBefore(tt, memo);
+    });
+    if (mo) mo.observe(t, {childList: true, subtree: true});
+  }
+  var pending = null;
+  mo = new MutationObserver(function(){
+    var need = t.querySelector("tbody tr:not(:has(td.u-m))") || (t.querySelector("thead tr") && !t.querySelector("thead th.u-m"));
+    if (!need) return;
+    clearTimeout(pending); pending = setTimeout(inject, 30);
+  });
+  mo.observe(t, {childList: true, subtree: true});
+  var prev = window.UI2 && window.UI2.onData;
+  if (window.UI2) window.UI2.onData = function(d){ if (prev) prev(d); inject(); };
+  inject();
 })();
 </script>
 </body>
