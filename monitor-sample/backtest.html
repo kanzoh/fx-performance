@@ -45,7 +45,9 @@
 <link rel="stylesheet" href="static/style.css">
 <link rel="stylesheet" href="static/ui2.css">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<style>#u-cmp{margin:0 0 12px}#u-cmp-table td,#u-cmp-table th{padding:5px 10px}#u-cmp-table td:nth-child(2),#u-cmp-table td:nth-child(3){min-width:120px}</style>
+<style>#u-cmp{margin:0 0 12px}#u-cmp-table td,#u-cmp-table th{padding:5px 10px}#u-cmp-table td:nth-child(2),#u-cmp-table td:nth-child(3){min-width:120px}
+.ann-note{display:inline;font-size:.76rem;font-weight:700;color:#344054;white-space:nowrap;margin-left:6px}
+</style>
 <style>
 a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 .ea-picker{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
@@ -635,7 +637,7 @@ function renderStats(e){
     ["勝率",fmtPct(s.win_pct,1,false),isNum(s.long_trades)?`買い ${s.long_trades}件（勝率 ${fmtPct(s.long_win_pct,1,false)}）・売り ${s.short_trades}件（勝率 ${fmtPct(s.short_win_pct,1,false)}）`:"買い・売りの別は実口座の決済の記録に無い"],
     ["プロフィットファクター",fmtNum(s.pf,2)],
     ["1取引の期待利得",fmtPct(s.expected_pct,3),"残高に対する平均の損益率"],
-    ["年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,1)}</span>`,`期間全体の損益 ${fmtPct(s.net_pct,0)}`],
+    ["年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,1)}</span>${s.cagr_days!=null?`<small class="ann-note" title="運用が365日未満のため、${s.cagr_days}日分の成績を単純に1年あたりに直した値">（${s.cagr_days}日分を年に換算）</small>`:""}`,`期間全体の損益 ${fmtPct(s.net_pct,0)}`],
     ["最大ドローダウン（決済だけ）",`<span class="neg">${fmtDD(s.max_dd_pct)}</span>`,"含み損は入らない。含み損込みは報告書の表の「証拠金相対ドローダウン」"],
     ["リカバリファクター",fmtNum(s.recovery_factor,2)],
     ["シャープレシオ（日次・年率）",fmtNum(s.sharpe_daily,2),"最初の決済の日〜最後の決済の日の暦日で、取引の無い日も0%として数える（判定期間の端の取引の無い日は入れない）"],
@@ -765,7 +767,7 @@ function renderMetrics(e){
       mm("年利（単利）",`<span class="${s.simple_annual_pct>=0?"pos":"neg"}">${fmtPct(s.simple_annual_pct,0)}</span>`,"green")+
       mm('<span class="kl">最大DD<wbr>（残高比）</span>',`<span class="neg">${fmtDD(s.max_dd_pct)}</span>`,"red")+
       mm('<span class="kl">最大DD<wbr>（R の合計）</span>',`<span class="neg">−${nf(s.max_dd_r,1)}R</span>`,"rose")+
-      mm("PF",fmtNum(s.pf,2),"blue")+
+      mm("PF（円）",fmtNum(s.pf,2),"blue")+
       mm("勝率",fmtPct(s.win_pct,1,false),"teal")+
       mm('<span class="kl">取引<wbr>（年あたり）</span>',`${nf(s.per_year,0)}件`,"purple")+
       mm('<span class="kl">黒字の月</span>',`${s.positive_months}／${s.months_full}`,"amber");
@@ -776,10 +778,10 @@ function renderMetrics(e){
   }
   const m=(label,val,accent,sub)=>`<div class="metric accent-${accent}"><div class="metric-label">${label}</div><div class="metric-value">${val}${sub?`<small>${sub}</small>`:""}</div></div>`;
   document.getElementById("metrics").innerHTML=
-    m("年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,1)}</span>`,"green")+
+    m("年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,1)}</span>${s.cagr_days!=null?`<small class="ann-note" title="運用が365日未満のため、${s.cagr_days}日分の成績を単純に1年あたりに直した値">（${s.cagr_days}日分を年に換算）</small>`:""}`,"green")+
     m('<span class="kl">最大DD<wbr>（決済だけ）</span>',`<span class="neg">${fmtDD(s.max_dd_pct)}</span>`,"red")+
     m('<span class="kl">含み損込みの<wbr>最大DD</span>',(()=>{const mm=/^\s*([\d.]+)\s*%/.exec(f["証拠金相対ドローダウン"]||""); return mm?`<span class="neg">−${esc(mm[1])}%</span>`:"—";})(),"rose")+
-    m("PF",fmtNum(s.pf,2),"blue")+
+    m("PF（円）",fmtNum(s.pf,2),"blue")+
     m("勝率",fmtPct(s.win_pct,1,false),"teal")+
     m('<span class="kl">取引<wbr>（年あたり）</span>',`${nf(s.per_year,1)}件`,"purple")+
     m("最長の水面下",`${nf(s.max_under_days,0)}日`,"amber")+

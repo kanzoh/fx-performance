@@ -284,6 +284,10 @@ body.u2 main.u-wrap{max-width:none!important}
 #tab-top .u-seiseki-top{align-self:stretch;display:flex;flex-direction:column;padding:0!important;overflow:hidden}
 #tab-top .u-seiseki-top .u-minis{flex:1 1 auto;grid-auto-rows:1fr;border:0!important;border-radius:0!important;margin:0}
 #tab-top .u-seiseki-top .u-note:empty{display:none}
+
+#tab-top #top-annual-note{font-size:inherit;font-weight:inherit;color:inherit;display:inline;white-space:nowrap;margin-left:0}
+#tab-top .u-seiseki-top .u-minis .k:has(#top-annual-note){white-space:nowrap!important;overflow:hidden}
+.ann-note{display:inline;font-size:.76rem;font-weight:700;color:#344054;white-space:nowrap;margin-left:6px}
 #tab-top .u-seiseki-top .u-minis .m{display:flex;flex-direction:column;justify-content:center;padding:10px 16px!important}
 #tab-top .u-seiseki-top .u-minis .k{font-size:1.05rem!important}
 #tab-top .u-seiseki-top .u-minis .v{font-size:2rem!important;line-height:1.25}
@@ -390,13 +394,14 @@ body.u2:has(> main.u-wrap) .tab-bar{max-width:none!important}
   
   <section class="u-card s4 u-seiseki-top u-tag u-tag-perf" data-tag="成績" aria-label="成績の要約" title="成績の要約：決済した取引から（基準日以降）">
     <div class="u-minis">
-      <div class="m"><div class="k">PF</div><div class="v"><span id="top-pf">-</span></div></div>
+      <div class="m"><div class="k">PF（円）</div><div class="v"><span id="top-pf">-</span></div></div>
       <div class="m"><div class="k">RF</div><div class="v"><span id="top-rf">-</span></div></div>
       <div class="m"><div class="k">勝率</div><div class="v"><span id="top-win-rate">-</span></div></div>
       <div class="m"><div class="k">取引</div><div class="v"><span id="top-trades">-</span></div></div>
       <div class="m"><div class="k">SR</div><div class="v"><span id="top-sr">-</span></div></div>
       <div class="m"><div class="k">期待利得</div><div class="v"><span id="top-expectancy">-</span></div></div>
-      <div class="m"><div class="k">年利</div><div class="v"><span id="top-annual">-</span></div></div>
+      
+      <div class="m"><div class="k">年利<span class="ann-note" id="top-annual-note" hidden></span></div><div class="v"><span id="top-annual">-</span></div></div>
       <div class="m"><div class="k">決済損益</div><div class="v"><span id="metric-realized">-</span></div></div>
     </div>
     <p class="u-note" id="top-detached"></p>
@@ -576,7 +581,7 @@ body.u2:has(> main.u-wrap) .tab-bar{max-width:none!important}
       </div>
       <div class="table-wrap">
         <table id="account-ea-performance-table" class="data-table performance-table">
-          <thead><tr><th>口座</th><th>EA名</th><th>Magic</th><th>銘柄</th><th>PF</th><th>RF</th><th>取引</th><th>DD%</th><th>SR</th><th>勝率</th><th>損益</th><th>期待利得</th><th>年利</th></tr></thead>
+          <thead><tr><th>口座</th><th>EA名</th><th>Magic</th><th>銘柄</th><th>PF（円）</th><th>RF</th><th>取引</th><th>DD%</th><th>SR</th><th>勝率</th><th>損益</th><th>期待利得</th><th>年利</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -769,6 +774,29 @@ body.u2:has(> main.u-wrap) .tab-bar{max-width:none!important}
   var prev = window.UI2 && window.UI2.onData;
   if (window.UI2) window.UI2.onData = function(d){ if (prev) prev(d); inject(); };
   inject();
+})();
+</script>
+<script>
+
+(function(){
+  function put(d){
+    var el = document.getElementById("top-annual-note"); if (!el || !d) return;
+    var n = Number(d.period_days);
+    if (n > 0 && n < 365) { el.dataset.n = n; el.title = "運用が365日未満のため、" + n + "日分の成績を1年あたりに換算した値"; el.hidden = false; fit(); }
+    else { el.textContent = ""; el.hidden = true; }
+  }
+
+  function fit(){
+    var el = document.getElementById("top-annual-note"); if (!el || el.hidden || !el.dataset.n) return;
+    var n = el.dataset.n, k = el.parentElement;
+    el.textContent = "（" + n + "日分を年に換算）";
+    if (k.scrollWidth > k.clientWidth + 1) el.textContent = "（年換算）";
+  }
+  window.addEventListener("resize", fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  var prev = window.UI2 && window.UI2.onData;
+  if (window.UI2) window.UI2.onData = function(d){ if (prev) prev(d); put(d); };
+  if (window.UI2 && window.UI2.data) put(window.UI2.data);
 })();
 </script>
 </body>

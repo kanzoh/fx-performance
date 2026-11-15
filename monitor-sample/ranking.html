@@ -249,14 +249,14 @@ var RK_METRICS={
     {k:"contrib",l:"寄与",d:"その EA の取引の損益率の合計（口座全体への貢献）",get:function(r){return r.n?r.contrib:null;},fmt:function(v){return pct(v);},signed:true},
     {k:"net",l:"損益率",d:"その EA の取引を複利で積んだ値",get:function(r){return r.live?r.live.net_pct:null;},fmt:function(v){return pct(v);},signed:true},
     {k:"cmp",l:"バックテストどおり度",d:"同じ回数のバックテストの中で、下から何 % の位置か（50% が平均的・高いほど上振れ）",get:function(r){return r.cmp&&r.cmp.verdict!=="few"?r.cmp.rank:null;},fmt:function(v){return "下から "+v+"%";},max:100},
-    {k:"pf",l:"PF",d:"利益の合計 ÷ 損失の合計。負けなしは一番上",get:function(r){return !r.n?null:(r.pf===null?(r.win>=100?999:null):r.pf);},fmt:function(v){return v>=999?"負けなし":v.toFixed(2);}},
+    {k:"pf",l:"PF（円）",d:"利益の合計 ÷ 損失の合計（円）。負けなしは一番上",get:function(r){return !r.n?null:(r.pf===null?(r.win>=100?999:null):r.pf);},fmt:function(v){return v>=999?"負けなし":v.toFixed(2);}},
     {k:"win",l:"勝率",d:"利益で終わった取引の割合",get:function(r){return r.n?r.win:null;},fmt:function(v){return v.toFixed(1)+"%";},max:100},
     {k:"dd",l:"最大ドローダウンの小ささ",d:"最高値からの最大の下げ（決済ベース）。小さいほど上",get:function(r){return r.live?r.live.max_dd_pct:null;},fmt:function(v){return v.toFixed(2)+"%";},low:true,loss:true},
     {k:"n",l:"取引回数",d:"いままでに決済した回数",get:function(r){return r.n;},fmt:function(v){return v+"回";},nomin:true}],
   bt:[
     {k:"cagr",l:"年平均リターン",d:"バックテストで、複利で 1 年あたり",get:function(r){return r.bt?r.bt.stats.cagr_pct:null;},fmt:function(v){return pct(v,1);},signed:true},
     {k:"rf",l:"リカバリーファクター",d:"累計の利益 ÷ 最大ドローダウン。下げに対して効率よく稼ぐほど上",get:function(r){return r.bt?r.bt.stats.recovery_factor:null;},fmt:function(v){return v.toFixed(1);}},
-    {k:"pf",l:"PF",d:"利益の合計 ÷ 損失の合計",get:function(r){return r.bt?r.bt.stats.pf:null;},fmt:function(v){return v.toFixed(2);}},
+    {k:"pf",l:"PF（円）",d:"利益の合計 ÷ 損失の合計（円）",get:function(r){return r.bt?r.bt.stats.pf:null;},fmt:function(v){return v.toFixed(2);}},
     {k:"dd",l:"最大ドローダウンの小ささ",d:"最高値からの最大の下げ。小さいほど上",get:function(r){return r.bt?r.bt.stats.max_dd_pct:null;},fmt:function(v){return v.toFixed(1)+"%";},low:true,loss:true},
     {k:"sharpe",l:"シャープレシオ",d:"日々のぶれに対するリターンの大きさ（日次）",get:function(r){return r.bt?r.bt.stats.sharpe_daily:null;},fmt:function(v){return v.toFixed(2);}},
     {k:"win",l:"勝率",d:"利益で終わった取引の割合",get:function(r){return r.bt?r.bt.stats.win_pct:null;},fmt:function(v){return v.toFixed(1)+"%";},max:100},
@@ -337,8 +337,8 @@ function drawRank(){
 
 var RKP={
   live:{contrib:["contrib","寄与（ペアの合計）",true],net:["contrib","寄与（ペアの合計）",true],cmp:["contrib","寄与（ペアの合計）",true],
-        pf:["pf","PF（ペアの集計）"],win:["win","勝率（ペアの集計）"],dd:["contrib","寄与（ペアの合計）",true],n:["n","取引回数（ペアの合計）"]},
-  bt:{cagr:["cagr_pct","年平均リターン（EA の平均）",true],rf:["recovery_factor","リカバリーファクター（EA の平均）"],pf:["pf","PF（EA の平均）"],
+        pf:["pf","PF（円・ペアの集計）"],win:["win","勝率（ペアの集計）"],dd:["contrib","寄与（ペアの合計）",true],n:["n","取引回数（ペアの合計）"]},
+  bt:{cagr:["cagr_pct","年平均リターン（EA の平均）",true],rf:["recovery_factor","リカバリーファクター（EA の平均）"],pf:["pf","PF（円・EA の平均）"],
       dd:["max_dd_pct","最大ドローダウン（EA の平均・小さいほど上）",false,true],sharpe:["sharpe_daily","シャープレシオ（EA の平均）"],
       win:["win_pct","勝率（EA の平均）"],yrs:["yrs","利益の出た年の割合（EA の平均）"],per_year:["per_year","年あたりの取引回数（ペアの合計）",false,false,true]}};
 function drawPairRank(m){

@@ -389,7 +389,7 @@ function drawHero() {
     "実弾の稼ぎは BT の見込みの <em>" + Math.round(ratio * 100) + "%</em>";
 
   $("scope").textContent = (D.summary && D.summary.eas === s.eas) ? (D.scope || "") :
-    "今の顔ぶれ " + s.eas + "本・実弾の決済 " + s.n + "件を、統一基準K の台帳の見込みと突き合わせた（外した本は下の別枠）";
+    "今の顔ぶれ " + s.eas + "本・実弾の決済 " + s.n + "件を、バックテスト（詳細データと同じ）の見込みと突き合わせた（外した本は下の別枠）";
   var mx = Math.max(Math.abs(lv || 0), Math.abs(bt || 0), 0.01);
   function row(k, v, kind) {
     var w = Math.max(1.5, Math.abs(v || 0) / mx * (window.matchMedia("(max-width:760px)").matches ? 50 : 72));

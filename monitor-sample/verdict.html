@@ -375,6 +375,8 @@ details>summary:focus-visible,.view-switch button:focus-visible{outline:2px soli
   .events-panel .history-note{display:none}
 }
 @media(max-width:540px){ #health-groups{grid-template-columns:minmax(0,360px)}}
+
+.ann-note{display:inline;font-size:.76rem;font-weight:700;color:#344054;white-space:nowrap;margin-left:6px}
 </style>
 <link rel="stylesheet" href="static/readable.css">
 <script src="static/tablealign.js" defer></script>
@@ -462,7 +464,7 @@ details>summary:focus-visible,.view-switch button:focus-visible{outline:2px soli
           <thead>
             <tr>
               <th class="grp g-ea" colspan="2">EA</th>
-              <th class="grp g-perf" colspan="7">成績（左＝実口座／右＝バックテスト15年）</th>
+              <th class="grp g-perf" colspan="7">成績（左＝実口座／右＝バックテスト15年・判定の基準で固定）</th>
               <th class="grp g-watch" colspan="6">見張りの線（15年で出た最悪）</th>
               <th class="grp g-goal" colspan="4">目標の物差し（2段の線・研究用）</th>
               <th class="grp g-ea">メモ</th>
@@ -470,7 +472,7 @@ details>summary:focus-visible,.view-switch button:focus-visible{outline:2px soli
             <tr>
               <th>EA</th><th>判定</th>
               <th>取引</th><th title="実口座だけ。大きい字＝1件ごとの損益率（損益÷建てた時点の口座残高）を掛け合わせた率／小さい字＝実際の損益の合計（円）。口座には他の EA の損益や同時の建玉があるので、円を残高で割った値とは一致しない">損益&nbsp;🛈</th><th>年利</th><th>勝率</th>
-              <th title="総利益÷総損失（R）">PF</th><th title="純益÷最大DD額">RF</th><th title="日次の利益率から出した年率シャープ">SR</th>
+              <th title="総利益÷総損失（R）">PF（R）</th><th title="純益÷最大DD額">RF</th><th title="日次の利益率から出した年率シャープ">SR</th>
               <th>最大DD</th><th>連敗</th><th>最大の負け</th>
               <th title="実口座と同じ件数の、バックテストで最悪だった連続区間">直近の成績</th><th>水面下</th><th>取引無し</th>
               <th title="目標の物差し（JSON）">t</th><th title="目標の物差し（JSON）">期待R</th>
@@ -1202,7 +1204,7 @@ function render(j){
       <td class="b-ea">${b.has("unknown")?`<span class="judge" style="color:#b54708;background:var(--panel-amber);border:1px solid var(--line-strong)">判定できない</span><span class="judge-why" style="color:#b54708">決められない取引 ${UNK_KEYS.reduce((a,k)=>a+(m[k]||0),0)}件${b.has("gap")?"・取引無しが線を越えた":""}${(m.exclusion_errors||[]).length?"・"+esc(m.exclusion_errors.join("・")):""}</span>`:e.bad.length?`<span class="judge bad">疑う</span><span class="judge-why">${e.bad.map(k=>L[k]).join("・")}</span>`:'<span class="judge ok">想定内</span>'}${m.excluded_n?`<span class="judge-why" style="color:#475467;white-space:nowrap;cursor:help" title="${esc(m.excluded.map(x=>`#${x.ticket} ${x.label} ${yenAmt(x.profit)}（建玉 ${x.open_time}・決済 ${x.close_time}）\n理由: ${x.reason}\n承認: ${x.approved_by}\n根拠: ${x.evidence}`).join("\n\n")+"\n\nEA の評価からは外し、口座の残高・損益には含めています")}">除外 ${m.excluded_n}件・${esc([...new Set(m.excluded.map(x=>x.label))].join("・"))} ${yenAmt(m.excluded_yen)}</span>`:""}</td>
       ${p2(U?`${m.n_total}*`:`${m.n}`,`${nm(bt.per_year,0)}件/年`)}
       ${p2(pct(m.sum_pct),`${U||m.sum_yen==null?"—":yenAmt(m.sum_yen)}`,cls(m.sum_pct))}
-      ${p2(m.cagr==null?"—":pct(m.cagr,1),`${pct(bt.cagr,1)}`,cls(m.cagr))}
+      ${p2(m.cagr==null?"—":pct(m.cagr,1)+(m.cagr_days!=null?`<span class="ann-note" title="運用が365日未満のため、${m.cagr_days}日分の成績を単純に1年あたりに直した値">（${m.cagr_days}日分を年に換算）</span>`:""),`${pct(bt.cagr,1)}`,cls(m.cagr))}
       ${p2(m.n?nm(m.win*100,0)+"%":"—",`${nm(bt.win*100,0)}%`)}
       ${p2(m.pf_r==null?"—":nm(m.pf_r,2),`${nm(bt.pf_r,2)}`)}
       ${p2(m.rf==null?"—":nm(m.rf,1),`${nm(bt.rf,1)}`)}

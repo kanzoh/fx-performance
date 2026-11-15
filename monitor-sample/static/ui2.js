@@ -298,7 +298,7 @@ function drawEA() {
     var n = 0, c = 0, y = 0, plus = 0, tr = 0; g.forEach(function (r) { n += r.n; c += r.contrib; y += r.yen || 0; if (r.n) { tr++; if (r.contrib > 0) plus++; } });
     return "<article class='pcard' style='" + pvars(p) + "'>" +
       "<div class='pcard-h'><h3><i></i>" + esc(p) + "</h3><div class='meta'>" + g.length + "本・" + nf(n) + "回・<b class='" + cls(y) + "'>" + syen(y) + "</b><br>寄与 <b class='" + cls(c) + "'>" + (n ? pct(c) : "—") + "</b>・プラス " + plus + " / " + tr + "</div></div>" +
-      "<div class='u-tbl-wrap'><table class='u-tbl'><thead><tr><th>EA</th><th>回数</th><th>勝率</th><th>PF</th><th>損益</th><th>寄与</th><th>BT比</th><th>推移</th></tr></thead><tbody>" +
+      "<div class='u-tbl-wrap'><table class='u-tbl'><thead><tr><th>EA</th><th>回数</th><th>勝率</th><th>PF（円）</th><th>損益</th><th>寄与</th><th>BT比</th><th>推移</th></tr></thead><tbody>" +
       g.map(function (r) {
         return "<tr><td>" + eaLink(r) + "</td><td>" + nf(r.n) + "</td><td>" + (r.n ? r.win.toFixed(0) + "%" : "—") + "</td><td>" + pfText(r) + "</td>" +
           "<td class='" + cls(r.yen) + "'>" + (r.n ? syen(r.yen) : "—") + "</td><td class='" + cls(r.contrib) + "'>" + (r.n ? pct(r.contrib) : "—") + "</td>" +
@@ -353,7 +353,7 @@ U.compare = function (name) {
     ["取引回数", b ? nf(b.trades) + "回（" + f2(b.years, 1) + "年）" : "—", nf(r.n) + "回（" + (r.since ? md(r.since) + "から" : "—") + "）", null],
     ["年あたりの回数", b ? f2(b.per_year, 0) + "回" : "—", liveYear === null ? "—" : f2(liveYear, 0) + "回", null, b ? b.per_year : null, liveYear, 0],
     ["勝率", b ? f2(b.win_pct, 1) + "%" : "—", r.n ? f2(r.win, 1) + "%" : "—", 1, b ? b.win_pct : null, r.n ? r.win : null],
-    ["PF", b ? f2(b.pf) : "—", !r.n ? "—" : r.pf === null ? (r.win >= 100 ? "負けなし" : "—") : f2(r.pf), 1, b ? b.pf : null, r.pf],
+    ["PF（円）", b ? f2(b.pf) : "—", !r.n ? "—" : r.pf === null ? (r.win >= 100 ? "負けなし" : "—") : f2(r.pf), 1, b ? b.pf : null, r.pf],
     ["1回の期待値（残高比）", b ? pct(b.expected_pct, 3) : "—", L ? pct(L.expected_pct, 3) : "—", 1, b ? b.expected_pct : null, L ? L.expected_pct : null],
     ["平均の勝ち", b ? pct(b.avg_win_pct) : "—", L ? pct(L.avg_win_pct) : "—", 1, b ? b.avg_win_pct : null, L ? L.avg_win_pct : null],
     ["平均の負け", b ? pct(b.avg_loss_pct) : "—", L ? pct(L.avg_loss_pct) : "—", 1, b ? b.avg_loss_pct : null, L ? L.avg_loss_pct : null],
@@ -374,7 +374,7 @@ U.compare = function (name) {
     "取引回数": "実運用は動かし始めてからの決済の数。少ないうちは下の比べが大きくぶれる",
     "年あたりの回数": "実運用は2週間以上動かしてから年に直す。差は建てる回数の違い",
     "勝率": "勝った決済の割合。5回未満では読めない",
-    "PF": "勝ちの合計÷負けの合計。1 を超えれば黒字",
+    "PF（円）": "勝ちの合計÷負けの合計（円）。1 を超えれば黒字",
     "1回の期待値（残高比）": "1回で口座残高の何%増えたか（BT はリスク" + (r.bt ? r.bt.risk : "—") + "%の複利）",
     "平均の勝ち": "勝った決済の平均（残高比）",
     "平均の負け": "負けた決済の平均（残高比）。損切り幅どおりなら BT と近くなる",

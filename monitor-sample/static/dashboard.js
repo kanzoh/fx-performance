@@ -2197,7 +2197,7 @@ const PERFORMANCE_METRIC_GROUPS = [
   { text: "取引", group: "count", col: "col-trade-count" },
   { text: "勝", group: "count", col: "col-small-count" },
   { text: "負", group: "count", col: "col-small-count", end: true },
-  { text: "PF", group: "ratio", col: "col-pf" },
+  { text: "PF（円）", group: "ratio", col: "col-pf" },
   { text: "RF", group: "ratio", col: "col-rf" },
   { text: "SR", group: "ratio", col: "col-ratio", end: true },
   { text: "総利益", group: "money", col: "col-money" },
@@ -2311,7 +2311,7 @@ function performanceHtml(row, options = {}) {
     <td class="grp-money grp-end ${profitClass(row.expectancy)}">${fmtSignedYen(row.expectancy)}</td>
     <td class="grp-percent ${profitClass(-Number(row.dd_pct || 0))}">${fmtPlainPct(row.dd_pct)}</td>
     <td class="grp-percent"><span class="rate-pill ${winRateClass(row.win_rate)}">${fmtPlainPct(row.win_rate)}</span></td>
-    <td class="grp-percent grp-end ${profitClass(row.annual_return)}">${fmtPct(row.annual_return)}</td>
+    <td class="grp-percent grp-end ${profitClass(row.annual_return)}">${fmtPct(row.annual_return)}${row.annual_days != null ? `<small class="ann-note" title="運用が365日未満のため、${row.annual_days}日分の成績を単純に1年あたりに直した値">（${row.annual_days}日分を年に換算）</small>` : ""}</td>
     <td class="ea-memo">${performanceMemo(row)}</td>`;
 }
 
