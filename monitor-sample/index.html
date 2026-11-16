@@ -293,17 +293,27 @@ body.u2 main.u-wrap{max-width:none!important}
 #tab-top .u-seiseki-top .u-minis .v{font-size:2rem!important;line-height:1.25}
 #tab-top .u-seiseki-top .u-minis .rate-pill{font-size:1.5rem!important}
 
-#u-live-pos{width:100%;min-width:960px;table-layout:fixed;border-collapse:collapse;border:1px solid #c9bfad;font-size:1rem;font-variant-numeric:tabular-nums}
+#u-live-pos{width:100%;min-width:974px;table-layout:fixed;border-collapse:collapse;border:1px solid #c9bfad;font-size:1rem;font-variant-numeric:tabular-nums}
 #u-live-pos th{background:#ece5d7;border:1px solid #ddd3c2;border-bottom:2px solid #b9af9c;font-size:.97rem;font-weight:800;color:var(--u-ink2);padding:8px 6px;text-align:center;white-space:nowrap;position:sticky;top:0;z-index:1}
 #u-live-pos td{border:1px solid #ddd3c2;padding:4px 6px;vertical-align:middle;white-space:nowrap;overflow:hidden;height:56px}
 #u-live-pos tbody tr:nth-child(even){background:#f4efe5}
-#u-live-pos td:nth-child(1),#u-live-pos td:nth-child(3){text-align:center}
-#u-live-pos td:nth-child(2),#u-live-pos td:nth-child(6),#u-live-pos td:nth-child(7),#u-live-pos td:nth-child(10){text-align:left}
-#u-live-pos td:nth-child(4),#u-live-pos td:nth-child(5),#u-live-pos td:nth-child(8),#u-live-pos td:nth-child(9){text-align:right}
-#u-live-pos td.ea-exit-countdown{white-space:normal!important}
+#u-live-pos td:nth-child(1),#u-live-pos td:nth-child(2),#u-live-pos td:nth-child(3){text-align:center}
+#u-live-pos td:nth-child(7),#u-live-pos td:nth-child(8),#u-live-pos td:nth-child(11){text-align:left}
+#u-live-pos td:nth-child(4),#u-live-pos td:nth-child(5),#u-live-pos td:nth-child(6),#u-live-pos td:nth-child(9),#u-live-pos td:nth-child(10){text-align:right}
+
+#u-live-pos td.ea-exit-countdown{white-space:nowrap!important}
+
+#u-live-pos td:nth-child(5),#u-live-pos td:nth-child(6){font-size:1.2rem!important}
+#u-live-pos td.ea-exit-countdown strong,#u-live-pos td.ea-exit-countdown small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #u-live-pos td.u-live-none{text-align:left!important}
+
+#u-live-pos th:last-child,#u-live-pos td:last-child{padding-left:0!important;padding-right:0!important;overflow:hidden}
+#u-live-pos:not(.u-memo-on) th:last-child,#u-live-pos:not(.u-memo-on) td:last-child{border-left:0!important;border-right:0!important;color:transparent!important}
+#u-live-pos.u-memo-on th:last-child,#u-live-pos.u-memo-on td:last-child{padding-left:6px!important;padding-right:6px!important}
 #tab-top .u-leftcol .u-live-scroll{min-height:0;max-height:none;overflow-x:auto;overflow-y:auto}
 #tab-top .u-leftcol .u-live-scroll{height:calc(42px + 56px * 10)}
+
+#tab-top .u-leftcol .u-live-scroll{scrollbar-gutter:stable}
 
 #tab-ea #ea-table td{padding-top:8px!important;padding-bottom:8px!important}
 #tab-ea #ea-table .ea-badge,#tab-ea #ea-table .rate-pill{padding-top:1px!important;padding-bottom:1px!important}
@@ -445,8 +455,8 @@ body.u2:has(> main.u-wrap) .tab-bar{max-width:none!important}
       <span class="u-lead">保有中のポジション・時刻は日本時間・0.5秒ごとに更新</span>
       <span class="u-lead" id="ea-exit-countdown-status"></span>
     </div>
-    <div class="u-live-body"><div class="u-tbl-wrap u-live-scroll"><table class="u-live-tbl u-live-fixed" id="u-live-pos"><colgroup><col style="width:96px"><col style="width:86px"><col style="width:66px"><col style="width:62px"><col style="width:118px"><col style="width:160px"><col style="width:200px"><col style="width:86px"><col style="width:86px"><col></colgroup>
-      <thead><tr><th>EA</th><th>銘柄</th><th>売買</th><th>ロット</th><th>含み損益</th><th title="今の含み損益から、利確（TP）・損切（SL）に届いたときまでの差（口座通貨）。損切の額は MT5 が建値から計算した値、利確の額はその比で出した目安。スワップは含まない。">利確・損切まで</th><th title="週末・休日前の強制決済を含む最も近い予定。保有期限は目安で、TP/SL・価格条件の決済が先行する場合があります。">次の時間決済</th><th>建値</th><th>今の値</th><th>メモ</th></tr></thead>
+    <div class="u-live-body"><div class="u-tbl-wrap u-live-scroll"><table class="u-live-tbl u-live-fixed" id="u-live-pos"><colgroup><col style="width:96px"><col style="width:76px"><col style="width:60px"><col style="width:62px"><col style="width:118px"><col style="width:118px"><col><col><col style="width:86px"><col style="width:86px"><col style="width:0"></colgroup>
+      <thead><tr><th>EA</th><th>銘柄</th><th>売買</th><th>ロット</th><th>含み損益</th><th title="その EA の今までの決済の損益の合計（EA別概要の「損益」と同じ・含み損益は入らない）">損益</th><th title="今の含み損益から、利確（TP）・損切（SL）に届いたときまでの差（口座通貨）。損切の額は MT5 が建値から計算した値、利確の額はその比で出した目安。スワップは含まない。">利確・損切まで</th><th title="週末・休日前の強制決済を含む最も近い予定。保有期限は目安で、TP/SL・価格条件の決済が先行する場合があります。">次の時間決済</th><th>建値</th><th>今の値</th><th>メモ</th></tr></thead>
       <tbody></tbody>
     </table></div></div>
     </section>

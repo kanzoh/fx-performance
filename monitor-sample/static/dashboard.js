@@ -2700,8 +2700,8 @@ function liveDistanceCell(p, bySymbol) {
     if (Number.isFinite(slYen)) { toSl = slYen - profit; slGain = slYen >= 0; }
   }
   return `<span class="to-tp">利確 ${toTp === null ? (tp > 0 ? "未確認" : "TPなし") : fmtSignedYen(toTp)}</span>` +
-    `<span class="to-sl">損切 ${toSl === null ? (sl > 0 ? "未確認" : "SLなし") : fmtSignedYen(toSl)}</span>` +
-    (slGain ? "<small>損切でも建値以上</small>" : "");
+
+    `<span class="to-sl"${slGain ? ' title="損切でも建値以上"' : ""}>損切 ${toSl === null ? (sl > 0 ? "未確認" : "SLなし") : fmtSignedYen(toSl)}</span>`;
 }
 
 function livePrice(v, symbol) {
@@ -2711,6 +2711,93 @@ function livePrice(v, symbol) {
   const d = s.startsWith("XAU") ? 2 : s.includes("JPY") ? 3 : 5;
   return n.toLocaleString("ja-JP", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
+
+const LIVE_COLS = [96, 76, 60, 62, 118, 118, null, null, 86, 86];
+const LIVE_FLEX_MIN = [132, 140], LIVE_FLEX_MAX = 180, LIVE_MEMO_MIN = 60;
+function fitLiveCols() {
+  const table = document.getElementById("u-live-pos");
+  const wrap = table?.parentElement;
+  if (!table || !wrap || !wrap.clientWidth) return;
+  const cols = table.querySelectorAll("colgroup col");
+  if (cols.length !== LIVE_COLS.length + 1) return;
+  const W = wrap.clientWidth - 3;
+  const fixed = LIVE_COLS.reduce((a, w) => a + (w || 0), 0);
+  const rest = Math.max(0, W - fixed);
+  const clamp = (x, lo) => Math.floor(Math.min(LIVE_FLEX_MAX, Math.max(lo, x)));
+  const f1 = clamp(rest / 2, LIVE_FLEX_MIN[1]);
+  const flex = [clamp(rest - f1, LIVE_FLEX_MIN[0]), f1];
+  let memo = Math.max(0, W - fixed - flex[0] - flex[1]);
+  if (memo < LIVE_MEMO_MIN) {
+    flex[0] += Math.floor(memo / 2); flex[1] += memo - Math.floor(memo / 2); memo = 0;
+  }
+  const widths = LIVE_COLS.map((w, i) => (w === null ? flex[i - 6] : w)).concat([memo]);
+  widths.forEach((w, i) => { const v = w + "px"; if (cols[i].style.width !== v) cols[i].style.width = v; });
+  table.classList.toggle("u-memo-on", memo > 0);
+}
+(() => {
+  const wrap = document.getElementById("u-live-pos")?.parentElement;
+  if (wrap && "ResizeObserver" in window) new ResizeObserver(() => fitLiveCols()).observe(wrap);
+  window.addEventListener("resize", fitLiveCols);
+})();
+
+function fitTopValues() {
+  for (const v of document.querySelectorAll("#tab-top .v")) {
+    if (!v.offsetParent) continue;
+    const sig = v.textContent + "|" + v.parentElement.clientWidth;
+    if (v.dataset.fitSig === sig) continue;
+    v.dataset.fitSig = sig;
+    v.style.removeProperty("font-size");
+    if (v.scrollWidth <= v.clientWidth + 1) continue;
+    const base = parseFloat(getComputedStyle(v).fontSize);
+    for (let f = base - 1; f >= base * 0.75; f -= 1) {
+      v.style.setProperty("font-size", f + "px", "important");
+      if (v.scrollWidth <= v.clientWidth + 1) break;
+    }
+  }
+}
+(() => {
+  const top = document.getElementById("tab-top");
+  if (!top) return;
+  let queued = false;
+  const run = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; fitTopValues(); }); };
+  new MutationObserver(run).observe(top, { childList: true, characterData: true, subtree: true });
+  window.addEventListener("resize", run);
+  run();
+})();
+
+function reconcileLiveCells(tbody, rows) {
+  const existing = new Map();
+  for (const tr of [...tbody.children]) {
+    if (tr.dataset.key) existing.set(tr.dataset.key, tr); else tr.remove();
+  }
+  const seen = new Set();
+  let prev = null;
+  for (const row of rows) {
+    seen.add(row.key);
+    let tr = existing.get(row.key);
+    if (tr && tr.cells.length !== row.cells.length) { tr.remove(); tr = null; }
+    if (!tr) {
+      tr = document.createElement("tr");
+      tr.dataset.key = row.key;
+      for (let i = 0; i < row.cells.length; i++) tr.appendChild(document.createElement("td"));
+    }
+    row.cells.forEach((c, i) => {
+      const cell = tr.cells[i];
+      if (c.exit) {
+        for (const [k, v] of Object.entries(c.exit)) if (cell.getAttribute(k) !== v) cell.setAttribute(k, v);
+        if (!cell.classList.contains("ea-exit-countdown")) { cell.className = "ea-exit-countdown"; cell.textContent = "確認中"; }
+        return;
+      }
+      if (c.colspan && cell.colSpan !== c.colspan) cell.colSpan = c.colspan;
+      if (cell.className !== (c.cls || "")) cell.className = c.cls || "";
+      if (cell.dataset.h !== c.html) { cell.innerHTML = c.html; cell.dataset.h = c.html; }
+    });
+    const want = prev ? prev.nextSibling : tbody.firstChild;
+    if (want !== tr) tbody.insertBefore(tr, want);
+    prev = tr;
+  }
+  for (const [key, tr] of existing) if (!seen.has(key)) tr.remove();
+}
 function renderTopLive() {
   const posBody = document.querySelector("#u-live-pos tbody");
   if (!posBody) return;
@@ -2718,30 +2805,41 @@ function renderTopLive() {
   const pos = (latestPositions || []).slice().sort((a, b) => (liveJstMs(b.open_time) || 0) - (liveJstMs(a.open_time) || 0));
   let pl = 0, sl = 0, slKnown = 0;
   const yenPerPrice = liveYenPerPrice(pos);
+
+  const realizedByEa = new Map((latestSummary?.ea_stats || []).map((e) => [`${e.account_login}:${e.magic}`, e.total_profit]));
+
+  const td = (html, cls = "") => ({ html, cls });
   const posRows = pos.map((p) => {
     const total = Number(p.profit || 0) + Number(p.swap || 0);
     pl += total;
     const slp = p.sl_profit_account_currency;
     if (slp !== null && slp !== undefined && slp !== "" && Number(p.sl) > 0) { sl += Number(slp); slKnown += 1; }
-    const t = liveJstMs(p.open_time);
     const side = String(p.type_text || "").toUpperCase();
+    const r = realizedByEa.get(`${p.account_login}:${p.magic}`);
+
     return {
       key: `live-pos:${p.account_login}:${p.ticket}`,
-      html: `<td class="ea">${eaNameCell(p.magic)}</td><td>${(p.symbol || "-").replace(/-m$/, "")}</td>
-        <td>${side === "BUY" ? '<span class="u-side u-buy">買い</span>' : side === "SELL" ? '<span class="u-side u-sell">売り</span>' : "-"}</td>
-        <td>${Number.isFinite(Number(p.volume)) ? Number(p.volume).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"}</td>
-        <td class="${profitClass(total)}"><b>${fmtSignedYen(total)}</b></td>
-        <td class="u-dist">${liveDistanceCell(p, yenPerPrice)}</td>
-        <td class="ea-exit-countdown" data-exit-account="${Number(p.account_login)}" data-exit-magic="${Number(p.magic)}" data-exit-open="1">確認中</td>
-        <td>${livePrice(p.open_price, p.symbol)}</td><td>${livePrice(p.current_price, p.symbol)}</td><td class="u-memo"></td>`,
-
+      cells: [
+        td(eaNameCell(p.magic), "ea"),
+        td((p.symbol || "-").replace(/-m$/, "")),
+        td(side === "BUY" ? '<span class="u-side u-buy">買い</span>' : side === "SELL" ? '<span class="u-side u-sell">売り</span>' : "-"),
+        td(Number.isFinite(Number(p.volume)) ? Number(p.volume).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"),
+        td(`<b>${fmtSignedYen(total)}</b>`, profitClass(total)),
+        r === undefined || r === null ? td("-") : td(fmtSignedYen(r), profitClass(r)),
+        td(liveDistanceCell(p, yenPerPrice), "u-dist"),
+        { exit: { "data-exit-account": String(Number(p.account_login)), "data-exit-magic": String(Number(p.magic)), "data-exit-open": "1" } },
+        td(livePrice(p.open_price, p.symbol)),
+        td(livePrice(p.current_price, p.symbol)),
+        td("", "u-memo"),
+      ],
     };
   });
 
-  if (!posRows.length) posRows.push({ key: "live-pos:none", html: '<td class="u-live-none" colspan="10">今は建玉がありません</td>' });
+  if (!posRows.length) posRows.push({ key: "live-pos:none", cells: [{ html: "今は建玉がありません", cls: "u-live-none", colspan: 11 }] });
 
-  for (let i = posRows.length; i < 10; i++) posRows.push({ key: `live-pos:blank:${i}`, html: "<td></td>".repeat(10) });
-  reconcileRows(posBody, posRows, (r) => r.key, (r) => r.html);
+  for (let i = posRows.length; i < 10; i++) posRows.push({ key: `live-pos:blank:${i}`, cells: Array.from({ length: 11 }, () => td("")) });
+  reconcileLiveCells(posBody, posRows);
+  fitLiveCols();
   window.renderEaExitCountdown?.();
   const empty = document.getElementById("u-live-pos-empty");
   if (empty) empty.hidden = true;

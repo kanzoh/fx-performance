@@ -60,8 +60,18 @@
     let carried = 0;
     const rows = new Map((snapshot?.rows || []).map(row => [String(row.magic), row]));
 
-    for (const cell of document.querySelectorAll('[data-exit-magic]')) {
-      cell.replaceChildren(); cell.className = 'ea-exit-countdown'; cell.title = '';
+    const commit = (real, draft) => {
+      if (real.className !== draft.className) real.className = draft.className;
+      if (real.title !== draft.title) real.title = draft.title;
+      if (real.innerHTML !== draft.innerHTML) real.replaceChildren(...draft.childNodes);
+    };
+    for (const real of document.querySelectorAll('[data-exit-magic]')) {
+      const cell = document.createElement('td');
+      cell.dataset.exitAccount = real.dataset.exitAccount;
+      cell.dataset.exitMagic = real.dataset.exitMagic;
+      cell.dataset.exitOpen = real.dataset.exitOpen;
+      cell.className = 'ea-exit-countdown'; cell.title = '';
+      try {
       const key = cell.dataset.exitAccount + ':' + cell.dataset.exitMagic;
       const open = Number(cell.dataset.exitOpen);
       const sameAccount = String(snapshot?.account_login) === cell.dataset.exitAccount;
@@ -82,11 +92,21 @@
         due = m.due_utc; confirmed = m.confirmed; carried++;
       }
       const left = due - now;
-      line(cell, 'strong', remaining(left));
-      line(cell, 'small', date(due) + ' JST' + (confirmed ? `・最終確認 ${clock(confirmed)}` : ''));
+
+      if (left <= 0) {
+        line(cell, 'strong', '期限到達');
+        line(cell, 'small', '決済確認待ち');
+      } else {
+        line(cell, 'strong', remaining(left));
+        line(cell, 'small', date(due) + ' JST');
+      }
+      if (confirmed) line(cell, 'small', `最終確認 ${clock(confirmed)}`);
       cell.title = '週末・休日前の強制決済を含む最も近い時間決済の予定。TP/SL・価格条件の決済が先行する場合があります。' +
         (confirmed ? '　いまは前回確認した予定から数えています（予定は建玉を持つ間は変わりません）。' : '');
       if (left <= 3600) cell.classList.add(left <= 0 ? 'exit-due' : 'exit-soon');
+      } finally {
+        commit(real, cell);
+      }
     }
     if (status) {
       status.textContent = '時間決済：' +

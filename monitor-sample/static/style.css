@@ -43,11 +43,21 @@
   box-sizing: border-box;
 }
 
+
+@font-face {
+  font-family: "Murecho";
+  src: url("Murecho-wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+
+  font-family: "Murecho", -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
   font-size: 16px;
   line-height: 1.45;
 }
@@ -2354,3 +2364,7 @@ h2 {
 
 #tab-ea .chart-box { min-height: 420px; }
 #tab-ea .equity-chart { min-height: 360px; }
+
+
+body #health-card .hl-top b { font-size: .86rem !important; padding: 1px 5px !important; }
+body #health-card .hl-top { gap: 5px !important; }
