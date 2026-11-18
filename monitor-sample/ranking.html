@@ -248,6 +248,7 @@ details.rk-more .rk-list{margin-top:4px}
   <a class="tab-button" href="backtest.html">詳細データ</a>
   <a class="tab-button active" href="ranking.html" aria-current="page">ランキング</a>
 </nav>
+<details class="hx-bar" open><summary>このページでできること</summary><ul><li>上のボタンで、実運用／バックテスト・並べる物差し・通貨ペアを切り替えます。</li><li>下線の付いた EA 名 <b>↗</b> を押すと、その EA の詳細データが開きます。</li></ul></details>
 
 <main class="u-wrap">
 <p class="u-note" data-u2-error hidden></p>
@@ -431,6 +432,82 @@ UI2.onData=function(data){
   if(!started){started=true;var hv=location.hash.slice(1);if(hv)rkParse("rank/"+hv);}
   drawRank();
 };
+})();
+</script>
+<style id="sample-hints-v1">
+.hx-bar{margin:10px 20px 0;padding:9px 14px;border:1.5px solid #93b4e8;border-radius:8px;background:#eef4fd;color:#123a75;font-size:.98rem;line-height:1.6}
+.hx-bar summary{cursor:pointer;font-weight:900;list-style:none}
+.hx-bar summary::-webkit-details-marker{display:none}
+.hx-bar summary::after{content:"　閉じる ▲";font-weight:700;font-size:.85rem;color:#2557a7}
+.hx-bar:not([open]) summary::after{content:"　開く ▼"}
+.hx-bar ul{margin:6px 0 2px;padding-left:1.2em}
+.hx-bar li{margin:2px 0}
+@media (max-width:640px){.hx-bar{margin:8px 10px 0;font-size:.92rem}}
+[title*="クリックして名前を編集"]::after{content:" ✎";font-size:.85em;opacity:.8}
+a.ea-link{text-decoration:underline;text-underline-offset:3px}
+a.ea-link::after{content:" ↗";font-size:.8em;text-decoration:none;display:inline-block}
+#t-all tbody tr td:first-child::before,#eq-dds tbody tr[data-a] td:first-child::before{content:"▸ ";color:#2563eb;font-weight:900}
+#t-all tbody tr:hover td{background:rgba(37,99,235,.06)}
+.hx-sort{color:#2563eb;font-size:.85em;margin-left:2px}
+.hx-i{display:inline-block;margin-left:3px;color:#2563eb;cursor:pointer;font-weight:900;font-style:normal;font-size:.9em;line-height:1}
+.hx-tip{position:absolute;z-index:9999;max-width:min(360px,90vw);padding:8px 11px;border-radius:7px;background:#1f2937;color:#fff;font-size:.9rem;font-weight:600;line-height:1.55;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.hx-cap{margin:4px 0 0;font-size:.9rem;color:#475467;font-weight:700}
+#eq-canvas,#chart svg{touch-action:pan-y}
+</style>
+<script>
+(function(){
+  var KEY="sample_hints_closed:"+location.pathname.split("/").pop();
+  var bar=document.querySelector(".hx-bar");
+  if(bar){ try{ if(localStorage.getItem(KEY)==="1") bar.removeAttribute("open"); }catch(e){}
+    bar.addEventListener("toggle",function(){ try{ localStorage.setItem(KEY,bar.open?"0":"1"); }catch(e){} }); }
+  var SKIP=["SECTION","BUTTON","A","TR","TD","INPUT","LABEL","P"];
+  function decorate(){
+    Array.prototype.forEach.call(document.querySelectorAll("[title]"),function(el){
+      if(el.dataset.hx) return; el.dataset.hx="1";
+      var t=el.getAttribute("title")||"";
+      if(t.length<8||SKIP.indexOf(el.tagName)>=0) return;
+      if(el.classList.contains("ea-badge")||el.classList.contains("posbar")||el.closest(".hx-bar,.tab-bar,button,a")) return;
+      if(!(el.textContent||"").trim()||/[🛈ⓘ]/.test(el.textContent||"")) return;
+      var i=document.createElement("span"); i.className="hx-i"; i.textContent="ⓘ"; i.setAttribute("role","button");
+      i.setAttribute("aria-label","説明を見る"); i.dataset.hx="1"; el.appendChild(i);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".ea-tbl th"),function(th){
+      if(th.querySelector(".hx-sort")) return; var s=document.createElement("span"); s.className="hx-sort"; s.textContent="⇅";
+      var sm=th.querySelector("small"); if(sm) th.insertBefore(s,sm); else th.appendChild(s);
+    });
+  }
+  var tip=null;
+  function closeTip(){ if(tip){ tip.remove(); tip=null; } }
+  document.addEventListener("click",function(ev){
+    var t=ev.target, host=null;
+    if(t.classList&&t.classList.contains("hx-i")) host=t.parentElement;
+    else if(t.closest&&!t.closest("button,a,[data-ea-badge-magic],.ea-badge")){ var h=t.closest("[title]"); if(h&&/[🛈]/.test(h.textContent||"")) host=h; }
+    if(!host){ closeTip(); return; }
+    ev.preventDefault(); ev.stopPropagation(); closeTip();
+    tip=document.createElement("div"); tip.className="hx-tip"; tip.textContent=host.getAttribute("title");
+    document.body.appendChild(tip);
+    var r=host.getBoundingClientRect(), x=r.left+window.scrollX, w=tip.offsetWidth;
+    if(x+w>window.scrollX+document.documentElement.clientWidth-8) x=window.scrollX+document.documentElement.clientWidth-w-8;
+    tip.style.left=Math.max(window.scrollX+8,x)+"px"; tip.style.top=(r.bottom+window.scrollY+6)+"px";
+  },true);
+  function touchMove(ev){
+    var tg=ev.target.closest&&ev.target.closest("#eq-canvas,#chart svg"); if(!tg||!ev.touches.length) return;
+    var p=ev.touches[0];
+    tg.dispatchEvent(new MouseEvent("mousemove",{clientX:p.clientX,clientY:p.clientY,bubbles:true}));
+  }
+  document.addEventListener("touchstart",touchMove,{passive:true});
+  document.addEventListener("touchmove",touchMove,{passive:true});
+  function caps(){
+    [["eq-wrap","曲線にマウスを当てる（スマホは指でなぞる）と、その日の値が出ます。"],["chart","チャートにマウスを当てる（スマホは指でなぞる）と、その足の値が出ます。"]].forEach(function(c){
+      var el=document.getElementById(c[0]); if(!el||document.getElementById("hx-cap-"+c[0])) return;
+      var p=document.createElement("p"); p.className="hx-cap"; p.id="hx-cap-"+c[0]; p.textContent=""+c[1];
+      el.parentNode.insertBefore(p,el.nextSibling);
+    });
+  }
+  var pend=false;
+  function run(){ pend=false; decorate(); caps(); }
+  new MutationObserver(function(){ if(!pend){ pend=true; setTimeout(run,60); } }).observe(document.body,{childList:true,subtree:true});
+  run();
 })();
 </script>
 </body>
