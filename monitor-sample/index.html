@@ -831,7 +831,7 @@ body.u2:has(> main.u-wrap) .tab-bar{max-width:none!important}
   mo = new MutationObserver(function(){
     var need = t.querySelector("tbody tr:not(:has(td.u-m))") || (t.querySelector("thead tr") && !t.querySelector("thead th.u-m"));
     if (!need) return;
-    clearTimeout(pending); pending = setTimeout(inject, 30);
+    clearTimeout(pending); inject();
   });
   mo.observe(t, {childList: true, subtree: true});
   var prev = window.UI2 && window.UI2.onData;
@@ -932,9 +932,9 @@ a.ea-link::after{content:" ↗";font-size:.8em;text-decoration:none;display:inli
       el.parentNode.insertBefore(p,el.nextSibling);
     });
   }
-  var pend=false;
-  function run(){ pend=false; decorate(); caps(); }
-  new MutationObserver(function(){ if(!pend){ pend=true; setTimeout(run,60); } }).observe(document.body,{childList:true,subtree:true});
+  var mo=new MutationObserver(function(){ run(); });
+  function run(){ mo.disconnect(); try{ decorate(); caps(); } finally { mo.observe(document.body,{childList:true,subtree:true}); } }
+  /* 描き直しの後、描く前に足す（遅らせると一瞬幅が変わって跳ねる・11-18） */
   run();
 })();
 </script>
