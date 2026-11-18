@@ -708,6 +708,13 @@ function sym(e){return `${e.symbol}-m`}
 let MEMOS={};
 const esc=escapeHtml;
 function memo(key){return `<td class="memo"><div class="memo-box" contenteditable="plaintext-only" data-key="${key}">${esc(MEMOS[key]||"")}</div></td>`}
+document.addEventListener("click",async ev=>{const b=ev.target.closest&&ev.target.closest("[data-ea-badge-magic]"); if(!b)return;
+  const magic=b.dataset.eaBadgeMagic; if(!magic||magic==="-")return;
+  const input=window.prompt(`EA ${magic} の表示名を入力してください(空欄で解除)`,eaNames.get(magic)||""); if(input===null)return;
+  try{const r=await fetch("/api/ea-name",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({magic,name:input.trim()})});
+    const d=await r.json().catch(()=>({})); if(!r.ok||d.ok===false){alert(d.error||"名前を変えられませんでした");return}}
+  catch(e){alert("名前を変えられませんでした（通信の誤り）");return}
+  load();});
 document.addEventListener("focusout",async ev=>{const el=ev.target; if(!el.classList||!el.classList.contains("memo-box"))return;
   const key=el.dataset.key, text=el.innerText.trim(); if((MEMOS[key]||"")===text)return;
   try{const r=await fetch("/api/verdict-memo",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({key,text})});
