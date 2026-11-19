@@ -654,7 +654,7 @@ function renderStatsPort(e){
   document.getElementById("stats-table").innerHTML=kv([
     ["顔ぶれ",`${n}本`,"いま実弾で動いている本だけ（見極めの台と同じ顔ぶれ）"],
     ["取引数",`${s.trades.toLocaleString("ja-JP")}件`,`年あたり ${nf(s.per_year,0)}件（全本の合計・期間 ${s.years.toFixed(1)}年で割る）`],
-    ["年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,0)}</span>`,`1年で残高が約 ${nf(1+s.cagr_pct/100,1)}倍になる速さ（毎回そのときの残高の${rk}%を賭けて積んだとき。始めの残高 ${fmtYen(s.start_balance)}・建てた時点の残高でロットを決め、1注文の上限（ブレード口座の FX 100・金 50 ロット）で切る。証拠金・約定の厚みは入っていない）`],
+    ["年利（複利）",`<span class="${s.cagr_pct>=0?"pos":"neg"}">${fmtPct(s.cagr_pct,0)}</span>`,`1年で残高が約 ${nf(1+s.cagr_pct/100,1)}倍になる速さ（毎回そのときの残高の${rk}%を賭けて積んだとき。始めの残高 ${fmtYen(s.start_balance)}・建てた時点の残高でロットを決め、1注文の上限（FX 100・金 50 ロット）で切る。証拠金・約定の厚みは入っていない）`],
     ["年利（単利）",`<span class="${s.simple_annual_pct>=0?"pos":"neg"}">${fmtPct(s.simple_annual_pct,0)}</span>`,`期間全体 ${fmtPct(s.simple_net_pct,0)}（最初の残高×リスク${rk}%を1件ごとに足す）`],
     ["最大ドローダウン（残高比）",`<span class="neg">${fmtDD(s.max_dd_pct)}</span>`,`毎回そのときの残高の${rk}%を賭けたときの、山からの最大の落ち込み（決済だけ・含み損は入らない）`],
     ["最大ドローダウン（R の合計）",`<span class="neg">−${nf(s.max_dd_r,1)}R</span>`,"全本の損益を R（1回の損切り幅）で足した山からの落ち込み。本数やリスク%に依らずに深さを比べる物差し"],
@@ -673,12 +673,12 @@ function renderStatsPort(e){
     ["最大の勝ち／負け（1件）",`${fmtPct(s.best_trade_pct,2)}／${fmtPct(s.worst_trade_pct,2)}`,`平均の勝ち ${fmtPct(s.avg_win_pct,2)}・平均の負け ${fmtPct(s.avg_loss_pct,2)}`],
     ["保有時間",`平均 ${fmtHours(s.hold_avg_hours)}`,`最長 ${fmtHours(s.hold_max_hours)}・最短 ${fmtHours(s.hold_min_hours)}`],
     ["上位5%の大勝ちが総利益に占める割合",fmtPct(s.top5_share_pct_r,1,false),`R 基準。抜いたときの PF ${fmtNum(s.pf_without_top5_r,2)}`],
-    ["ロット上限で切られた取引",`${s.lot_cap_trades.toLocaleString("ja-JP")}件`,`ブレード口座の1注文の上限（FX 100・金 50 ロット）に当たった件。最初は ${s.lot_cap_first||"—"}。残高が大きくなるとロットが上限で止まり、増え方は一定になる`],
+    ["ロット上限で切られた取引",`${s.lot_cap_trades.toLocaleString("ja-JP")}件`,`業者の1注文の上限（FX 100・金 50 ロット）に当たった件。最初は ${s.lot_cap_first||"—"}。残高が大きくなるとロットが上限で止まり、増え方は一定になる`],
   ]);
   document.getElementById("stats-note").innerHTML=`出どころ: 各本の<b>正本の台帳</b>（手数料控除後・受取スワップは0・決済だけ）を、全本がそろう期間 <b>${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}</b> で切り、`+
     `決済の時刻の順に1本に並べて<b>リスク${rk}%</b>で1つの残高に積み直した。各本の成績と同じ関数で数えている。`+
-    `<b>ロットの決め方</b>：始めの残高 ${fmtYen(e.start_balance)}・ロットは建てた時点の残高（それより前に決済した分だけ入った残高）から決め、ブレード口座の1注文の上限（FX 100・金 50 ロット）で切る。`+
-    `バックテストの中でテスターの上限（100ロット）に当たった取引は、切られる前の R に戻してから積んでいる。同時に持つ建玉の証拠金は見ていない。<b>参考資料</b>（ブレード口座の設定。実際の運用は今の資金に合わせてマイクロ口座）。`;
+    `<b>ロットの決め方</b>：始めの残高 ${fmtYen(e.start_balance)}・ロットは建てた時点の残高（それより前に決済した分だけ入った残高）から決め、業者の1注文の上限（FX 100・金 50 ロット）で切る。`+
+    `バックテストの中でテスターの上限（100ロット）に当たった取引は、切られる前の R に戻してから積んでいる。同時に持つ建玉の証拠金は見ていない。<b>参考資料</b>（バックテストの設定。実際の運用の口座とは条件が違う）。`;
 }
 function renderStats(e){
   if(isPort(e)) return renderStatsPort(e);
@@ -826,7 +826,7 @@ function renderMetrics(e){
       mm('<span class="kl">黒字の月</span>',`${s.positive_months}／${s.months_full}`,"amber");
     document.getElementById("metrics-note").innerHTML=
       `<b>今の顔ぶれ ${(e.members||[]).length}本を1つの口座で同時に動かした</b>ときのバックテスト（全本がそろう期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}・リスク${DATA.live_risk_percent.toFixed(1)}%・手数料控除後・受取スワップは0・決済だけ）。`+
-      `年利（複利）は毎回そのときの残高の${DATA.live_risk_percent.toFixed(1)}%を賭けて積んだ値で、全本で年 ${nf(s.per_year,0)}件ある。始めの残高は100万円で、ロットは建てた時点の残高から決め、ブレード口座の1注文の上限で切る（証拠金・約定の厚みは入っていない）。単利は最初の残高に対する%を足した値。最大DD（残高比）は複利のときの山からの落ち込み。含み損込みの値は MT5 の報告書が本ごとにしか無いので出していない。`;
+      `年利（複利）は毎回そのときの残高の${DATA.live_risk_percent.toFixed(1)}%を賭けて積んだ値で、全本で年 ${nf(s.per_year,0)}件ある。始めの残高は100万円で、ロットは建てた時点の残高から決め、業者の1注文の上限で切る（証拠金・約定の厚みは入っていない）。単利は最初の残高に対する%を足した値。最大DD（残高比）は複利のときの山からの落ち込み。含み損込みの値は MT5 の報告書が本ごとにしか無いので出していない。`;
     return;
   }
   const m=(label,val,accent,sub)=>`<div class="metric accent-${accent}"><div class="metric-label">${label}</div><div class="metric-value">${val}${sub?`<small>${sub}</small>`:""}</div></div>`;
@@ -850,7 +850,7 @@ function renderMetrics(e){
 }
 
 function capText(e){const s=e.stats;
-  if(isPort(e)) return `ブレード口座の1注文の上限（FX 100・金 50 ロット）で切った ${s.lot_cap_trades.toLocaleString("ja-JP")}件を入れてある`;
+  if(isPort(e)) return `業者の1注文の上限（FX 100・金 50 ロット）で切った ${s.lot_cap_trades.toLocaleString("ja-JP")}件を入れてある`;
   if(!isNum(s.lot_cap)) return "ロットは実口座の記録に無いので、上限に張り付いた取引は数えていない";
   return s.lot_cap_trades?`ロット上限 ${s.lot_cap}ロットに張り付いた ${s.lot_cap_trades}件は実際のリスクが${DATA.live_risk_percent.toFixed(1)}%より低く、その縮んだ損益のまま`:`ロット上限 ${s.lot_cap}ロットに届いた取引は無い`;}
 const fmtInit=()=>IB()%10000===0?`${(IB()/10000).toLocaleString("ja-JP")}万円`:fmtYen(IB());
