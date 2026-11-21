@@ -406,12 +406,13 @@ dl.terms dd{margin:0;color:var(--ink2)}
   <div class="set-sw" role="group" aria-label="ポートフォリオの切り替え">
     <button data-set="main" aria-pressed="true" title="じっくり取引する EA の組">メイン</button>
     <button data-set="hft" aria-pressed="false" title="1 年に 1,000 回以上取引する EA の組">高頻度</button>
+    <button data-set="scalp" aria-pressed="false" title="数十秒〜数分で手仕舞うスキャルピングの EA の組">スキャ</button>
   </div>
 </section>
 
 <!-- ================= ポートフォリオ全体 ================= -->
 <div id="view-portfolio" role="tabpanel" aria-labelledby="tab-portfolio">
-<details class="hx-bar" data-hx="portfolio" open><summary>このページでできること</summary><ul><li>上の「メイン／高頻度」のボタンで、2つのポートフォリオを切り替えます（高頻度＝1 年に 1,000 回以上取引する EA の組）。</li><li>「今の顔ぶれ／今まで全部／バックテスト」で、集計の範囲を切り替えます。</li><li>グラフの「日／週／月／年」で、点の間隔を切り替えます。</li><li>グラフや棒にマウスを当てる（スマホは指でなぞる・触れる）と、その時点の値が出ます。</li><li>「▸ 表で見る」を押すと、数字の表が開きます。言葉の意味はページの一番下の「▸ 用語と計算方法」にあります。</li></ul></details>
+<details class="hx-bar" data-hx="portfolio" open><summary>このページでできること</summary><ul><li>上の「メイン／高頻度／スキャ」のボタンで、3つのポートフォリオを切り替えます（高頻度＝1 年に 1,000 回以上取引する EA の組、スキャ＝数十秒〜数分で手仕舞うスキャルピングの EA の組）。</li><li>「今の顔ぶれ／今まで全部／バックテスト」で、集計の範囲を切り替えます。</li><li>グラフの「日／週／月／年」で、点の間隔を切り替えます。</li><li>グラフや棒にマウスを当てる（スマホは指でなぞる・触れる）と、その時点の値が出ます。</li><li>「▸ 表で見る」を押すと、数字の表が開きます。言葉の意味はページの一番下の「▸ 用語と計算方法」にあります。</li></ul></details>
 <div class="grid">
 
   <!-- 1段目（12）：結論 -->
@@ -643,15 +644,15 @@ dl.terms dd{margin:0;color:var(--ink2)}
 (function(){
   "use strict";
   // 最新の数字を GitHub の API から読む。読めなければ、ページに埋め込んだ数字で描く（メインだけ）
-  var SET=/[?&]set=hft(&|$)/.test(location.search)?"hft":"main";
-  var API=SET==="hft"?"https://api.github.com/repos/kanzoh/fx-performance/contents/stats_hft.json?ref=live-hft":"https://api.github.com/repos/kanzoh/fx-performance/contents/stats.json?ref=live",KEY="fxp_live_"+SET,el=document.getElementById("data"),done=false;
-  if(SET==="hft"&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))API="stats_hft.json";  // 手元の確かめ用
-  var cur=SET==="hft"?null:JSON.parse(el.textContent);
+  var SM=/[?&]set=(hft|scalp)(&|$)/.exec(location.search),SET=SM?SM[1]:"main";
+  var API=SET==="hft"?"https://api.github.com/repos/kanzoh/fx-performance/contents/stats_hft.json?ref=live-hft":(SET==="scalp"?"https://api.github.com/repos/kanzoh/fx-performance/contents/stats_scalp.json?ref=live-scalp":"https://api.github.com/repos/kanzoh/fx-performance/contents/stats.json?ref=live"),KEY="fxp_live_"+SET,el=document.getElementById("data"),done=false;
+  if(SET!=="main"&&/^(localhost|127\.0\.0\.1)$/.test(location.hostname))API="stats_"+SET+".json";  // 手元の確かめ用
+  var cur=SET!=="main"?null:JSON.parse(el.textContent);
   function newer(d){return d&&d.built&&(!cur||d.built>cur.built);}
   try{var s=JSON.parse(sessionStorage.getItem(KEY)||"null");if(newer(s))cur=s;}catch(e){}
   function go(){if(done)return;done=true;
     if(!cur){document.querySelector("main").insertAdjacentHTML("afterbegin",
-      "<section class='card' style='margin:16px'><p>高頻度の数字を読み込めませんでした。しばらくしてから開き直してください。"+
+      "<section class='card' style='margin:16px'><p>このポートフォリオの数字を読み込めませんでした。しばらくしてから開き直してください。"+
       "<a href='"+location.pathname+"'>メインのポートフォリオを見る</a></p></section>");return;}
     el.textContent=JSON.stringify(cur);
     var m=document.createElement("script");m.text=document.getElementById("main").textContent;document.body.appendChild(m);}
@@ -679,7 +680,7 @@ function syen(v){return (v>0?"+":v<0?"−":"")+"¥"+Math.abs(Math.round(v)).toLo
 function jdate(s){var p=s.split("-");return +p[0]+"年"+(+p[1])+"月"+(+p[2])+"日";}
 function md(s){var p=s.split("-");return (+p[1])+"/"+(+p[2]);}
 function mlabel(m){var p=m.split("-");return +p[0]+"年"+(+p[1])+"月";}
-function hours(h){if(h===null||h===undefined)return "—";return h<48?h.toFixed(1)+" 時間":(h/24).toFixed(1)+" 日";}
+function hours(h){if(h===null||h===undefined)return "—";return h<1?(h*60).toFixed(1)+" 分":(h<48?h.toFixed(1)+" 時間":(h/24).toFixed(1)+" 日");}  /* 2026-11-22 スキャ（保有は数分）のため 1 時間未満は分で */
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function fmtP(v,dg){return v===null||v===undefined?"—":pct(v,dg);}
 function fmtN(v,dg){return v===null||v===undefined?"—":(+v).toFixed(dg===undefined?2:dg);}
@@ -703,8 +704,8 @@ $("built").textContent=" 最終更新: "+D.built+"（日本時間）";
 var scope="all",V=D.views.all;
 var showYen=!!(V&&V.yen);
 function VV(){return D.views.now||D.views.all||{pairs:[],months:[]};}
-/* メイン／高頻度の切り替え（?set=hft）。見ている画面（#…）はそのまま */
-each("[data-set]",function(b){var me=b.getAttribute("data-set");b.setAttribute("aria-pressed",String(me===(D.set||"main")));b.addEventListener("click",function(){if(me===(D.set||"main"))return;var h=location.hash.split("/")[0]||"";location.href=location.pathname+(me==="hft"?"?set=hft":"")+(h.indexOf("#ea")===0?"#eas":h);});});
+/* メイン／高頻度／スキャの切り替え（?set=hft・?set=scalp）。見ている画面（#…）はそのまま */
+each("[data-set]",function(b){var me=b.getAttribute("data-set");b.setAttribute("aria-pressed",String(me===(D.set||"main")));b.addEventListener("click",function(){if(me===(D.set||"main"))return;var h=location.hash.split("/")[0]||"";location.href=location.pathname+(me==="main"?"":"?set="+me)+(h.indexOf("#ea")===0?"#eas":h);});});
 if(D.views.now){scope="now";$("scope-now").textContent="今の顔ぶれ（"+D.views.now.ea_count+" 本）";}
 else{$("scope-now").disabled=true;}
 if(!D.views.all){/* まだ決済が無い：実運用の欄は押せず、バックテストを出す */
