@@ -577,7 +577,7 @@ function eaNameCell(magic) {
   const magicKey = magic === null || magic === undefined || magic === "" ? "-" : String(magic);
   if (magicKey === "-" || magicKey === "0") return "-";
   if (eaNames.get(magicKey)) return `<span class="ea-name-wrap">${eaBadge(magicKey)}</span>`;
-  return `<span class="ea-name-wrap ea-name-wrap-unnamed"><span class="ea-badge ea-badge-unnamed" title="${magicKey} - set EA name" data-ea-badge-magic="${magicKey}">\u672a\u8a2d\u5b9a</span></span>`;
+  return `<span class="ea-name-wrap ea-name-wrap-unnamed"><span class="ea-badge ea-badge-unnamed" title="${magicKey} - クリックして名前を編集" data-ea-badge-magic="${magicKey}">\u672a\u8a2d\u5b9a</span></span>`;
 }
 
 function parseTradeTime(value) {
@@ -625,12 +625,12 @@ function levelLabel(level) {
 function inferAlertMeasure(alert) {
   if (alert.measure) return alert.measure;
   const text = `${alert.title || ""} ${alert.action || ""}`;
-  const mentionsStop = /停止|stop|STOP|豁｢|蛛懈/.test(text);
-  const mentionsConfirm = /確認|疑|遒ｺ隱/.test(text);
+  const mentionsStop = /停止|stop|STOP/.test(text);
+  const mentionsConfirm = /確認|疑/.test(text);
   if (mentionsStop && mentionsConfirm && alert.level !== "danger") return "停止疑いを検知";
   if (mentionsStop) return "停止推奨（自動停止なし）";
-  if (alert.level === "danger") return "警告発動（通知のみ）";
-  if (alert.level === "warn") return "注意喚起（通知のみ）";
+  if (alert.level === "danger") return "警告";
+  if (alert.level === "warn") return "注意";
   return "確認表示";
 }
 
@@ -1047,7 +1047,7 @@ function buildAlerts() {
     const todayR = riskPct && dayStartBalance > 0 ? todayLoss / (dayStartBalance * riskPct / 100) : null;
     const dailyLevel = todayR !== null
       ? (todayR < -3 ? "danger" : todayR < -2 ? "warn" : null)
-      : riskLoadFailed && todayRate !== null
+      : (idleBasisByMagic !== null || riskLoadFailed) && todayRate !== null
         ? (todayRate <= -2 ? "danger" : todayRate <= -1 ? "warn" : null)
         : null;
     if (dailyLevel) {
@@ -1058,21 +1058,29 @@ function buildAlerts() {
         current: `本日 ${todayR !== null ? `${todayR.toFixed(2)}R / ` : ""}${fmtPct2(todayRate)} / ${fmtSignedYen(todayLoss)}`,
         threshold: todayR !== null
           ? `注意 -2Rより悪い（損切り2回分を超える）/ 危険 -3Rより悪い（1R=残高の${riskPct}%）`
-          : "注意 -1.0%以下 / 危険 -2.0%以下（リスク%が読めないため旧基準）",
+          : "注意 -1.0%以下 / 危険 -2.0%以下（リスク%が分からない EA は損益率で判定）",
         action: dailyLevel === "danger" ? "当日の新規停止・ロット縮小を検討" : "本日の相場環境とエントリー集中を確認",
-        basis: "損切り1回(-1R)は想定内。1日に損切り2回分を超えたら知らせる（R はバックテストの報告書で確かめたリスク%）",
+        basis: todayR !== null ? "損切り1回(-1R)は想定内。1日に損切り2回分を超えたら知らせる（R はバックテストの報告書で確かめたリスク%）"
+          : "確かめ済みの報告書が無い EA なので、その日の損益を口座残高に対する割合（%）で見る",
         badge: eaBadge(magic),
         score: dailyLevel === "danger" ? 90 : 60,
       });
     }
   }
 
+  const lastOpenByMagic = new Map();
+  for (const p of latestPositions || []) {
+    const pm = String(p.magic || ""), t = serverWallMs(p.open_time);
+    if (pm && t !== null && (!lastOpenByMagic.has(pm) || t > lastOpenByMagic.get(pm))) lastOpenByMagic.set(pm, t);
+  }
   for (const [magic, basis] of (idleBasisByMagic || new Map()).entries()) {
     let from = basis.liveSince;
     for (const row of tradesByMagic.get(magic) || []) {
       const t = serverWallMs(row.close_time);
       if (t !== null && (from === null || t > from)) from = t;
     }
+    const openT = lastOpenByMagic.has(magic) ? lastOpenByMagic.get(magic) : null;
+    if (openT !== null && (from === null || openT > from)) from = openT;
     if (from === null) continue;
     const idleHours = serverOpenHoursBetween(from, serverWallNowMs());
     const level = idleHours >= basis.p99 ? "warn" : idleHours >= basis.p90 ? "info" : null;
@@ -1082,10 +1090,10 @@ function buildAlerts() {
       level,
       scope: "ea",
       title: "取引停止の確認",
-      current: `${tradesByMagic.has(magic) ? "最終取引" : "運用開始"}から ${fmt(Math.round(idleHours))}時間（休場を除く）/ BTでこれより長い間隔は ${fmtPlainPct(longer)}`,
+      current: `${from === openT ? "最後の建玉" : tradesByMagic.has(magic) ? "最終取引" : "運用開始"}から ${fmt(Math.round(idleHours))}時間（休場を除く）/ BTでこれより長い間隔は ${fmtPlainPct(longer)}`,
       threshold: `確認 BTの間隔の長い方10%（${fmt(Math.round(basis.p90))}時間〜）/ 注意 長い方1%（${fmt(Math.round(basis.p99))}時間〜）`,
       action: level === "warn" ? "EA稼働・自動売買・対象チャートを確認" : "稼働状況だけ確認",
-      basis: `この本のバックテストの決済の間隔 ${fmt(basis.gaps.length)}件（休場を除く）と比べる`,
+      basis: `この EA のバックテストの決済の間隔 ${fmt(basis.gaps.length)}件（休場を除く）と比べる`,
       badge: eaBadge(magic),
       score: level === "warn" ? 40 : 20,
     });
@@ -1106,7 +1114,6 @@ function renderAlerts() {
     panel.classList.toggle("alert-has-danger", alerts.some((a) => a.level === "danger"));
   }
   renderAlertList("ea-alert-list", alerts.slice(0, 12), "現在、EA別の重要なアラートはありません", true);
-  renderDecisionPanel(alerts);
   renderTodayPerformance();
 }
 
@@ -1147,8 +1154,6 @@ function alertTone(level) {
   if (level === "info") return "semantic-info";
   return "semantic-muted";
 }
-
-function renderDecisionPanel() {}
 
 function setupTabs() {
   for (const button of document.querySelectorAll(".tab-button")) {
@@ -1324,36 +1329,6 @@ function setupAccountRebaseActions() {
   });
 }
 
-async function postAccountDelete(accountLogin) {
-  await postJSON("/api/account-delete", { account_login: accountLogin });
-  for (const key of Array.from(chartHistoryByKey.keys())) {
-    if (key.startsWith(`${accountLogin}|`)) chartHistoryByKey.delete(key);
-  }
-  await refreshAfterAction(refreshSummary, refreshTrades, refreshPerformance, refreshPositions, refreshChart);
-}
-
-function setupAccountDeleteActions() {
-  document.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-account-delete-action]");
-    if (!button) return;
-    const accountLogin = button.dataset.accountLogin;
-    if (!accountLogin) return;
-
-    const message = `口座 ${accountLogin} の残高履歴・ポジション・決済履歴・EAリセット情報をすべて削除します。この操作は元に戻せません。続けますか？`;
-    if (!window.confirm(message)) return;
-
-    button.disabled = true;
-    try {
-      await postAccountDelete(accountLogin);
-      window.alert(`口座 ${accountLogin} のデータを削除しました。`);
-    } catch (error) {
-      window.alert(error.message || "Account delete failed");
-    } finally {
-      button.disabled = false;
-    }
-  });
-}
-
 function updateHtml(el, html) {
   if (el.dataset.html !== html) {
     el.innerHTML = html;
@@ -1509,7 +1484,6 @@ async function refreshSummary() {
     };
   });
   reconcileRows(eaBody, eaRows, (row) => row.key, (row) => row.html);
-  window.renderEaExitCountdown?.();
 
   const realizedTotal = visibleEaRealizedTotal;
 
@@ -2798,11 +2772,6 @@ function reconcileLiveCells(tbody, rows) {
     }
     row.cells.forEach((c, i) => {
       const cell = tr.cells[i];
-      if (c.exit) {
-        for (const [k, v] of Object.entries(c.exit)) if (cell.getAttribute(k) !== v) cell.setAttribute(k, v);
-        if (!cell.classList.contains("ea-exit-countdown")) { cell.className = "ea-exit-countdown"; cell.textContent = "確認中"; }
-        return;
-      }
       if (c.colspan && cell.colSpan !== c.colspan) cell.colSpan = c.colspan;
       if (cell.className !== (c.cls || "")) cell.className = c.cls || "";
       if (cell.dataset.h !== c.html) { cell.innerHTML = c.html; cell.dataset.h = c.html; }

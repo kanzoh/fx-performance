@@ -110,6 +110,9 @@ body.u2 .rate-pill{font-size:.8rem}
 .spark{display:block;margin-left:auto}
 a.ea-link{color:var(--u-blue);text-decoration:none;font-weight:800;border-bottom:1px dashed currentColor}
 a.ea-link:hover{border-bottom-style:solid}
+
+.ea-nolink{font-weight:800}
+body.u2 .ea-nolink{font-size:1.02rem}
 .vb{display:inline-block;font-size:.72rem;font-weight:800;padding:1px 6px;border-radius:5px;white-space:nowrap}
 .vb.ok{background:var(--u-up-soft);color:var(--u-up)}.vb.ng{background:var(--u-down-soft);color:var(--u-down)}.vb.few{background:var(--u-head);color:var(--u-muted)}
 #u-ea-month td,#u-ea-month th{padding:4px 7px}
@@ -180,9 +183,6 @@ body.u2 .data-table td{font-size:1rem!important;padding:8px 10px!important}
 body.u2 .ea-badge{font-size:.98rem!important;padding:3px 8px!important}
 body.u2 .rate-pill{font-size:.98rem!important;padding:3px 8px!important}
 body.u2 .mini-button{font-size:.85rem;padding:4px 8px}
-body.u2 #ea-table .ea-exit-countdown{font-size:.95rem!important;line-height:1.35!important}
-body.u2 #ea-table .ea-exit-countdown strong{font-size:1.02rem!important}
-body.u2 #ea-table .ea-exit-countdown small{font-size:.84rem!important}
 body.u2 .decision-table th{font-size:.95rem!important;padding:9px 10px!important}
 body.u2 .decision-table td{font-size:.95rem!important;padding:9px 10px!important;line-height:1.5}
 body.u2 .decision-focus-box{max-height:none!important;font-size:.95rem!important}

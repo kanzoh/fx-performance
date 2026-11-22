@@ -95,7 +95,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ポートフォリオモニター｜詳細データ</title>
 <link rel="stylesheet" href="static/style.css?v=1994b03290">
-<link rel="stylesheet" href="static/ui2.css?v=e05897423f">
+<link rel="stylesheet" href="static/ui2.css?v=ae1d5fb1fd">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>#u-cmp{margin:0 0 12px}#u-cmp-table td,#u-cmp-table th{padding:5px 10px}#u-cmp-table td:nth-child(2),#u-cmp-table td:nth-child(3){min-width:120px}
 .ann-note{display:inline;font-size:.76rem;font-weight:700;color:#344054;white-space:nowrap;margin-left:6px}
@@ -277,7 +277,7 @@ main.bt-main{padding:4px 24px 28px}
 .eq-side .kv-table th,#month-side th{white-space:normal;width:32%;min-width:7em}
 @media (min-width:1451px){.eq-two{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
 </style>
-<link rel="stylesheet" href="static/readable.css?v=b54e292239">
+<link rel="stylesheet" href="static/readable.css?v=3c001521b7">
 <script src="static/tablealign.js?v=c13a453010" defer></script>
 </head>
 <body class="u2">
@@ -384,7 +384,7 @@ main.bt-main{padding:4px 24px 28px}
         件数は決済した取引の数。<b>※ は報告書の期間の端で途中の月・年</b>（「最悪の月」と年ごとの件数の最少・最多には入れない）。</p>
         </div>
         <div class="month-side eq-card" id="month-side-box">
-          <h3 class="eq-card-h" id="month-side-h">この本の負けの続き方と、今の実運用の位置</h3>
+          <h3 class="eq-card-h" id="month-side-h">この EA の負けの続き方と、今の実運用の位置</h3>
           <table class="kv-table" id="month-side"></table>
           <p class="src-note" id="month-side-note"></p>
         </div>
@@ -394,7 +394,7 @@ main.bt-main{padding:4px 24px 28px}
     
     <div class="bt-two-col">
       <section class="panel bt-stats-panel">
-        <div class="section-title"><h2 id="stats-title">台帳からの成績</h2><span id="stats-sub">報告書の期間・手数料込み</span></div>
+        <div class="section-title"><h2 id="stats-title">報告書の約定からの成績</h2><span id="stats-sub">報告書の期間・決済だけ</span></div>
         <table class="kv-table" id="stats-table"></table>
         <p class="src-note" id="stats-note"></p>
       </section>
@@ -444,7 +444,7 @@ const fmtHours=h=>{if(!isNum(h))return "—";const m=Math.round(h*60);const d=Ma
 const ymd=t=>{const d=new Date(t*1000);return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0");};
 let DATA=null, CUR=null, MODE="comp", UNIT="pct", SCALE="lin", SERIES=null;
 
-let BT=null, FWD=null, SRC="bt";
+let BT=null;
 
 const ZOOM_KEY="pm.backtest.pageZoom", ZOOM_MIN=0.6, ZOOM_MAX=2.0, ZOOM_STEP=0.1;
 let ZOOM=1;
@@ -462,7 +462,7 @@ function applyZoom(v,save){
   try{ document.documentElement.style.zoom=(ZOOM===1?"":String(ZOOM)); }catch(e){}
   setTimeout(drawAll,0);
 }
-const isFwd=()=>!!(DATA&&DATA.forward);
+const isFwd=()=>false;
 
 function setStatus(text,cls){const st=document.getElementById("status");st.textContent=text;st.className="status-pill "+cls;}
 function fail(reason){
@@ -726,31 +726,7 @@ function renderReport(e){
   document.getElementById("report-note").innerHTML=`出どころ: <b>MT5 の報告書</b>（${esc(e.report||"")}）の値そのまま。報告書の置き場所とどの EA の報告書かの選び直しは「点検」タブ。`;
 }
 
-function renderMembers(e){
-  const ms=(e.members||[]).slice(), tot=ms.reduce((a,m)=>a+m.r_sum,0), mx=Math.max(1e-9,...ms.map(m=>Math.abs(m.r_sum)));
-  ms.sort((a,b)=>b.r_sum-a.r_sum);
-  document.getElementById("mech-title").textContent=`顔ぶれ — ${ms.length}本`;
-  document.getElementById("mech-sub").textContent=`${e.judge_period[0]}〜${e.judge_period[1]}・稼ぎの大きい順`;
-  let h=`<div class="mech-card span-all"><h3>各本の取引と稼ぎ（R の合計）</h3><table id="port-members"><thead><tr><th>EA</th><th>銘柄</th><th>件数</th><th>年あたり</th><th>R の合計</th><th>全体に占める割合</th><th class="pm-memo">メモ</th></tr></thead><tbody>`;
-  for(const m of ms){
-    const w=Math.round(Math.abs(m.r_sum)/mx*120);
-    h+=`<tr><td>${esc(m.name)}</td><td>${esc(m.symbol)}</td><td>${m.trades.toLocaleString("ja-JP")}件</td><td>${nf(m.per_year,1)}件</td>`+
-       `<td>${m.r_sum>=0?"+":""}${nf(m.r_sum,1)}R</td><td><span class="pm-bar${m.r_sum<0?" neg":""}" style="width:${w}px"></span>${tot?(100*m.r_sum/tot).toFixed(1):"—"}%</td><td class="pm-memo"></td></tr>`;
-  }
-  document.getElementById("mech-rules").innerHTML=h+"</tbody></table></div>";
-  const x=e.exits, k=x.kinds, n=e.stats.trades;
-  const row=(label,key,expl)=>k[key]?[label,`${k[key].n.toLocaleString("ja-JP")}件（${(100*k[key].n/n).toFixed(1)}%）`,`勝ち ${k[key].wins.toLocaleString("ja-JP")}件・負け ${(k[key].n-k[key].wins).toLocaleString("ja-JP")}件。${expl}`]:null;
-  document.getElementById("mech-exits-title").textContent="実際の決済（全本の合計）";
-  document.getElementById("mech-exits").innerHTML=kv([
-    row("EA が自分で閉じた","ea","出口のルールで EA が決済した"),
-    row("損切り注文（逆指値）に当たった","sl","注文に付けた損切りの値段に届いた"),
-    row("利確注文（指値）に当たった","tp","注文に付けた利確の値段に届いた"),
-    row("テストの終わりで閉じた","end","バックテストの最後の日に残っていた建玉"),
-    row("証拠金不足で閉じられた","so","ロスカット"),
-    ["保有時間の中央値",fmtHours(x.hold_median_hours),`全本 ${n.toLocaleString("ja-JP")}件`],
-  ].filter(Boolean));
-  document.getElementById("mech-note").innerHTML=`R の合計は各本の台帳の exact-R を、全本がそろう期間で足した値。割合は全体の R の合計に対する割合。決済の内訳は各本の MT5 報告書の約定から数えたものの合計。`;
-}
+function renderMembers(e){}
 function renderMechanism(e){
 
   if(isPort(e)) return renderMembers(e);
@@ -934,12 +910,13 @@ function renderMonthSide(e){
   const show=!isFwd() && e && !e._noR && e.trades && e.trades.r && e.trades.r.length;
   box.style.display=show?"":"none"; if(two) two.classList.toggle("only",!show);
   if(!show) return;
-  const msh=document.getElementById("month-side-h"); if(msh) msh.textContent=(isPort(e)?"全体":"この本")+"の負けの続き方と、今の実運用の位置";
+  const msh=document.getElementById("month-side-h"); if(msh) msh.textContent=(isPort(e)?"全体":"この EA ")+"の負けの続き方と、今の実運用の位置";
   const r=(e.trades_exact||e.trades).r, rows=[], f=(v,d)=>isNum(v)?(v>0?"+":v<0?"−":"")+nf(Math.abs(v),d):"—";
 
   let lr=null; try{ lr=isPort(e)?((UI2.data&&UI2.data.team&&UI2.data.team.key===e.name)?UI2.data.team:null)
-                              :(window.UI2&&UI2.data&&UI2.data.eas||[]).filter(x=>(x.key||x.name)===e.name)[0]; }catch(_){ lr=null; }
-  const c=lr&&lr.cmp, n=lr?((isPort(e)&&c&&isNum(c.n))?c.n:(lr.n||0)):(isPort(e)&&window.UI2&&UI2.data?-1:null);
+                              :(window.UI2&&UI2.data&&UI2.data.eas||[]).filter(x=>(x.key||x.name)===e.name)[0]
+                              ||(e.magic!=null?(window.UI2&&UI2.data&&UI2.data.eas||[]).filter(x=>x.magic!=null&&+x.magic===+e.magic)[0]:undefined); }catch(_){ lr=null; }
+  const c=lr&&lr.cmp, n=lr?((isPort(e)&&c&&isNum(c.n))?c.n:(lr.n||0)):(window.UI2&&UI2.data?(isPort(e)?-1:0):null);
   const RSOK=Array.isArray(e.trades.rs)&&e.trades.rs.length===e.trades.r.length;
   const rw=isPort(e)?(RSOK?e.trades.rs:null):r;
   if(n===-1) rows.push(["今の実運用","—","今の顔ぶれの実運用の数字を読めませんでした"]);
@@ -1053,10 +1030,7 @@ function applyData(j){
 
   if(j&&Array.isArray(j.eas)) j={...j, eas:sortByPair(j.eas)};
   DATA=j;
-  document.getElementById("src-note").innerHTML=j.forward
-    ?`実口座 ${isNum(j.balance_now)?fmtYen(j.balance_now):"—"}・決済 ${isNum(j.trades_total)?j.trades_total:"—"}件・${esc(j.made||"")} 時点`
-    :`報告書 ${j.eas.length}本`;
-  for(const b of document.querySelectorAll("[data-src]")) b.setAttribute("aria-pressed", String(b.dataset.src===SRC));
+  document.getElementById("src-note").innerHTML=`報告書 ${j.eas.length}本`;
   const pick=document.getElementById("picker"), sel=document.getElementById("picker-select");
   const P=j.portfolio||null, PL=P?(j.forward?esc(P.symbol||""):`${(P.members||[]).length}本`):"";
   pick.innerHTML=(P?`<button type="button" class="ea-chip port" data-ea="${esc(PORT)}" aria-pressed="false">${esc(PORT)}<small>${PL}</small></button>`:"")+
@@ -1071,17 +1045,6 @@ function applyData(j){
   try{ const h=decodeURIComponent(location.hash.slice(1)); if(h&&hasName(h)) first=h; }catch(err){}
   try{ select(first); }catch(e){ fail("表示の途中で誤り（"+((e&&e.message)||e)+"）"); }
 }
-async function switchSrc(src){
-  if(src===SRC) return;
-  if(src==="fwd"&&!FWD){
-    setStatus("フォワードを読み込み中","status-live");
-    let j; try{ j=await getJson("/api/forward-detail",30000); }
-    catch(e){ setStatus("フォワードを取得できません（"+((e&&e.message)||"通信の誤り")+"）","status-error"); return; }
-    const why=checkShape(j); if(why){ setStatus("フォワードを表示しない: "+why,"status-error"); return; }
-    FWD=j;
-  }
-  SRC=src; applyData(src==="fwd"?FWD:BT);
-}
 async function load(){
   let j; try{ j=await getJson("/api/backtest-detail",30000); }catch(e){ fail("取得できません（"+((e&&e.name==="AbortError")?"時間切れ":((e&&e.message)||"通信の誤り"))+"）"); return; }
   const why=checkShape(j); if(why){ fail(why); return; }
@@ -1089,7 +1052,6 @@ async function load(){
   applyData(j);
 }
 function render(name){ select(name); }
-for(const b of document.querySelectorAll("[data-src]")) b.onclick=()=>{ switchSrc(b.dataset.src); };
 
 {
   const dn=document.getElementById("zoom-down"), up=document.getElementById("zoom-up"),
@@ -1115,9 +1077,9 @@ let rt=null; window.addEventListener("resize",()=>{clearTimeout(rt); rt=setTimeo
 window.addEventListener("hashchange",()=>{ if(!DATA) return; const h=decodeURIComponent(location.hash.slice(1)); if(CUR&&h!==CUR.name&&hasName(h)) select(h); });
 load();
 </script>
-<script src="static/ui2.js?v=e7572e205e"></script>
+<script src="static/ui2.js?v=b8b6b766a3"></script>
 <script>
-(function(){var orig=select;select=function(n){orig(n);if(window.UI2&&CUR)UI2.compare(CUR.name);};if(CUR&&window.UI2)UI2.compare(CUR.name);if(window.UI2){var od=UI2.onData;UI2.onData=function(d){if(od)od(d);if(CUR)renderMonthSide(CUR);};}})();
+(function(){var orig=select;select=function(n){orig(n);if(window.UI2&&CUR)UI2.compare(CUR.name,CUR.magic);};if(CUR&&window.UI2)UI2.compare(CUR.name,CUR.magic);if(window.UI2){var od=UI2.onData;UI2.onData=function(d){if(od)od(d);if(CUR)renderMonthSide(CUR);};}})();
 </script>
 <script>
 
@@ -1125,22 +1087,61 @@ load();
   const btn=document.getElementById("bt-export"); if(!btn) return;
 
   { const nav=document.querySelector("nav.tab-bar"); if(nav) nav.appendChild(btn); }
+  const LABEL=btn.textContent;
   async function fontCss(){
     try{ const r=await fetch("static/Murecho-wght.ttf",{cache:"force-cache"}); if(!r.ok) return "";
       const b=await r.blob(); const u=await new Promise((ok,ng)=>{const f=new FileReader(); f.onload=()=>ok(f.result); f.onerror=ng; f.readAsDataURL(b);});
       return `@font-face{font-family:"Murecho";src:url(${u}) format("truetype");font-weight:100 900;}`; }catch(e){ return ""; }
   }
-  function inline(src,dst){
+
+  function makeDefaults(){
+    const fr=document.createElement("iframe");
+    fr.setAttribute("aria-hidden","true"); fr.tabIndex=-1;
+    fr.setAttribute("style","position:absolute;left:-200000px;top:0;width:800px;height:200px;border:0;visibility:hidden");
+    document.body.appendChild(fr);
+    const d=fr.contentDocument; d.open(); d.write('<!DOCTYPE html><html><body>'); d.close();
+    const cache=new Map();
+    return {
+      get(el){
+        const ns=el.namespaceURI||"http://www.w3.org/1999/xhtml", key=ns+"|"+el.localName;
+        let v=cache.get(key); if(v) return v;
+        const x=d.createElementNS(ns,el.localName); d.body.appendChild(x);
+        const cs=fr.contentWindow.getComputedStyle(x); v=Object.create(null);
+        for(let i=0;i<cs.length;i++){ const p=cs[i]; v[p]=cs.getPropertyValue(p); }
+        x.remove(); cache.set(key,v); return v;
+      },
+      done(){ fr.remove(); }
+    };
+  }
+
+  const SVG_KEEP=["fill","fill-opacity","stroke","stroke-width","stroke-opacity","stroke-dasharray","stroke-linecap","stroke-linejoin",
+    "font-family","font-size","font-weight","font-style","opacity","display","visibility","transform","text-anchor"];
+
+  const ALWAYS={"font-size":1,"font-weight":1};
+
+  function inline(src,dst,pcs,D,inSvg){
     const cs=getComputedStyle(src); let t="";
-    for(let i=0;i<cs.length;i++){ const p=cs[i]; t+=p+":"+cs.getPropertyValue(p)+";"; }
+    if(inSvg){
+      for(const p of SVG_KEEP){ const v=cs.getPropertyValue(p); if(v) t+=p+":"+v+";"; }
+    } else {
+      const def=D.get(src);
+      for(let i=0;i<cs.length;i++){
+        const p=cs[i]; if(p.charCodeAt(0)===45&&p.charCodeAt(1)===45) continue;
+        const v=cs.getPropertyValue(p);
+        if(!ALWAYS[p]&&v===def[p]&&(!pcs||v===pcs.getPropertyValue(p))) continue;
+        t+=p+":"+v+";";
+      }
+    }
     dst.setAttribute("style",t);
+    const kidSvg=inSvg||src.localName==="svg";
     const a=src.children, b=dst.children;
-    for(let i=0;i<a.length;i++) if(b[i]) inline(a[i],b[i]);
+    for(let i=0;i<a.length;i++) if(b[i]) inline(a[i],b[i],cs,D,kidSvg);
   }
   async function toPng(node){
     const w=Math.ceil(node.scrollWidth); let h=Math.ceil(node.scrollHeight);
     const clone=node.cloneNode(true);
-    inline(node,clone);
+    const D=makeDefaults();
+    try{ inline(node,clone,null,D,false); } finally { D.done(); }
     const sc=node.querySelectorAll("canvas"), dc=clone.querySelectorAll("canvas");
     sc.forEach((c,i)=>{ const img=document.createElement("img"); img.src=c.toDataURL("image/png"); img.setAttribute("style",dc[i].getAttribute("style")||""); img.style.width=c.clientWidth+"px"; img.style.height=c.clientHeight+"px"; dc[i].replaceWith(img); });
     clone.querySelectorAll("#bt-export,#zoom-ctl,.chart-tip,#picker,#picker-select,.toggles:not(#chart-toggles)").forEach(x=>x.remove());
@@ -1161,25 +1162,48 @@ load();
     const g=cv.getContext("2d"); g.fillStyle=bg; g.fillRect(0,0,cv.width,cv.height); g.scale(k,k); g.drawImage(img,0,0);
     return await new Promise((ok,ng)=>cv.toBlob(b=>b?ok(b):ng(new Error("画像を作れませんでした")),"image/png"));
   }
+
+  function fileName(){
+    const day=new Date(Date.now()+9*3600*1000).toISOString().slice(0,10);
+    const base=("バックテスト_"+(CUR?CUR.name:"EA")+"_"+day).replace(/[\\/:*?"<>|\u0000-\u001f\u007f]/g,"_").replace(/[. ]+$/,"");
+    return (base||"バックテスト")+".png";
+  }
+  let busy=false;
   btn.addEventListener("click",async ()=>{
-    const old=btn.textContent; btn.disabled=true; btn.textContent="画像を作っています…";
+    if(busy) return; busy=true;
+    const name=fileName();
+    let fh=null, done="";
     try{
-      const name=("バックテスト_"+(CUR?CUR.name:"EA")+"_"+new Date().toISOString().slice(0,10)+".png").replace(/[\\/:*?"<>|]/g,"_");
-      const blob=await toPng(document.querySelector("main.bt-main"));
       if(window.showSaveFilePicker){
-        let fh; try{ fh=await window.showSaveFilePicker({suggestedName:name,types:[{description:"PNG 画像",accept:{"image/png":[".png"]}}]}); }
-        catch(e){ if(e&&e.name==="AbortError") return; throw e; }
+
+        try{ fh=await window.showSaveFilePicker({suggestedName:name,types:[{description:"PNG 画像",accept:{"image/png":[".png"]}}]}); }
+        catch(e){ if(e&&e.name==="AbortError") return; fh=null; }
+      }
+      btn.disabled=true; btn.textContent="画像を作っています…";
+      const blob=await toPng(document.querySelector("main.bt-main"));
+      if(fh){
         const wr=await fh.createWritable(); await wr.write(blob); await wr.close();
-        btn.textContent="保存しました";
+        done="保存しました";
       } else {
         const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
         setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},3000);
-        btn.textContent="保存しました（ブラウザの保存先）";
+        done="保存しました（ブラウザの保存先）";
       }
-      setTimeout(()=>{btn.textContent=old;},2500);
-    }catch(e){ alert("出力できませんでした（"+((e&&e.message)||e)+"）"); btn.textContent=old; }
-    finally{ btn.disabled=false; }
+    }catch(e){ alert("出力できませんでした（"+((e&&e.message)||e)+"）"); }
+    finally{
+      busy=false; btn.disabled=false; btn.textContent=done||LABEL;
+      if(done) setTimeout(()=>{ if(!busy) btn.textContent=LABEL; },2500);
+    }
   });
+})();
+
+(function(){
+  const c=document.getElementById("eq-canvas"); if(!c) return;
+  c.style.touchAction="pan-y";
+  const move=ev=>{ if(!ev.touches||!ev.touches.length) return; const p=ev.touches[0];
+    c.dispatchEvent(new MouseEvent("mousemove",{clientX:p.clientX,clientY:p.clientY,bubbles:true})); };
+  c.addEventListener("touchstart",move,{passive:true});
+  c.addEventListener("touchmove",move,{passive:true});
 })();
 </script>
 <style id="pm-hints-v1">

@@ -33,11 +33,6 @@
 #rkp-list .rk:not(.rk-top) .bar em{font-size:0.97rem!important}
 #rkp-list .rk:not(.rk-top) .no{font-size:1.02rem!important}
 #rkp-list .rk:not(.rk-top) .ptag{font-size:0.97rem!important}
-#verdict-table .ea-cell small{font-size:1.02rem!important}
-#verdict-table .judge{font-size:1.02rem!important}
-#verdict-table .judge-why{font-size:1.02rem!important}
-#verdict-table .memo-box{font-size:1.02rem!important}
-#verdict-table .vcell small{font-size:1.02rem!important}
 .account-item span{font-size:1.02rem!important}
 .alert-group-cell > span:last-child{font-size:1.02rem!important}
 .alert-item span{font-size:1.02rem!important}
@@ -50,7 +45,6 @@
 .dd-cap{font-size:1.02rem!important}
 .ea-cell small{font-size:1.02rem!important}
 .ea-chip small{font-size:1.02rem!important}
-.ea-exit-countdown small{font-size:1.02rem!important}
 .ea-row p{font-size:1.02rem!important}
 .ea-tbl th small{font-size:0.97rem!important}
 .events-panel .history-note{font-size:1.02rem!important}
@@ -139,7 +133,6 @@
 .zoom-ctl button{font-size:1.02rem!important}
 .zoom-ctl label{font-size:1.02rem!important}
 .zoom-ctl output{font-size:1.02rem!important}
-body.u2 #ea-table .ea-exit-countdown small{font-size:1.02rem!important}
 body.u2 .mini-button{font-size:0.97rem!important}
 body.u2 .u-chart .tick{font-size:1.02rem!important}
 body.u2 .u-h .u-lead{font-size:1.02rem!important}
@@ -182,9 +175,6 @@ table.u-tbl th{font-size:0.97rem!important}
 details>summary{color:#1f2937!important}
 
 :root{--amber:#8d4107;--blue:#124ac6;--cyan:#0b5e74;--green:#10612e;--pc-0:#6e510c;--pc-1:#1e53ad;--pc-2:#7831aa;--pc-3:#a52334;--pc-4:#1d6234;--pc-5:#125c68;--pc-6:#8b3f14;--pc-x:#515761;--red:#a62016;--rose:#ab1036;--teal:#0c5f59;--u-amber:#8d4107;--u-blue:#124ac6;--u-down:#a62016;--u-teal:#0c5f59;--u-up:#10612e;--u-violet:#6b26d6;--violet:#6b26d6}
-#ea-table .ea-exit-countdown.exit-due{color:#a62016!important}
-#ea-table .ea-exit-countdown.exit-soon{color:#6e4d0f!important}
-#ea-table .ea-exit-countdown.exit-unknown{color:#764f00!important}
 #incidents .inc.normal{color:#933a06!important}
 #incidents .inc.urgent{color:#a62016!important}
 .alert-action-warn{color:#7b4900!important}
@@ -327,7 +317,6 @@ table.data-table th,table.data-table td{border-bottom-color:#d6ccba;border-right
 body.u2 #ea-table td{font-size:1.125rem!important}
 body.u2 #ea-table th{font-size:1.03rem!important}
 body.u2 #ea-table .ea-badge,body.u2 #ea-table .rate-pill{font-size:1.06rem!important}
-body.u2 #ea-table .ea-exit-countdown,body.u2 #ea-table .ea-exit-countdown strong{font-size:1.06rem!important}
 
 body.u2 #ea-positions-table td,body.u2 #ea-orders-table td,body.u2 #ea-trades-table td,body.u2 #account-positions-table td,body.u2 #account-orders-table td,body.u2 #account-trades-table td,body.u2 #t-tf td,body.u2 #t-lv td,body.u2 #t-corr td,body.u2 #rc-tbl td,body.u2 #u-cmp-table td,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl td,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl td{font-size:1.125rem!important}
 body.u2 #ea-positions-table th,body.u2 #ea-orders-table th,body.u2 #ea-trades-table th,body.u2 #account-positions-table th,body.u2 #account-orders-table th,body.u2 #account-trades-table th,body.u2 #t-tf th,body.u2 #t-lv th,body.u2 #t-corr th,body.u2 #rc-tbl th,body.u2 #u-cmp-table th,body.u2 section[aria-label="EA の順位 トップ10"] table.u-tbl th,body.u2 section[aria-label="EA の順位 11位以下"] table.u-tbl th{font-size:1.03rem!important}

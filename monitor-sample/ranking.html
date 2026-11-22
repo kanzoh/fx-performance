@@ -95,7 +95,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ポートフォリオモニター｜ランキング</title>
 <link rel="stylesheet" href="static/style.css?v=1994b03290">
-<link rel="stylesheet" href="static/ui2.css?v=e05897423f">
+<link rel="stylesheet" href="static/ui2.css?v=ae1d5fb1fd">
 <style>a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 
 .rk-tbl td{vertical-align:middle}
@@ -227,7 +227,7 @@ details.rk-more .rk-list{margin-top:4px}
 #rkp-list .rk.rk-top .ptag{font-size:16px}
 #rkp-list .rk:not(.rk-top) .ptag,#rkp-list .rk:not(.rk-top) .bar em{font-size:14.5px}
 </style>
-<link rel="stylesheet" href="static/readable.css?v=b54e292239">
+<link rel="stylesheet" href="static/readable.css?v=3c001521b7">
 <script src="static/tablealign.js?v=c13a453010" defer></script>
 </head>
 <body class="u2">
@@ -287,7 +287,7 @@ details.rk-more .rk-list{margin-top:4px}
 </main>
 <p class="pm-disclaimer">表示は投資助言ではありません。表示をもとにした売買の判断と、その結果の損益は、すべて利用者ご自身の責任です。本ソフトウェアの利用により生じたいかなる損害についても、作者は一切の責任を負いません。個人での利用に限ります（詳しくは同梱の「利用条件.txt」）。</p>
 <style>.pm-disclaimer{margin:18px 20px 24px;padding:10px 14px;border:1.5px solid #c9bfad;border-radius:8px;background:#fdfbf6;color:#344054;font-size:.95rem;font-weight:700;line-height:1.6}</style>
-<script src="static/ui2.js?v=e7572e205e"></script>
+<script src="static/ui2.js?v=b8b6b766a3"></script>
 <script>
 (function(){
 "use strict";
@@ -302,7 +302,7 @@ var RK_METRICS={
   live:[
     {k:"contrib",l:"寄与",d:"その EA の取引の損益率の合計（口座全体への貢献）",get:function(r){return r.n?r.contrib:null;},fmt:function(v){return pct(v);},signed:true},
     {k:"net",l:"損益率",d:"その EA の取引を複利で積んだ値",get:function(r){return r.live?r.live.net_pct:null;},fmt:function(v){return pct(v);},signed:true},
-    {k:"cmp",l:"バックテストどおり度",d:"同じ回数のバックテストの中で、下から何 % の位置か（50% が平均的・高いほど上振れ）",get:function(r){return r.cmp&&r.cmp.verdict!=="few"?r.cmp.rank:null;},fmt:function(v){return "下から "+v+"%";},max:100},
+    {k:"cmp",l:"バックテストどおり度",d:"同じ回数のバックテストの中で、下から何 % の位置か（50% が平均的・高いほど上振れ）",get:function(r){return r.cmp&&r.cmp.verdict!=="few"&&r.cmp.verdict!=="over"?r.cmp.rank:null;},fmt:function(v){return "下から "+v+"%";},max:100},
     {k:"pf",l:"PF（円）",d:"利益の合計 ÷ 損失の合計（円）。負けなしは一番上",get:function(r){return !r.n?null:(r.pf===null?(r.win>=100?999:null):r.pf);},fmt:function(v){return v>=999?"負けなし":v.toFixed(2);}},
     {k:"win",l:"勝率",d:"利益で終わった取引の割合",get:function(r){return r.n?r.win:null;},fmt:function(v){return v.toFixed(1)+"%";},max:100},
     {k:"dd",l:"最大ドローダウンの小ささ",d:"最高値からの最大の下げ（決済ベース）。小さいほど上",get:function(r){return r.live?r.live.max_dd_pct:null;},fmt:function(v){return v.toFixed(2)+"%";},low:true,loss:true},
@@ -369,7 +369,7 @@ function drawRank(){
     var r=x.r,v=x.v,few=RK.src==="live"&&!m.nomin&&r.n<5;
     var sub=RK.src==="live"?"<td"+(few?" class='few-n'":"")+">"+r.n+"回</td>":(r.bt?"<td>"+r.bt.stats.trades+"回</td><td>"+fmtN(r.bt.stats.years,0)+"年</td>":"<td>—</td><td>—</td>");
     return "<tr class='"+(i<3?"rk-top":"")+(few?" dim":"")+"'><td><span class='rkno"+(i<3?" top":"")+"'>"+(i+1)+"</span></td>"+
-      "<td><a class='ea-link' href='backtest.html#"+encodeURIComponent(r.key||r.name)+"'>"+esc(r.name)+"</a></td>"+
+      "<td>"+rkName(r)+"</td>"+
       "<td>"+ptag(r.pair)+"</td><td><b class='"+(m.signed?cls(v):"")+"'>"+m.fmt(v)+"</b></td><td class='rkbar-c'>"+barHtml(v)+"</td>"+sub+"</tr>";};
   var top10=rows.slice(0,10),rest=rows.slice(10);
   var absMax=Math.max.apply(null,rows.map(function(x){return x.v>=999?0:Math.abs(x.v);}).concat([1e-9]));
@@ -378,7 +378,7 @@ function drawRank(){
     var w=v>=999?100:Math.max(2,Math.abs(v)/(m.max||absMax)*100),col=v>=999?"var(--up)":m.signed?(v>=0?"var(--up)":"var(--down)"):(m.loss?"var(--down)":"var(--up)");
     var sub=RK.src==="live"?"<td"+(few?" class='few-n'":"")+">"+r.n+"回</td>":(r.bt?"<td>"+r.bt.stats.trades+"回</td><td>"+fmtN(r.bt.stats.years,0)+"年</td>":"<td>—</td><td>—</td>");
     return "<tr class='"+(few?"dim":"")+"'><td><span class='rkno'>"+(i+1)+"</span></td>"+
-      "<td><a class='ea-link' href='backtest.html#"+encodeURIComponent(r.key||r.name)+"'>"+esc(r.name)+"</a></td>"+
+      "<td>"+rkName(r)+"</td>"+
       "<td>"+ptag(r.pair)+"</td><td><b class='"+(m.signed?cls(v):"")+"'>"+m.fmt(v)+"</b></td>"+
       "<td class='rkbar-c'><span class='bx rkbar sm'><i style='left:0;width:"+w+"%;background:"+col+"'></i></span></td>"+sub+"</tr>";};
   $("rk-list").innerHTML=!rows.length?"<p class='empty' style='padding:16px;text-align:center;color:var(--ink2)'>条件に合う EA がありません</p>":
@@ -386,7 +386,7 @@ function drawRank(){
   $("rk-rest").innerHTML=rest.length?"<div class='u-tbl-wrap'><table class='u-tbl rk-tbl rk-sm'>"+head()+"<tbody>"+rest.map(function(x,i){return cellHtml(x,i+10);}).join("")+"</tbody></table></div>":"<p class='empty' style='padding:12px 2px;color:var(--ink2)'>11 位以下の EA はありません</p>";
   var h=rkHash().replace('#rank/','#');if(location.hash!==h)history.replaceState(null,"",h);
   $("rk-note").textContent=(skipped?"この条件で数字がない EA（取引前・5 回未満など）"+skipped+" 本は載せていません。":"")+
-    (drawPairRank(m),"")+(RK.src==="live"?"実運用は期間が短いので、順位は参考程度に。":"バックテストは EA を選んだのと同じ期間で測った数字です。実運用の順位とは別物として見てください。");
+    (drawPairRank(m),"")+(RK.src==="live"?"実運用は期間が短いので、順位は参考程度に。":"バックテストは、置いた報告書の期間の数字です。実運用の順位とは別物として見てください。");
 }
 
 var RKP={
@@ -395,6 +395,8 @@ var RKP={
   bt:{cagr:["cagr_pct","年平均リターン（EA の平均）",true],rf:["recovery_factor","リカバリーファクター（EA の平均）"],pf:["pf","PF（円・EA の平均）"],
       dd:["max_dd_pct","最大ドローダウン（EA の平均・小さいほど上）",false,true],sharpe:["sharpe_daily","シャープレシオ（EA の平均）"],
       win:["win_pct","勝率（EA の平均）"],yrs:["yrs","利益の出た年の割合（EA の平均）"],per_year:["per_year","年あたりの取引回数（ペアの合計）",false,false,true]}};
+
+function rkName(r){return r.bt?"<a class='ea-link' href='backtest.html#"+encodeURIComponent(r.key||r.name)+"'>"+esc(r.name)+"</a>":"<span class='ea-nolink' title='バックテストの報告書がまだありません'>"+esc(r.name)+"</span>";}
 function drawPairRank(m){
   var def=RKP[RK.src][m.k]||RKP[RK.src][Object.keys(RKP[RK.src])[0]],key=def[0],signed=!!def[2],low=!!def[3],sum=!!def[4];
   var rows=[],V0=D.views.now||D.views.all;
