@@ -2,36 +2,36 @@
 <html lang="ja">
 <head>
 <script>
-
+/* 公開用サンプル：配布版のポートフォリオモニターを、作りもののデータで動かしています（数字・値動きはすべて作りもの）。 */
 (function(){
   var FROZEN=1794573000000, _D=Date;
   function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
     return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
   FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
   window.Date=FD;
-  var PAGES={"/": "index.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/study": "study.html", "/analysis": "analysis.html", "/verdict": "verdict.html"};
+  var PAGES={"/": "index.html", "/analysis": "analysis.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/check": "check.html"};
   var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
   var SIM=(function(){
-    var SK="monitor_sample_ops_v1";
+    var SK="pm_dist_sample_ops_v1";
     function load(){var s={};try{s=JSON.parse(localStorage.getItem(SK)||"{}")||{}}catch(e){}
-      ["names","memos","acked","deleted","resets"].forEach(function(k){if(!s[k]||typeof s[k]!=="object")s[k]={}});return s;}
+      ["names","deleted","resets"].forEach(function(k){if(!s[k]||typeof s[k]!=="object")s[k]={}});return s;}
     function save(s){try{localStorage.setItem(SK,JSON.stringify(s))}catch(e){}}
     function J(o,st){return Promise.resolve(new Response(JSON.stringify(o),{status:st||200,headers:{"Content-Type":"application/json"}}));}
     function nowIso(){return new _D(FROZEN).toISOString();}
     function post(api,init){
       var b={};try{b=JSON.parse((init&&init.body)||"{}")||{}}catch(e){}
-      var s=load(), mg=String(b.magic==null?"":b.magic);
+      var s=load(), mg=String(b.magic==null?"":b.magic).trim();
       if(api==="ea-name"){ if(!mg) return J({ok:false,error:"magic is required"},400);
-        s.names[mg]=String(b.name||"").trim(); save(s); return J({ok:true,magic:mg,name:s.names[mg]}); }
-      if(api==="ea-reset"){ if(!mg) return J({ok:false,error:"magic is required"},400);
-        if(b.action==="clear") delete s.resets[mg]; else s.resets[mg]={account_login:String(b.account_login||""),reset_at:nowIso()};
-        save(s); return J({ok:true}); }
-      if(api==="ea-delete"){ if(!mg) return J({ok:false,error:"magic is required"},400);
-        s.deleted[mg]=1; delete s.resets[mg]; save(s); return J({ok:true}); }
-      if(api==="verdict-memo"){ var k=String(b.key||""), t=String(b.text||"").trim();
-        if(t) s.memos[k]=t; else delete s.memos[k]; save(s); return J({ok:true}); }
-      if(api==="incident-ack"){ s.acked[String(b.key||"")]=nowIso().replace("T"," ").slice(0,19)+" UTC"; save(s); return J({ok:true}); }
-      return J({ok:false,error:"公開用サンプルのため、この操作はできません"});
+        var nm=String(b.name||"").trim(); if(nm.length>40) return J({ok:false,error:"name is too long"},400);
+        s.names[mg]=nm; save(s); return J({ok:true,magic:mg,name:nm}); }
+      if(api==="ea-reset"){ if(!mg) return J({ok:false,error:"account_login and magic are required"},400);
+        if(b.action==="clear"){ delete s.resets[mg]; delete s.deleted[mg]; save(s); return J({ok:true,action:"clear"}); }
+        s.resets[mg]={account_login:String(b.account_login||""),reset_at:nowIso()}; save(s);
+        return J({ok:true,action:"reset",reset_at:s.resets[mg].reset_at,reset_after_ticket:null}); }
+      if(api==="ea-delete"){ if(!mg) return J({ok:false,error:"account_login and magic are required"},400);
+        s.deleted[mg]=1; s.resets[mg]={account_login:String(b.account_login||""),reset_at:nowIso()}; save(s);
+        return J({ok:true,account_login:String(b.account_login||""),magic:mg}); }
+      return J({ok:false,error:"公開用サンプルのため、この操作はできません（配布版では使えます）"});
     }
     function mOf(o){return o&&o.magic!=null?String(o.magic):null;}
     function dropDeleted(a,s){return Array.isArray(a)?a.filter(function(o){var m=mOf(o);return !(m&&s.deleted[m]);}):a;}
@@ -39,9 +39,8 @@
       if(api==="summary"&&d){
         var n=d.ea_names||(d.ea_names={});
         Object.keys(s.names).forEach(function(m){ if(s.names[m]) n[m]=s.names[m]; else delete n[m]; });
-        Object.keys(s.deleted).forEach(function(m){ delete n[m]; });
         d.ea_stats=dropDeleted(d.ea_stats,s);
-        var rs=dropDeleted(d.ea_resets||[],s).filter(function(r){return !s.resets[String(r.magic)];});
+        var rs=(d.ea_resets||[]).filter(function(r){return !s.resets[String(r.magic)];});
         Object.keys(s.resets).forEach(function(m){ var r=s.resets[m];
           rs.push({account_login:r.account_login,magic:m,reset_at:r.reset_at,reset_after_ticket:null}); });
         d.ea_resets=rs;
@@ -50,28 +49,24 @@
       }
       if(api==="performance"&&d){ ["by_ea","by_account_ea"].forEach(function(k){ d[k]=dropDeleted(d[k],s); }); }
       if((api==="trades"||api==="ea-history")&&Array.isArray(d)) d=dropDeleted(d,s);
-      if(api==="verdict"&&d){ var mm=d.memos||(d.memos={}); Object.keys(s.memos).forEach(function(k){ mm[k]=s.memos[k]; }); }
-      if(api==="incidents"&&d&&Array.isArray(d.items)) d.items.forEach(function(it){ if(it&&s.acked[it.key]) it.acked_at=s.acked[it.key]; });
       return d;
     }
+    function used(){var s=load();return Object.keys(s.names).length+Object.keys(s.deleted).length+Object.keys(s.resets).length;}
     function patch(api,r){
-      var s=load(); if(!r.ok) return r;
-      if(!["summary","performance","trades","ea-history","verdict","incidents"].some(function(a){return a===api;})) return r;
-      if(!Object.keys(s.names).length&&!Object.keys(s.memos).length&&!Object.keys(s.acked).length&&!Object.keys(s.deleted).length&&!Object.keys(s.resets).length) return r;
+      if(!r.ok||!used()||["summary","performance","trades","ea-history"].indexOf(api)<0) return r;
+      var s=load();
       return r.json().then(function(d){ return new Response(JSON.stringify(apply(api,d,s)),{status:200,headers:{"Content-Type":"application/json"}}); });
     }
-    function used(){var s=load();return Object.keys(s.names).length+Object.keys(s.memos).length+Object.keys(s.acked).length+Object.keys(s.deleted).length+Object.keys(s.resets).length;}
     function reset(){try{localStorage.removeItem(SK)}catch(e){} location.reload();}
     return {post:post,patch:patch,used:used,reset:reset};
   })();
-  window.__sampleOps=SIM;
   var _fetch=window.fetch.bind(window);
   window.fetch=function(input,init){
     var url=(typeof input==="string")?input:(input&&input.url)||"";
     var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
     if(!m) return _fetch(input,init);
-    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
     var api=m[1].replace(/\//g,"_");
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
     if(method!=="GET") return SIM.post(api,init);
     return _fetch(here+"api/"+api+".json",{cache:"no-cache"}).then(function(r){return SIM.patch(api,r);});
   };
@@ -81,15 +76,20 @@
     var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
     if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
   },true);
-  document.addEventListener("submit",function(e){ e.preventDefault(); alert("公開用サンプルのため操作できません"); },true);
   document.addEventListener("DOMContentLoaded",function(){
     var b=document.createElement("div");
-    b.textContent="公開用サンプル：数字はすべて作りものです（実在の口座・EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。名前の編集やメモなどの操作も試せます（このブラウザの中だけに残ります）。";if(SIM.used()){var u=document.createElement("button");u.type="button";u.textContent="操作を元に戻す";u.style.cssText="margin-left:12px;font:700 13px/1.4 sans-serif;padding:2px 10px;border-radius:5px;border:1px solid #fff;background:#fff;color:#1f2937;cursor:pointer";u.onclick=SIM.reset;b.appendChild(u);}
+    b.textContent="公開用サンプル：配布版のポートフォリオモニターと同じ画面を、作りもののデータで動かしています（数字・値動きはすべて作りもの・実在の口座や EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。EA の名前の編集などの操作も試せます（このブラウザの中だけに残ります）。";
+    if(SIM.used()){var u=document.createElement("button");u.type="button";u.textContent="操作を元に戻す";
+      u.style.cssText="margin-left:12px;font:700 13px/1.4 sans-serif;padding:2px 10px;border-radius:5px;border:1px solid #fff;background:#fff;color:#1f2937;cursor:pointer";
+      u.onclick=SIM.reset;b.appendChild(u);}
     b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
     document.body.insertBefore(b,document.body.firstChild);
   });
 })();
 </script>
+
+<meta name="pm-token" content="sample">
+<meta name="pm-version" content="1.0.0">
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -126,6 +126,15 @@ a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-
 .mk-chart svg{display:block;width:100%;height:auto}
 .mk-chart .tick{font-size:12px;fill:var(--u-muted)}
 .mk-chart .lvl{font-size:11.5px;font-weight:700}
+
+.mk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;height:100%}
+.mk-cell{display:flex;flex-direction:column;min-width:0;border:1px solid var(--u-line,#d0d5dd);border-radius:8px;padding:6px 8px 4px}
+.mk-cell h3{margin:0 0 4px;font-size:1rem;font-weight:800;color:var(--u-ink,#101828);display:flex;align-items:center;gap:8px}
+
+.mk-cell h3 .tf{display:inline-block;background:#1d2939;color:#fff;font-size:1.3rem;font-weight:900;line-height:1.2;padding:3px 14px;border-radius:6px;letter-spacing:.04em}
+.mk-cell h3 small{font-weight:700;color:#344054;font-size:.95rem}
+.mk-cell .mk-chart{flex:1 1 auto}
+@media (max-width:900px){.mk-grid{grid-template-columns:1fr}}
 .upd{font-size:.95rem;font-weight:700;color:var(--u-ink2)}
 .upd b{color:var(--u-ink)}
 
@@ -148,21 +157,6 @@ body.u2 #t-all.mk-tbl td.env{white-space:nowrap!important;min-width:0!important;
 .btv{color:#34548c!important;font-weight:850}
 .btdot{display:inline-block;width:12px;height:12px;border-radius:3px;background:#5b7fb8;margin-right:6px;vertical-align:-1px}
 
-.cal-tbl tr.past td{opacity:.55}
-.cal-tbl tr.next td{background:rgba(37,99,235,.12)!important}
-.cal-tbl tr.hi td.cal-ja{font-weight:900}
-.cal-st{letter-spacing:1px;font-weight:900}
-.cal-st.i3{color:#b42318}.cal-st.i2{color:#b45309}.cal-st.i1{color:#6b7280}.cal-st.i0{color:#1e53ad}
-.cal-sw{font-weight:800;cursor:pointer;white-space:nowrap}
-.cal-sw input{vertical-align:-2px;margin-right:4px}
-.cal-warn{color:#9a3412;font-weight:900}
-
-.evb{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:6px;font-size:.86em;font-weight:900;white-space:nowrap;vertical-align:1px;border:1px solid}
-.evb.i3{color:#fff;background:#b42318;border-color:#b42318}
-.evb.i2{color:#7c2d12;background:#fde7c7;border-color:#c2410c}
-.evb.done{color:#6b7280;background:#efeae0;border-color:#c8c0b0}
-
-.evb{display:table;margin:4px 0 0 0}
 </style>
 <link rel="stylesheet" href="static/readable.css">
 <script src="static/tablealign.js" defer></script>
@@ -171,7 +165,7 @@ body.u2 #t-all.mk-tbl td.env{white-space:nowrap!important;min-width:0!important;
 <header class="page-header">
   <div>
     <h1>ポートフォリオモニター</h1>
-    <div class="subtitle">EA別リアルタイム監視</div>
+    <div class="subtitle">EA別リアルタイム監視・版 1.0.0</div>
   </div>
   <div id="status" class="status-pill status-live">読み込み中</div>
 </header>
@@ -180,12 +174,11 @@ body.u2 #t-all.mk-tbl td.env{white-space:nowrap!important;min-width:0!important;
   <a class="tab-button" href="index.html#top">トップ</a>
   <a class="tab-button" href="index.html#ea">EA別</a>
   <a class="tab-button active" href="analysis.html" aria-current="page">市場分析</a>
-  <a class="tab-button" href="study.html">EA分析</a>
-  <a class="tab-button" href="verdict.html">EAの見極め</a>
   <a class="tab-button" href="backtest.html">詳細データ</a>
   <a class="tab-button" href="ranking.html">ランキング</a>
+  <a class="tab-button" href="check.html">点検</a>
 </nav>
-<details class="hx-bar" open><summary>このページでできること</summary><ul><li>表の行 <b>▸</b> を押すと、下のチャートがその通貨ペアに切り替わります。</li><li>チャートにマウスを当てる（スマホは指でなぞる）と、その足の値が出ます。</li><li>経済指標の「重要度★1も出す」で、小さい指標も表に出します。</li></ul></details>
+<details class="hx-bar" open><summary>このページでできること</summary><ul><li>表の行 <b>▸</b> か、チャートの上の通貨ペアのボタンを押すと、チャートがその通貨ペアに切り替わります。</li><li>チャートにマウスを当てる（スマホは指でなぞる）と、その足の値が出ます。</li><li>通貨の強弱は「24時間／5日」で切り替えます。</li></ul></details>
 
 <main class="u-wrap">
 <p class="u-note" id="err" hidden></p>
@@ -202,24 +195,18 @@ body.u2 #t-all.mk-tbl td.env{white-space:nowrap!important;min-width:0!important;
   </section>
 
   
-  <section class="u-card s12" aria-label="今日の経済指標">
+  <section class="u-card s8 u-fill" aria-label="チャート（週足・日足・4時間足・1時間足）">
     <div class="u-h">
-      <h2>今日の経済指標</h2>
-      <span class="u-lead" id="cal-lead"></span>
-      <div class="u-right"><label class="cal-sw"><input type="checkbox" id="cal-low"> 重要度★1も出す（<span id="cal-low-n">0</span>件）</label></div>
-    </div>
-    <div class="u-tbl-wrap"><table class="u-tbl cal-tbl" id="t-cal"></table></div>
-    <p class="u-note" id="cal-note"></p>
-  </section>
-
-  
-  <section class="u-card s8 u-fill" aria-label="1時間足チャート">
-    <div class="u-h">
-      <h2 id="c-title">1時間足</h2>
-      <span class="u-lead">直近120本・EMA20（青）・EMA50（橙）・前日と前週の高値安値（点線）</span>
+      <h2 id="c-title">チャート</h2>
+      <span class="u-lead">EMA20（青）・EMA50（橙）・点線は前日と前週の高値安値・1時間足の確定ごとに更新</span>
       <div class="u-right"><div class="pair-tabs" id="ptabs"></div></div>
     </div>
-    <div class="u-chart-area" id="c-area"><div class="mk-chart" id="chart"></div></div>
+    <div class="u-chart-area" id="c-area"><div class="mk-grid">
+      <div class="mk-cell"><h3><span class="tf">週足</span><small>約80週</small></h3><div class="mk-chart" id="chart-W1"></div></div>
+      <div class="mk-cell"><h3><span class="tf">日足</span><small>120日</small></h3><div class="mk-chart" id="chart-D1"></div></div>
+      <div class="mk-cell"><h3><span class="tf">4時間足</span><small>120本</small></h3><div class="mk-chart" id="chart-H4"></div></div>
+      <div class="mk-cell"><h3><span class="tf">1時間足</span><small>120本</small></h3><div class="mk-chart" id="chart-H1"></div></div>
+    </div></div>
   </section>
   <div class="s4 u-stack">
     <section class="u-card" aria-label="分析レポート">
@@ -229,6 +216,7 @@ body.u2 #t-all.mk-tbl td.env{white-space:nowrap!important;min-width:0!important;
     <section class="u-card" aria-label="時間足ごとの流れ">
       <div class="u-h"><h2>時間足ごとの流れ</h2></div>
       <div class="u-tbl-wrap"><table class="u-tbl lv-tbl" id="t-tf"></table></div>
+      <p class="u-note">週足は MT5 の週足（直近260週）。週足の流れは EMA200（200週）で見るので、200週に足りないペアは「—」（ADX・RSI・EMA50 より・チャートはある分で出す）。見立ては日足と4時間足の組み合わせのまま。</p>
     </section>
     <section class="u-card" aria-label="節目">
       <div class="u-h"><h2>節目までの距離</h2><span class="u-lead">日足 ATR の倍数（＋は上）</span></div>
@@ -278,10 +266,10 @@ function drawAll() {
   $("upd").innerHTML = "1時間足 <b>" + jst(D.h1_bar_utc) + "</b> まで（日本時間）・書き出し " + jst(D.written_utc);
   $("sess").textContent = "いまの時間帯：" + D.sessions.join("・");
   $("status").textContent = "市場分析・" + jst(D.written_utc) + " 時点";
-  var h = "<thead><tr><th>通貨ペア</th><th>現在の<br>市場環境</th><th>日足</th><th>4時間足</th><th>1時間足</th><th>値動き</th><th>今日/平均</th><th>20日の<br>位置</th><th>RSI<br>1時間足</th><th>24時間</th><th>5日</th><th title='実取引で、このペアの EA が市場環境の変動に対応できているか（実弾の合計がプラスか。5件未満は判断材料不足）'>EAの<br>対応状況</th><th>実弾の合計R<br>（件数）</th><th title='実弾を建てた日の日足の流れ'>経験した<br>環境</th></tr></thead><tbody>";
+  var h = "<thead><tr><th>通貨ペア</th><th>現在の<br>市場環境</th><th>週足</th><th>日足</th><th>4時間足</th><th>1時間足</th><th>値動き</th><th>今日/平均</th><th>20日の<br>位置</th><th>RSI<br>1時間足</th><th>24時間</th><th>5日</th><th title='実取引で、このペアの EA が市場環境の変動に対応できているか（実運用の合計がプラスか。5件未満は判断材料不足）'>EAの<br>対応状況</th><th>実運用の合計R<br>（件数）</th><th title='実運用を建てた日の日足の流れ'>経験した<br>環境</th></tr></thead><tbody>";
   P.forEach(function (r) {
     h += "<tr data-p='" + r.pair + "'" + (r.pair === SEL ? " class='sel'" : "") + "><td><span class='ptag' style='" + pv(r.pair) + "'><i></i>" + esc(r.label) + "</span></td>" +
-      "<td class='env'>" + envCell(r.env) + "</td><td>" + trTag(r.tf.D1) + "</td><td>" + trTag(r.tf.H4) + "</td><td>" + trTag(r.tf.H1) + "</td>" +
+      "<td class='env'>" + envCell(r.env) + "</td><td>" + trTag(r.tf.W1) + "</td><td>" + trTag(r.tf.D1) + "</td><td>" + trTag(r.tf.H4) + "</td><td>" + trTag(r.tf.H1) + "</td>" +
       "<td>" + volTag(r.atr_pct) + "</td><td>" + (r.today_pct === null ? "—" : r.today_pct + "%") + "</td><td style='text-align:left'>" + posBar(r.pos20) + "</td>" +
       "<td>" + (r.tf.H1 && r.tf.H1.rsi !== null ? r.tf.H1.rsi.toFixed(0) : "—") + "</td>" +
       "<td class='" + cls(r.ch24) + "'>" + sg(r.ch24) + "%</td><td class='" + cls(r.ch5) + "'>" + sg(r.ch5) + "%</td>" + fitCell(r) + "</tr>";
@@ -291,11 +279,11 @@ function drawAll() {
   $("ptabs").innerHTML = P.map(function (r) { return "<button type='button' style='" + pv(r.pair) + "' data-p='" + r.pair + "' aria-pressed='" + (r.pair === SEL) + "'>" + esc(r.label.replace("（金）", "")) + "</button>"; }).join("");
   Array.prototype.forEach.call(document.querySelectorAll("#ptabs button"), function (b) { b.onclick = function () { SEL = b.getAttribute("data-p"); save(); drawAll(); }; });
   var r = P.filter(function (x) { return x.pair === SEL; })[0];
-  $("c-title").textContent = r.label + " の1時間足";
+  $("c-title").textContent = r.label + " のチャート";
   $("r-title").textContent = r.label + " の分析レポート";
   $("report").innerHTML = "<p><b class='env'>" + esc(r.env) + "</b></p>" + r.report.map(function (s) { return "<p>" + esc(s) + "</p>"; }).join("");
   var tfh = "<thead><tr><th>時間足</th><th>流れ</th><th>ADX</th><th>RSI</th><th>EMA50 より</th></tr></thead><tbody>";
-  [["日足", "D1"], ["4時間足", "H4"], ["1時間足", "H1"]].forEach(function (x) {
+  [["週足", "W1"], ["日足", "D1"], ["4時間足", "H4"], ["1時間足", "H1"]].forEach(function (x) {
     var t = r.tf[x[1]]; if (!t) { tfh += "<tr><td>" + x[0] + "</td><td colspan=4>—</td></tr>"; return; }
     tfh += "<tr><td>" + x[0] + "</td><td>" + trTag(t) + "</td><td>" + (t.adx === null ? "—" : t.adx.toFixed(0)) + "</td><td>" + (t.rsi === null ? "—" : t.rsi.toFixed(0)) + "</td><td>" + (t.above50 ? "上" : "下") + "</td></tr>";
   });
@@ -305,8 +293,8 @@ function drawAll() {
     [["前週高値", r.prev_week[0], r.dist.pw_hi], ["前日高値", r.prev_day[0], r.dist.pd_hi], ["いま", r.price, 0], ["前日安値", r.prev_day[1], r.dist.pd_lo], ["前週安値", r.prev_week[1], r.dist.pw_lo]]
       .map(function (x) { return "<tr><td>" + x[0] + "</td><td>" + f(x[1]) + "</td><td class='" + cls(x[2]) + "'>" + (x[0] === "いま" ? "—" : sg(x[2])) + "</td></tr>"; }).join("") + "</tbody>";
   $("e-title").textContent = r.label + " で動いている EA（" + r.eas.length + "本）";
-  $("eas").innerHTML = (r.fit ? "<p class='u-note' style='margin:0 0 6px'>EAの対応状況：市場環境が変わっても崩れずに稼げているかを、実弾の全部の取引で見る。5件以上で合計がプラスなら対応できている、0以下なら対応できていない。5件未満は判断材料不足。経験した環境は、実弾を建てた日の日足の流れ（上昇・下降・もみ合い）ごとの件数と R。R は残高比。BT の見込みは今の環境（" + esc(r.fit.label) + "）での参考。</p>" : "") +
-    (r.eas.length ? r.eas.map(function (e) { return "<div class='ea-row'><b>" + esc(e.name) + "</b>" + fitEA(r, e.name) + (e.summary ? "<p>" + esc(e.summary) + "</p>" : "") + "</div>"; }).join("") : "<p class='u-note'>このペアの EA はありません</p>");
+  $("eas").innerHTML = (r.fit ? "<p class='u-note' style='margin:0 0 6px'>EAの対応状況：市場環境が変わっても崩れずに稼げているかを、実運用の全部の取引で見る。5件以上で合計がプラスなら対応できている、0以下なら対応できていない。5件未満は判断材料不足。経験した環境は、実運用を建てた日の日足の流れ（上昇・下降・もみ合い）ごとの件数と R。R は残高比。BT の見込みは今の環境（" + esc(r.fit.label) + "）での参考。</p>" : "") +
+    (r.eas.length ? r.eas.map(function (e) { return "<div class='ea-row'><b>" + esc((LIVE[e.name] && LIVE[e.name].name) || e.name) + "</b>" + fitEA(r, e.name) + (e.summary ? "<p>" + esc(e.summary) + "</p>" : "") + "</div>"; }).join("") : "<p class='u-note'>このペアの EA はありません</p>");
   drawStrength(); drawCorr(); drawChart(r);
 }
 
@@ -332,28 +320,33 @@ function fitEA(r, name) {
 
   var f = r.fit, j = f && (f.eas || []).filter(function (x) { return x.name === name; })[0];
   var a = liveAll([name]), cj = copeJudge(a);
-  var le = "<div class='fit-line'>" + liveTag(cj) + " 実弾 " + (a.n ? "<b class='" + cls(a.s) + "'>" + sg(a.s) + "R</b><span class='fit-s'>（" + a.n + "件）</span>" : "<span class='fit-s'>まだ決済なし</span>") + "</div>" +
+  var le = "<div class='fit-line'>" + liveTag(cj) + " 実運用 " + (a.n ? "<b class='" + cls(a.s) + "'>" + sg(a.s) + "R</b><span class='fit-s'>（" + a.n + "件）</span>" : (a.noR ? "<span class='fit-s'>決済 " + a.noR + " 件（R はバックテストの報告書で確かめた EA だけ）</span>" : "<span class='fit-s'>まだ決済なし</span>")) + "</div>" +
     (a.n ? "<div class='fit-line fit-s'>経験した環境：" + envList(a, true) + "</div>" : "");
-  var bt = j ? "<div class='fit-line fit-s'><span class='btdot'></span>BT の見込み（今の環境・" + esc(f.label) + "）<b class='btv'>" + (j.r1 === null ? "—" : sg(j.r1)) + "R/件</b>（" + j.n + "件）・全期間 <b class='btv'>" + sg(j.r1_all) + "R/件</b></div>" : "";
+  var bt = j ? "<div class='fit-line fit-s'><span class='btdot'></span>BT の見込み（今の環境・" + esc(f.label) + "）<b class='btv'>" + (j.r1 === null ? "—" : sg(j.r1, 3)) + "R/件</b>（" + j.n + "件）・全期間 <b class='btv'>" + sg(j.r1_all, 3) + "R/件</b></div>" : "";
   return le + bt;
 }
 
 var ENV_JA = { up: "上昇", down: "下降", range: "もみ合い" };
 function pairEANames(r) { return (r.eas || []).map(function (e) { return e.name; }); }
 function liveAll(names) {
-  var o = { n: 0, s: 0, env: {} }, rows = {};
+  var o = { n: 0, s: 0, env: {}, noR: 0 }, rows = {};
   names.forEach(function (nm) {
-    var L = LIVE[nm]; if (!L || !L.live_tr) return;
+    var L = LIVE[nm]; if (!L) return;
+    if (L.n && !(L.live_tr && L.live_tr.length)) { o.noR += L.n; return; }
+    if (!L.live_tr) return;
     L.live_tr.forEach(function (x) {
-      o.n++; o.s += x[1];
+      o.n++; o.m = (o.m || 0) + Math.round(x[1] * 1000);
       var e = CUR_ENV_HIST && CUR_ENV_HIST[x[0]], k = e && ENV_JA[e[0]] ? e[0] : "other";
-      var b = o.env[k] || (o.env[k] = { n: 0, s: 0 }); b.n++; b.s += x[1];
+      var b = o.env[k] || (o.env[k] = { n: 0, s: 0 }); b.n++; b.m = (b.m || 0) + Math.round(x[1] * 1000);
     });
   });
+
+  var r2 = function (m) { var c = Math.floor((Math.abs(m || 0) + 5) / 10); return (m < 0 ? -c : c) / 100; };
+  o.s = r2(o.m); Object.keys(o.env).forEach(function (k) { o.env[k].s = r2(o.env[k].m); });
   return o;
 }
 function copeJudge(a) {
-  if (!a.n) return { tag: "none" };
+  if (!a.n) return { tag: a.noR ? "nor" : "none" };
   if (a.n < 5) return { tag: "few" };
   return { tag: a.s > 0 ? "ok" : "under" };
 }
@@ -384,7 +377,7 @@ function liveJudge(lv, bt) {
   var z = (lv.r1 - bt.r1) / (bt.sd / Math.sqrt(lv.n));
   return { tag: z <= -2 ? "under" : lv.r1 > 0 ? "ok" : "watch", z: z };
 }
-var LT = { ok: ["fit-good", "対応できている"], under: ["fit-bad", "対応できていない"], few: ["fit-few", "判断材料不足"], none: ["fit-few", "実弾なし"] };
+var LT = { ok: ["fit-good", "対応できている"], under: ["fit-bad", "対応できていない"], few: ["fit-few", "判断材料不足"], none: ["fit-few", "実運用なし"], nor: ["fit-few", "R なし（報告書が要る）"] };
 function liveTag(j) { if (!j) return "—"; var t = LT[j.tag]; return "<span class='fit " + t[0] + "'>" + t[1] + "</span>"; }
 function pairNames(r) { return (r.fit && r.fit.eas || []).map(function (e) { return e.name; }); }
 function btPair(r) {
@@ -401,28 +394,50 @@ function save() { try { localStorage.setItem("mk_sel", SEL); localStorage.setIte
 var NS = "http://www.w3.org/2000/svg";
 function el(n, a, p) { var e = document.createElementNS(NS, n); for (var k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
 function nice(lo, hi, n) { var sp = hi - lo || 1, st = Math.pow(10, Math.floor(Math.log10(sp / n))), er = sp / n / st; if (er >= 7.5) st *= 10; else if (er >= 3.5) st *= 5; else if (er >= 1.5) st *= 2; var t = [], v = Math.ceil(lo / st) * st; for (; v <= hi + 1e-12; v += st) t.push(v); return t; }
+
+var TF_JA = { W1: "週足", D1: "日足", H4: "4時間足", H1: "1時間足" };
 function drawChart(r) {
-  var host = $("chart"), area = $("c-area"), C = r.chart, n = C.t.length;
+  var CH = r.charts || { H1: r.chart }, TFS = ["W1", "D1", "H4", "H1"];
+
+  TFS.forEach(function (tf) { var h = $("chart-" + tf); if (h) h.innerHTML = ""; });
+  var area = $("c-area"), cell = area.querySelector(".mk-cell"), head = cell ? cell.querySelector("h3").offsetHeight + 14 : 40;
+  var two = window.innerWidth > 900, HH = (window.innerWidth > 1280 && two) ? Math.max(220, Math.floor((area.clientHeight - 10) / 2) - head) : null;
+  TFS.forEach(function (tf) {
+    var host = $("chart-" + tf); if (!host) return;
+    if (!CH[tf] || !CH[tf].t || !CH[tf].t.length) { host.innerHTML = "<p class='u-note'>この足の値がまだありません</p>"; return; }
+    drawOne(r, CH[tf], host, tf, HH);
+  });
+}
+function drawOne(r, C, host, tf, HH) {
+  var n = C.t.length;
   host.innerHTML = "";
-  var side = area.closest(".u-card").nextElementSibling, W = host.clientWidth || 800;
-  var H = (window.innerWidth > 1280 && side) ? Math.max(360, area.clientHeight - 4) : Math.max(320, Math.min(480, W * 0.55));
-  var ml = 8, mr = 74, mt = 10, mb = 24;
+  var W = host.clientWidth || 400;
+  var H = HH || Math.max(220, Math.min(340, W * 0.6));
+  var ml = 6, mr = 70, mt = 8, mb = 22;
   var lo = Math.min.apply(null, C.l), hi = Math.max.apply(null, C.h);
   C.levels.forEach(function (lv) { if (lv.v !== null && lv.v !== undefined && lv.v > lo - (hi - lo) * 0.25 && lv.v < hi + (hi - lo) * 0.25) { lo = Math.min(lo, lv.v); hi = Math.max(hi, lv.v); } });
   var pad = (hi - lo) * 0.04; lo -= pad; hi += pad;
-  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": r.label + " 1時間足" }, host);
+  var svg = el("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": r.label + " " + TF_JA[tf] }, host);
   var cw = (W - ml - mr) / n, X = function (i) { return ml + cw * (i + 0.5); }, Y = function (v) { return mt + (H - mt - mb) * (hi - v) / (hi - lo); };
-  nice(lo, hi, 6).forEach(function (v) {
+  nice(lo, hi, 4).forEach(function (v) {
     el("line", { x1: ml, x2: W - mr, y1: Y(v), y2: Y(v), stroke: "var(--u-grid)", "stroke-width": 1 }, svg);
     var t = el("text", { x: W - mr + 6, y: Y(v) + 4, "class": "tick" }, svg); t.textContent = v.toFixed(r.digits);
   });
-  var lastDay = null;
-  for (var i = 0; i < n; i++) {
-    var d = new Date((C.t[i] + 9 * 3600) * 1000), day = d.getUTCDate();
-    if (day !== lastDay && d.getUTCHours() < 1) { el("line", { x1: X(i) - cw / 2, x2: X(i) - cw / 2, y1: mt, y2: H - mb, stroke: "var(--u-grid)", "stroke-width": 1 }, svg); }
-    if (day !== lastDay && i > 0 && d.getUTCHours() < 1) { var tx = el("text", { x: X(i), y: H - 6, "text-anchor": "middle", "class": "tick" }, svg); tx.textContent = (d.getUTCMonth() + 1) + "/" + day; }
-    lastDay = day;
-  }
+
+  var keyOf = function (i) { var d = new Date((C.t[i] + 9 * 3600) * 1000);
+    if (tf === "W1") return d.getUTCFullYear() * 12 + Math.floor(d.getUTCMonth() / 3) * 3;
+    if (tf === "D1") return d.getUTCFullYear() * 12 + d.getUTCMonth();
+    return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate(); };
+  var labOf = function (i) { var d = new Date((C.t[i] + 9 * 3600) * 1000);
+    if (tf === "W1") return String(d.getUTCFullYear()).slice(2) + "/" + (d.getUTCMonth() + 1);
+    if (tf === "D1") return (d.getUTCMonth() + 1) + "月";
+    return (d.getUTCMonth() + 1) + "/" + d.getUTCDate(); };
+  var cuts = []; for (var i = 1; i < n; i++) if (keyOf(i) !== keyOf(i - 1)) cuts.push(i);
+  var every = Math.max(1, Math.ceil(cuts.length / Math.max(3, Math.floor((W - ml - mr) / 70))));
+  cuts.forEach(function (i, k) {
+    el("line", { x1: X(i) - cw / 2, x2: X(i) - cw / 2, y1: mt, y2: H - mb, stroke: "var(--u-grid)", "stroke-width": 1 }, svg);
+    if (k % every === 0) { var tx = el("text", { x: X(i), y: H - 6, "text-anchor": "middle", "class": "tick" }, svg); tx.textContent = labOf(i); }
+  });
   C.levels.forEach(function (lv, k) {
     if (lv.v === null || lv.v === undefined || lv.v < lo || lv.v > hi) return;
     var col = lv.name.indexOf("高値") >= 0 ? "#15803d" : "#b42318";
@@ -446,7 +461,8 @@ function drawChart(r) {
   svg.addEventListener("mousemove", function (ev) {
     var rc = svg.getBoundingClientRect(), sx = (ev.clientX - rc.left) * W / rc.width, i = Math.floor((sx - ml) / cw); if (i < 0 || i >= n) return;
     cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", 1);
-    tp.innerHTML = "<div class='t'>" + jst(C.t[i]) + "（日本時間）</div>始 " + C.o[i].toFixed(r.digits) + "　高 " + C.h[i].toFixed(r.digits) + "<br>安 " + C.l[i].toFixed(r.digits) + "　終 <b>" + C.c[i].toFixed(r.digits) + "</b>";
+    var d0 = new Date((C.t[i] + 9 * 3600) * 1000), ds = (d0.getUTCMonth() + 1) + "/" + d0.getUTCDate();
+    tp.innerHTML = "<div class='t'>" + (tf === "W1" ? d0.getUTCFullYear() + "/" + ds + " の週" : tf === "D1" ? d0.getUTCFullYear() + "/" + ds : jst(C.t[i]) + "（日本時間）") + "</div>始 " + C.o[i].toFixed(r.digits) + "　高 " + C.h[i].toFixed(r.digits) + "<br>安 " + C.l[i].toFixed(r.digits) + "　終 <b>" + C.c[i].toFixed(r.digits) + "</b>";
     tp.style.opacity = 1; var x = X(i) * rc.width / W + 12; if (x + 190 > rc.width) x -= 210; tp.style.left = x + "px"; tp.style.top = "8px";
   });
   svg.addEventListener("mouseleave", function () { cross.setAttribute("opacity", 0); tp.style.opacity = 0; });
@@ -480,56 +496,19 @@ function drawCorr() {
   $("t-corr").innerHTML = h + "</tbody>";
 }
 
-var CUR_JA = { USD: "米ドル", EUR: "ユーロ", GBP: "ポンド", JPY: "円", AUD: "豪ドル", CNY: "人民元", All: "全体" };
-function calLow() { try { return localStorage.getItem("cal_low") === "1"; } catch (e) { return false; } }
-function drawCal() {
-  var c = D && D.calendar, t = $("t-cal"); if (!t) return;
-  var box = $("cal-low"); if (box) box.checked = calLow();
-  if (!c) { t.innerHTML = ""; $("cal-lead").textContent = ""; $("cal-note").innerHTML = "<span class='cal-warn'>経済指標はまだ取り込めていません（毎朝1回取り込みます）。</span>"; return; }
-  var now = Date.now() / 1000, low = calLow(), all = c.events || [];
-  var ev = all.filter(function (e) { return low || e.imp !== 1; });
-  $("cal-low-n").textContent = all.filter(function (e) { return e.imp === 1; }).length;
-  var d = c.day.split("-"); $("cal-lead").textContent = (+d[1]) + "月" + (+d[2]) + "日（日本時間の朝6時から翌朝6時まで）";
-  var nextI = -1; ev.forEach(function (e, i) { if (nextI < 0 && e.t >= now) nextI = i; });
-  var h = "<thead><tr><th>時刻</th><th>通貨</th><th>重要度</th><th>指標</th><th>予想</th><th>前回</th></tr></thead><tbody>";
-  if (!ev.length) h += "<tr><td colspan='6'>" + (all.length ? "重要度★2以上の指標はありません（★1 は右上で出せます）" : "今日は対象の指標がありません") + "</td></tr>";
-  ev.forEach(function (e, i) {
-    var st = e.imp === 0 ? "休場" : new Array(e.imp + 1).join("★");
-    h += "<tr class='" + (e.t < now ? "past" : "") + (i === nextI ? " next" : "") + (e.imp >= 3 ? " hi" : "") + "' title='" + esc(e.en) + "'>" +
-      "<td>" + e.jst.slice(11) + "</td><td>" + (CUR_JA[e.cur] || esc(e.cur)) + "</td><td><span class='cal-st i" + e.imp + "'>" + st + "</span></td>" +
-      "<td class='cal-ja'>" + esc(e.ja) + "</td><td>" + (e.forecast ? esc(e.forecast) : "—") + "</td><td>" + (e.previous ? esc(e.previous) : "—") + "</td></tr>";
-  });
-  t.innerHTML = h + "</tbody>";
-  var f = c.fetched_utc ? new Date(c.fetched_utc * 1000) : null, old = !f || now - c.fetched_utc > 30 * 3600;
-  $("cal-note").innerHTML = (old ? "<span class='cal-warn'>今日の分を取り込めていません（最後の取り込み " + (f ? (f.getMonth() + 1) + "/" + f.getDate() + " " + ("0" + f.getHours()).slice(-2) + ":" + ("0" + f.getMinutes()).slice(-2) : "—") + "）。</span>" : "") +
-    "出どころ：" + esc(c.source || "ForexFactory") + "（毎朝1回取り込み" + (f && !old ? "・" + ("0" + f.getHours()).slice(-2) + ":" + ("0" + f.getMinutes()).slice(-2) : "") + "）。予想と前回だけで、結果は入りません。" +
-    "★★★＝相場が大きく動きやすい・★★＝やや動く。過ぎた指標は薄く、次の指標は青で示します。指標名にマウスを当てると英語の名前が出ます。身内向けのページだけに出し、公開ページには出しません。";
-}
-
-function pairEvBadge(pair) {
-  var c = D && D.calendar; if (!c || !c.events) return "";
-  var cur = [pair.slice(0, 3), pair.slice(3, 6)]; if (cur.indexOf("AUD") >= 0) cur.push("CNY");
-  var ev = c.events.filter(function (e) { return e.imp >= 2 && cur.indexOf(e.cur) >= 0; }); if (!ev.length) return "";
-  var now = Date.now() / 1000, up = ev.filter(function (e) { return e.t >= now; });
-  var tip = ev.map(function (e) { return e.jst.slice(11) + " " + (e.imp >= 3 ? "★★★" : "★★") + " " + e.ja; }).join("\n");
-  if (!up.length) return "<span class='evb done' title='" + esc(tip) + "'>指標 済</span>";
-  var top = Math.max.apply(null, up.map(function (e) { return e.imp; }));
-  return "<span class='evb i" + (top >= 3 ? 3 : 2) + "' title='" + esc(tip) + "'>" + (top >= 3 ? "重要指標 " : "指標 ") + up[0].jst.slice(11) + "</span>";
-}
 function load() {
   fetch("/api/market-env?_=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
     .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); })
-    .then(function (j) { D = j; $("err").hidden = true; drawAll(); try { drawCal(); } catch (e) {   } if (!Object.keys(LIVE).length) loadLive(); })
+    .then(function (j) { D = j; $("err").hidden = true; drawAll(); if (!Object.keys(LIVE).length) loadLive(); })
     .catch(function (e) { $("err").textContent = e.message; $("err").hidden = false; $("status").textContent = "市場分析・データ待ち"; });
 }
 var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
 document.addEventListener("visibilitychange", function () { if (!document.hidden) load(); });
-var cb = $("cal-low"); if (cb) cb.addEventListener("change", function () { try { localStorage.setItem("cal_low", cb.checked ? "1" : "0"); } catch (e) {   } drawCal(); });
-setInterval(function () { try { drawCal(); if (D) drawAll(); } catch (e) {   } }, 60 * 1000);
+setInterval(function () { try { if (D) drawAll(); } catch (e) {   } }, 60 * 1000);
 load(); setInterval(load, 5 * 60 * 1000);
 })();
 </script>
-<style id="sample-hints-v1">
+<style id="pm-hints-v1">
 .hx-bar{margin:10px 20px 0;padding:9px 14px;border:1.5px solid #93b4e8;border-radius:8px;background:#eef4fd;color:#123a75;font-size:.98rem;line-height:1.6}
 .hx-bar summary{cursor:pointer;font-weight:900;list-style:none}
 .hx-bar summary::-webkit-details-marker{display:none}
@@ -541,17 +520,16 @@ load(); setInterval(load, 5 * 60 * 1000);
 [title*="クリックして名前を編集"]::after{content:" ✎";font-size:.85em;opacity:.8}
 a.ea-link{text-decoration:underline;text-underline-offset:3px}
 a.ea-link::after{content:" ↗";font-size:.8em;text-decoration:none;display:inline-block}
-#t-all tbody tr td:first-child::before,#eq-dds tbody tr[data-a] td:first-child::before{content:"▸ ";color:#2563eb;font-weight:900}
+#t-all tbody tr td:first-child::before{content:"▸ ";color:#2563eb;font-weight:900}
 #t-all tbody tr:hover td{background:rgba(37,99,235,.06)}
-.hx-sort{color:#2563eb;font-size:.85em;margin-left:2px}
 .hx-i{display:inline-block;margin-left:3px;color:#2563eb;cursor:pointer;font-weight:900;font-style:normal;font-size:.9em;line-height:1}
 .hx-tip{position:absolute;z-index:9999;max-width:min(360px,90vw);padding:8px 11px;border-radius:7px;background:#1f2937;color:#fff;font-size:.9rem;font-weight:600;line-height:1.55;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .hx-cap{margin:4px 0 0;font-size:.9rem;color:#475467;font-weight:700}
-#eq-canvas,#chart svg{touch-action:pan-y}
+.mk-chart svg{touch-action:pan-y}
 </style>
 <script>
 (function(){
-  var KEY="sample_hints_closed:"+location.pathname.split("/").pop();
+  var KEY="pm_hints_closed:"+(location.pathname.replace(/\/+$/,"")||"/top");
   var bar=document.querySelector(".hx-bar");
   if(bar){ try{ if(localStorage.getItem(KEY)==="1") bar.removeAttribute("open"); }catch(e){}
     bar.addEventListener("toggle",function(){ try{ localStorage.setItem(KEY,bar.open?"0":"1"); }catch(e){} }); }
@@ -565,10 +543,6 @@ a.ea-link::after{content:" ↗";font-size:.8em;text-decoration:none;display:inli
       if(!(el.textContent||"").trim()||/[🛈ⓘ]/.test(el.textContent||"")) return;
       var i=document.createElement("span"); i.className="hx-i"; i.textContent="ⓘ"; i.setAttribute("role","button");
       i.setAttribute("aria-label","説明を見る"); i.dataset.hx="1"; el.appendChild(i);
-    });
-    Array.prototype.forEach.call(document.querySelectorAll(".ea-tbl th"),function(th){
-      if(th.querySelector(".hx-sort")) return; var s=document.createElement("span"); s.className="hx-sort"; s.textContent="⇅";
-      var sm=th.querySelector("small"); if(sm) th.insertBefore(s,sm); else th.appendChild(s);
     });
   }
   var tip=null;
@@ -586,22 +560,22 @@ a.ea-link::after{content:" ↗";font-size:.8em;text-decoration:none;display:inli
     tip.style.left=Math.max(window.scrollX+8,x)+"px"; tip.style.top=(r.bottom+window.scrollY+6)+"px";
   },true);
   function touchMove(ev){
-    var tg=ev.target.closest&&ev.target.closest("#eq-canvas,#chart svg"); if(!tg||!ev.touches.length) return;
+    var tg=ev.target.closest&&ev.target.closest(".mk-chart svg"); if(!tg||!ev.touches.length) return;
     var p=ev.touches[0];
     tg.dispatchEvent(new MouseEvent("mousemove",{clientX:p.clientX,clientY:p.clientY,bubbles:true}));
   }
   document.addEventListener("touchstart",touchMove,{passive:true});
   document.addEventListener("touchmove",touchMove,{passive:true});
   function caps(){
-    [["eq-wrap","曲線にマウスを当てる（スマホは指でなぞる）と、その日の値が出ます。"],["chart","チャートにマウスを当てる（スマホは指でなぞる）と、その足の値が出ます。"]].forEach(function(c){
+    [["c-area","チャートにマウスを当てる（スマホは指でなぞる）と、その足の値が出ます。"]].forEach(function(c){
       var el=document.getElementById(c[0]); if(!el||document.getElementById("hx-cap-"+c[0])) return;
-      var p=document.createElement("p"); p.className="hx-cap"; p.id="hx-cap-"+c[0]; p.textContent=""+c[1];
+      var p=document.createElement("p"); p.className="hx-cap"; p.id="hx-cap-"+c[0]; p.textContent=c[1];
       el.parentNode.insertBefore(p,el.nextSibling);
     });
   }
   var mo=new MutationObserver(function(){ run(); });
   function run(){ mo.disconnect(); try{ decorate(); caps(); } finally { mo.observe(document.body,{childList:true,subtree:true}); } }
-  /* 描き直しの後、描く前に足す（遅らせると一瞬幅が変わって跳ねる・11-18） */
+
   run();
 })();
 </script>

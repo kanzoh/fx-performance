@@ -33,7 +33,7 @@ const chartHistoryByKey = new Map();
 let chartMode = localStorage.getItem("chartMode") === "account" ? "account" : "ea";
 
 let perfScope = localStorage.getItem("perfScope") === "all" ? "all" : "lineup";
-const DEFAULT_EA_NAMES = new Map([]);
+const DEFAULT_EA_NAMES = new Map();
 
 const DISPLAY_EA_NAMES = {};
 
@@ -67,7 +67,7 @@ async function postJSON(url, body) {
   try {
     res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-PM-Token": (document.querySelector('meta[name="pm-token"]') || {}).content || "" },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -163,6 +163,21 @@ function fmtPlainPct(n) {
   return pctBody(Number(n));
 }
 
+function pctBody2(value) {
+  const d = Math.max(2, pctDigits(value));
+  if (pctDigits(value) < 0) return (value < 0 ? "-" : "") + "<0.001%";
+  return value.toLocaleString("ja-JP", { minimumFractionDigits: d, maximumFractionDigits: d }) + "%";
+}
+function fmtPct2(n) {
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return "-";
+  const value = Number(n);
+  return (value > 0 ? "+" : "") + pctBody2(value);
+}
+function fmtPlainPct2(n) {
+  if (n === null || n === undefined || !Number.isFinite(Number(n))) return "-";
+  return pctBody2(Number(n));
+}
+
 let adaptiveMeasureCanvas = null;
 
 function clampColumnWidth(value, min, max) {
@@ -254,7 +269,7 @@ function updateAdaptiveColumnWidths() {
     addWidthText(pfTexts, fmtPf(row));
     addWidthText(rfTexts, fmtRatio(row.rf));
     addWidthText(srTexts, fmtRatio(row.sr));
-    addWidthText(percentTexts, fmtPlainPct(row.dd_pct));
+    addWidthText(percentTexts, fmtPlainPct2(row.dd_pct));
     addWidthText(percentTexts, fmtPlainPct(row.win_rate));
     addWidthText(percentTexts, fmtPct(row.annual_return));
   }
@@ -873,7 +888,7 @@ function buildAlerts() {
         level,
         scope: "ea",
         title: level === "danger" ? "EA含み損が拡大" : "EA含み損に注意",
-        current: `${fmtPct(rate)} / ${fmtSignedYen(floating)}`,
+        current: `${fmtPct2(rate)} / ${fmtSignedYen(floating)}`,
         threshold: "注意 -1.0%以下 / 危険 -2.0%以下",
         action: level === "danger" ? "新規停止・ロット縮小・保有理由を確認" : "ポジション偏りと相場環境を確認",
         basis: "口座残高に対するEA単位の未決済損益",
@@ -929,7 +944,7 @@ function buildAlerts() {
         level,
         scope: "ea",
         title: level === "danger" ? "DDが大きい" : "DDに注意",
-        current: `DD ${fmtPlainPct(dd)} / ${sampleText}`,
+        current: `DD ${fmtPlainPct2(dd)} / ${sampleText}`,
         threshold: "注意 15.0%以上 / 危険 25.0%以上",
         action: level === "danger" ? "最大許容DDとの比較（DD単独では停止判断しない）" : "負けの集中と相場変化を確認",
         basis: "最大ドローダウンはEAのメンテ判断に使う主要リスク指標",
@@ -1036,12 +1051,12 @@ function buildAlerts() {
         level: dailyLevel,
         scope: "ea",
         title: dailyLevel === "danger" ? "日次損失が大きい" : "日次損失に注意",
-        current: `本日 ${todayR !== null ? `${todayR.toFixed(2)}R / ` : ""}${fmtPct(todayRate)} / ${fmtSignedYen(todayLoss)}`,
+        current: `本日 ${todayR !== null ? `${todayR.toFixed(2)}R / ` : ""}${fmtPct2(todayRate)} / ${fmtSignedYen(todayLoss)}`,
         threshold: todayR !== null
           ? `注意 -2Rより悪い（損切り2回分を超える）/ 危険 -3Rより悪い（1R=残高の${riskPct}%）`
           : "注意 -1.0%以下 / 危険 -2.0%以下（リスク%が読めないため旧基準）",
         action: dailyLevel === "danger" ? "当日の新規停止・ロット縮小を検討" : "本日の相場環境とエントリー集中を確認",
-        basis: "損切り1回(-1R)は想定内。1日に損切り2回分を超えたら知らせる（スマホの big_loss -2.0R と同じ大きさ）",
+        basis: "損切り1回(-1R)は想定内。1日に損切り2回分を超えたら知らせる（R はバックテストの報告書で確かめたリスク%）",
         badge: eaBadge(magic),
         score: dailyLevel === "danger" ? 90 : 60,
       });
@@ -1063,7 +1078,7 @@ function buildAlerts() {
       level,
       scope: "ea",
       title: "取引停止の確認",
-      current: `${tradesByMagic.has(magic) ? "最終取引" : "実弾開始"}から ${fmt(Math.round(idleHours))}時間（休場を除く）/ BTでこれより長い間隔は ${fmtPlainPct(longer)}`,
+      current: `${tradesByMagic.has(magic) ? "最終取引" : "運用開始"}から ${fmt(Math.round(idleHours))}時間（休場を除く）/ BTでこれより長い間隔は ${fmtPlainPct(longer)}`,
       threshold: `確認 BTの間隔の長い方10%（${fmt(Math.round(basis.p90))}時間〜）/ 注意 長い方1%（${fmt(Math.round(basis.p99))}時間〜）`,
       action: level === "warn" ? "EA稼働・自動売買・対象チャートを確認" : "稼働状況だけ確認",
       basis: `この本のバックテストの決済の間隔 ${fmt(basis.gaps.length)}件（休場を除く）と比べる`,
@@ -1129,9 +1144,7 @@ function alertTone(level) {
   return "semantic-muted";
 }
 
-function renderDecisionPanel() {
-  renderOperationalPanel();
-}
+function renderDecisionPanel() {}
 
 function setupTabs() {
   for (const button of document.querySelectorAll(".tab-button")) {
@@ -1472,7 +1485,7 @@ async function refreshSummary() {
       <td class="grp-count grp-end">${fmt(e.trades)}</td>
       <td class="grp-money ${profitClass(e.floating_profit)}">${fmtSignedYen(e.floating_profit)}</td>
       <td class="grp-money ${profitClass(e.total_profit)}">${fmtSignedYen(e.total_profit)}</td>
-      <td class="grp-percent ${profitClass(eaFloatingRate)}">${fmtPct(eaFloatingRate)}</td>
+      <td class="grp-percent ${profitClass(eaFloatingRate)}">${fmtPct2(eaFloatingRate)}</td>
       <td class="grp-percent grp-end"><span class="rate-pill ${winRateClass(winRateValue)}">${winRate}</span></td>
       <td class="ea-exit-countdown" data-exit-account="${Number(e.account_login)}" data-exit-magic="${Number(e.magic)}" data-exit-open="${Number(e.open_positions || 0)}">確認中</td>
       <td class="ea-reset-cell">
@@ -1518,7 +1531,7 @@ function renderTopPerformance(data) {
   setText("top-pf", fmtPf(total));
   setText("top-rf", fmtRf(total));
   setText("top-trades", fmt(total.trades));
-  setText("top-dd", fmtPlainPct(total.dd_pct), profitClass(-Number(total.dd_pct || 0)));
+  setText("top-dd", fmtPlainPct2(total.dd_pct), profitClass(-Number(total.dd_pct || 0)));
 
   const ddCell = document.getElementById("top-dd");
   if (ddCell) {
@@ -1605,7 +1618,7 @@ function renderAccountStatusTable(accounts, eaStats, eaResets = [], accountBasel
         <td class="grp-action account-action-cell">
           <button type="button" class="mini-button" data-account-rebase-action="rebase" data-account-login="${login}">ここから再集計</button>
           <button type="button" class="mini-button mini-button-muted" data-account-rebase-action="clear" data-account-login="${login}" ${accountBaselines[login] ? "" : "disabled"}>解除</button>
-          <button type="button" class="mini-button mini-button-danger" data-account-delete-action data-account-login="${login}">口座データ削除</button>
+
         </td>
         <td class="ea-memo">${accountStatusMemo(account)}</td>`,
     };
@@ -2309,7 +2322,7 @@ function performanceHtml(row, options = {}) {
     <td class="grp-money ${profitClass(row.live_profit)}">${fmtSignedYen(row.live_profit)}</td>
     <td class="grp-money ${profitClass(-Number(row.dd || 0))}">${fmtYen(row.dd)}</td>
     <td class="grp-money grp-end ${profitClass(row.expectancy)}">${fmtSignedYen(row.expectancy)}</td>
-    <td class="grp-percent ${profitClass(-Number(row.dd_pct || 0))}">${fmtPlainPct(row.dd_pct)}</td>
+    <td class="grp-percent ${profitClass(-Number(row.dd_pct || 0))}">${fmtPlainPct2(row.dd_pct)}</td>
     <td class="grp-percent"><span class="rate-pill ${winRateClass(row.win_rate)}">${fmtPlainPct(row.win_rate)}</span></td>
     <td class="grp-percent grp-end ${profitClass(row.annual_return)}">${fmtPct(row.annual_return)}${row.annual_days != null ? `<small class="ann-note" title="運用が365日未満のため、${row.annual_days}日分の成績を単純に1年あたりに直した値">（${row.annual_days}日分を年に換算）</small>` : ""}</td>
     <td class="ea-memo">${performanceMemo(row)}</td>`;
@@ -2476,34 +2489,27 @@ async function refreshTrades() {
 }
 
 async function refreshIdleBasis() {
-  const [detail, verdict] = await Promise.all([
-    fetchJSON("/api/backtest-detail").catch(() => null), fetchJSON("/api/verdict").catch(() => null)]);
-  if (verdict && !verdict.error && Array.isArray(verdict.eas)) {
-    riskPctByMagic = new Map(verdict.eas
-      .filter((e) => Number(e.risk_percent) > 0)
-      .map((e) => [String(e.magic), Number(e.risk_percent)]));
-    liveRiskPct = Number(verdict.live_risk_percent) > 0 ? Number(verdict.live_risk_percent) : null;
-    riskLoadFailed = false;
-  } else if (!riskPctByMagic.size) {
-    riskLoadFailed = true;
-  }
-  if (!detail || detail.error || !Array.isArray(detail.eas) || !verdict || verdict.error || !Array.isArray(verdict.eas)) return;
-  const since = new Map(verdict.eas.map((e) => [String(e.magic), serverWallMs(e.live_since)]));
-  if (idleBasisId !== detail.baseline_id) {
+  const detail = await fetchJSON("/api/backtest-detail").catch(() => null);
+  const eas = (detail && !detail.error && Array.isArray(detail.eas)) ? detail.eas.filter((e) => e.verified && e.magic != null) : [];
+  riskPctByMagic = new Map(eas.filter((e) => Number(e.report_risk_percent) > 0)
+    .map((e) => [String(e.magic), Number(e.report_risk_percent)]));
+  liveRiskPct = null;
+  riskLoadFailed = !riskPctByMagic.size;
+  const ver = detail && !detail.error ? detail.version : null;
+  if (idleBasisId !== ver) {
     idleGapsByMagic = new Map();
-    for (const ea of detail.eas) {
+    for (const ea of eas) {
       const t = (ea.trades?.t || []).map((v) => Number(v) * 1000).sort((x, y) => x - y);
       const gaps = [];
       for (let i = 1; i < t.length; i += 1) gaps.push(serverOpenHoursBetween(t[i - 1], t[i]));
       if (gaps.length >= 20) idleGapsByMagic.set(String(ea.magic), gaps.sort((x, y) => x - y));
     }
-    idleBasisId = detail.baseline_id;
+    idleBasisId = ver;
   }
   const next = new Map();
   for (const [magic, gaps] of idleGapsByMagic.entries()) {
-    if (!since.has(magic)) continue;
     const at = (q) => gaps[Math.floor(q * (gaps.length - 1))];
-    next.set(magic, { gaps, p90: at(0.9), p99: at(0.99), liveSince: since.get(magic) });
+    next.set(magic, { gaps, p90: at(0.9), p99: at(0.99), liveSince: null });
   }
   idleBasisByMagic = next;
   renderAlerts();
@@ -2712,8 +2718,8 @@ function livePrice(v, symbol) {
   return n.toLocaleString("ja-JP", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
-const LIVE_COLS = [96, 76, 60, 62, 118, 118, null, null, 86, 86];
-const LIVE_FLEX_MIN = [132, 140], LIVE_FLEX_MAX = 180, LIVE_MEMO_MIN = 60;
+const LIVE_COLS = [96, 76, 60, 62, 118, 118, null, 86, 86];
+const LIVE_FLEX_MIN = 132, LIVE_FLEX_MAX = 180, LIVE_MEMO_MIN = 60;
 function fitLiveCols() {
   const table = document.getElementById("u-live-pos");
   const wrap = table?.parentElement;
@@ -2723,14 +2729,10 @@ function fitLiveCols() {
   const W = wrap.clientWidth - 3;
   const fixed = LIVE_COLS.reduce((a, w) => a + (w || 0), 0);
   const rest = Math.max(0, W - fixed);
-  const clamp = (x, lo) => Math.floor(Math.min(LIVE_FLEX_MAX, Math.max(lo, x)));
-  const f1 = clamp(rest / 2, LIVE_FLEX_MIN[1]);
-  const flex = [clamp(rest - f1, LIVE_FLEX_MIN[0]), f1];
-  let memo = Math.max(0, W - fixed - flex[0] - flex[1]);
-  if (memo < LIVE_MEMO_MIN) {
-    flex[0] += Math.floor(memo / 2); flex[1] += memo - Math.floor(memo / 2); memo = 0;
-  }
-  const widths = LIVE_COLS.map((w, i) => (w === null ? flex[i - 6] : w)).concat([memo]);
+  let flex = Math.floor(Math.min(LIVE_FLEX_MAX, Math.max(LIVE_FLEX_MIN, rest)));
+  let memo = Math.max(0, W - fixed - flex);
+  if (memo < LIVE_MEMO_MIN) { flex += memo; memo = 0; }
+  const widths = LIVE_COLS.map((w) => (w === null ? flex : w)).concat([memo]);
   widths.forEach((w, i) => { const v = w + "px"; if (cols[i].style.width !== v) cols[i].style.width = v; });
   table.classList.toggle("u-memo-on", memo > 0);
 }
@@ -2810,7 +2812,8 @@ function renderTopLive() {
 
   const td = (html, cls = "") => ({ html, cls });
   const posRows = pos.map((p) => {
-    const total = Number(p.profit || 0) + Number(p.swap || 0);
+
+    const total = Number(p.profit || 0);
     pl += total;
     const slp = p.sl_profit_account_currency;
     if (slp !== null && slp !== undefined && slp !== "" && Number(p.sl) > 0) { sl += Number(slp); slKnown += 1; }
@@ -2821,26 +2824,22 @@ function renderTopLive() {
       key: `live-pos:${p.account_login}:${p.ticket}`,
       cells: [
         td(eaNameCell(p.magic), "ea"),
-        td((p.symbol || "-").replace(/-m$/, "")),
+        td(p.symbol || "-"),
         td(side === "BUY" ? '<span class="u-side u-buy">買い</span>' : side === "SELL" ? '<span class="u-side u-sell">売り</span>' : "-"),
         td(Number.isFinite(Number(p.volume)) ? Number(p.volume).toLocaleString("ja-JP", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "-"),
         td(`<b>${fmtSignedYen(total)}</b>`, profitClass(total)),
         r === undefined || r === null ? td("-") : td(fmtSignedYen(r), profitClass(r)),
         td(liveDistanceCell(p, yenPerPrice), "u-dist"),
-        { exit: { "data-exit-account": String(Number(p.account_login)), "data-exit-magic": String(Number(p.magic)), "data-exit-open": "1" } },
         td(livePrice(p.open_price, p.symbol)),
         td(livePrice(p.current_price, p.symbol)),
         td("", "u-memo"),
       ],
     };
   });
-
-  if (!posRows.length) posRows.push({ key: "live-pos:none", cells: [{ html: "今は建玉がありません", cls: "u-live-none", colspan: 11 }] });
-
-  for (let i = posRows.length; i < 10; i++) posRows.push({ key: `live-pos:blank:${i}`, cells: Array.from({ length: 11 }, () => td("")) });
+  if (!posRows.length) posRows.push({ key: "live-pos:none", cells: [{ html: "今は建玉がありません", cls: "u-live-none", colspan: 10 }] });
+  for (let i = posRows.length; i < 10; i++) posRows.push({ key: `live-pos:blank:${i}`, cells: Array.from({ length: 10 }, () => td("")) });
   reconcileLiveCells(posBody, posRows);
   fitLiveCols();
-  window.renderEaExitCountdown?.();
   const empty = document.getElementById("u-live-pos-empty");
   if (empty) empty.hidden = true;
   posBody.closest("table").hidden = false;
@@ -2877,7 +2876,6 @@ setupCollapsiblePanels();
 setupEaResetActions();
 setupEaDeleteActions();
 setupEaNameActions();
-setupAccountDeleteActions();
 setupAccountRebaseActions();
 setupChartModeToggle();
 setupPerfScopeToggle();

@@ -93,7 +93,7 @@ function barChart(host, opt) {
       var t = el("text", { x: ml - (r.color ? 16 : 8), y: y + h / 2 + 4, "text-anchor": "end", "class": "tick", style: "fill:var(--u-ink2);font-size:13px" }, svg); t.textContent = r.label;
       if (r.color) el("circle", { cx: ml - 8, cy: y + h / 2, r: 4, fill: r.color }, svg);
       var b = el("rect", { x: x0, y: y, width: Math.max(2, x1 - x0), height: h, rx: 3, fill: r.v >= 0 ? "var(--u-up)" : "var(--u-down)" }, svg);
-      var vl = el("text", { x: x1 + 4, y: y + h / 2 + 4, "text-anchor": "start", "class": "tick", style: "fill:var(--u-ink2);font-weight:700" }, svg); vl.textContent = pct(r.v, 1);
+      var vl = el("text", { x: x1 + 4, y: y + h / 2 + 4, "text-anchor": "start", "class": "tick", style: "fill:var(--u-ink2);font-weight:700" }, svg); vl.textContent = pct(r.v, 2);
       var hit = el("rect", { x: ml, y: mt + i * rowH, width: W - ml - mr, height: rowH, fill: "transparent" }, svg);
       bindTip(hit, b, r);
     });
@@ -109,7 +109,7 @@ function barChart(host, opt) {
       var w = Math.min(44, bw * 0.56), x = ml2 + bw * i + (bw - w) / 2, y0 = Y(Math.max(0, r.v)), y1 = Y(Math.min(0, r.v));
       var b = el("rect", { x: x, y: y0, width: w, height: Math.max(2, y1 - y0), rx: 3, fill: r.v >= 0 ? "var(--u-up)" : "var(--u-down)" }, svg);
       var t = el("text", { x: ml2 + bw * i + bw / 2, y: H2 - 5, "text-anchor": "middle", "class": "tick" }, svg); t.textContent = r.label;
-      var lab = el("text", { x: ml2 + bw * i + bw / 2, y: r.v >= 0 ? y0 - 4 : y1 + 12, "text-anchor": "middle", "class": "tick", style: "fill:var(--u-ink2);font-weight:700" }, svg); lab.textContent = pct(r.v, 1);
+      var lab = el("text", { x: ml2 + bw * i + bw / 2, y: r.v >= 0 ? y0 - 4 : y1 + 12, "text-anchor": "middle", "class": "tick", style: "fill:var(--u-ink2);font-weight:700" }, svg); lab.textContent = pct(r.v, 2);
       var hit = el("rect", { x: ml2 + bw * i, y: mt2, width: bw, height: H2 - mt2 - mb2, fill: "transparent" }, svg);
       bindTip(hit, b, r);
     });
@@ -154,8 +154,8 @@ function fanChart(host, c, h) {
   svg.addEventListener("mousemove", function (ev) {
     var r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) * W / r.width, i = Math.round((sx - ml) / (W - ml - mr) * N); i = Math.max(0, Math.min(N, i));
     var b = B[i], x = X(i); cross.setAttribute("x1", x); cross.setAttribute("x2", x); cross.setAttribute("opacity", 1);
-    placeTip(tp, host, x * r.width / W, 20, "<div class='t'>" + i + " 回目まで</div>" + (i < P.length ? "実運用 <b>" + pct(P[i] * k, 1) + "</b><br>" : "") +
-      "BT の中央 " + pct(b[3] * k, 1) + "<br>ほぼ収まる範囲 " + pct(b[1] * k, 1) + " 〜 " + pct(b[5] * k, 1));
+    placeTip(tp, host, x * r.width / W, 20, "<div class='t'>" + i + " 回目まで</div>" + (i < P.length ? "実運用 <b>" + pct(P[i] * k, 2) + "</b><br>" : "") +
+      "BT の中央 " + pct(b[3] * k, 2) + "<br>ほぼ収まる範囲 " + pct(b[1] * k, 2) + " 〜 " + pct(b[5] * k, 2));
   });
   svg.addEventListener("mouseleave", function () { cross.setAttribute("opacity", 0); tp.style.opacity = 0; });
 }
@@ -215,7 +215,7 @@ function drawTop() {
   setv("u-gain", pct(v.gain), cls(v.gain));
   var g = $("u-gain"); if (g) g.classList.add("big");
 
-  var gk = $("u-gain-k"); if (gk) gk.textContent = "損益率（入出金の影響を除く・" + (scope === "now" ? "今の顔ぶれ " + (v.ea_count || "") + "本" : "口座全体") + "・" + md(D.start) + "から " + D.period_days + "日）";
+  var gk = $("u-gain-k"); if (gk) gk.textContent = "損益率（入出金の影響を除く・" + (scope === "now" ? "今の顔ぶれ " + (v.ea_count || "") + "本" : "口座全体") + "・" + md(v.start || D.start) + "から " + (v.period_days != null ? v.period_days : D.period_days) + "日）";
   var sub = $("u-gain-d"); if (sub) { sub.textContent = ""; sub.style.display = "none"; }
   setv("u-maxdd", v.maxdd.toFixed(2) + "%", "neg");
   var ddk = $("u-maxdd-k"); if (ddk) ddk.textContent = "最大ドローダウン（" + (v.equity_dd ? "含み損込み" : "決済で測定") + "）";
@@ -296,11 +296,13 @@ function drawEA() {
   $("u-ea-cards").innerHTML = order.map(function (p) {
     var g = groups[p].sort(function (a, b) { return cmp(a, b) || a.id - b.id; });
     var n = 0, c = 0, y = 0, plus = 0, tr = 0; g.forEach(function (r) { n += r.n; c += r.contrib; y += r.yen || 0; if (r.n) { tr++; if (r.contrib > 0) plus++; } });
+
+    var pv = ((U.data.views.now || U.data.views.all).pairs || []).filter(function (x) { return x.pair === p; })[0]; if (pv) c = pv.contrib;
     return "<article class='pcard' style='" + pvars(p) + "'>" +
       "<div class='pcard-h'><h3><i></i>" + esc(p) + "</h3><div class='meta'>" + g.length + "本・" + nf(n) + "回・<b class='" + cls(y) + "'>" + syen(y) + "</b><br>寄与 <b class='" + cls(c) + "'>" + (n ? pct(c) : "—") + "</b>・プラス " + plus + " / " + tr + "</div></div>" +
       "<div class='u-tbl-wrap'><table class='u-tbl'><thead><tr><th>EA</th><th>回数</th><th>勝率</th><th>PF（円）</th><th>損益</th><th>寄与</th><th>BT比</th><th>推移</th></tr></thead><tbody>" +
       g.map(function (r) {
-        return "<tr><td>" + eaLink(r) + "</td><td>" + nf(r.n) + "</td><td>" + (r.n ? r.win.toFixed(0) + "%" : "—") + "</td><td>" + pfText(r) + "</td>" +
+        return "<tr><td>" + eaLink(r) + "</td><td>" + nf(r.n) + "</td><td>" + (r.n ? r.win.toFixed(1) + "%" : "—") + "</td><td>" + pfText(r) + "</td>" +
           "<td class='" + cls(r.yen) + "'>" + (r.n ? syen(r.yen) : "—") + "</td><td class='" + cls(r.contrib) + "'>" + (r.n ? pct(r.contrib) : "—") + "</td>" +
           "<td>" + badge(r) + "</td><td>" + spark(r.spark) + "</td></tr>";
       }).join("") + "</tbody></table></div></article>";
@@ -341,29 +343,37 @@ U.compare = function (name) {
   U._curCompare = name;
   var host = $("u-cmp"); if (!host) return;
   if (!U.data) { U._pendingCompare = name; return; }
-  var r = (U.data.eas || []).filter(function (x) { return (x.key || x.name) === name; })[0];
+
+  var r = (U.data.team && U.data.team.key === name) ? U.data.team
+    : (U.data.eas || []).filter(function (x) { return (x.key || x.name) === name; })[0];
   if (!r) { host.hidden = true; return; }
   host.hidden = false;
+  var PT = !!r.team;
   var b = r.bt ? r.bt.stats : null, L = r.live;
-  $("u-cmp-title").innerHTML = "バックテストと実運用の比べ — " + esc(r.name) + " " + ptag(r.pair);
-  var days = r.since ? Math.max(1, (Date.now() - new Date(r.since + "T00:00:00+09:00").getTime()) / 86400000) : null;
-  var liveYear = r.n && days && days >= 14 ? r.n / days * 365 : null;
+  $("u-cmp-title").innerHTML = "バックテストと実運用の比べ — " + esc(r.name) + (PT ? "（今の顔ぶれ " + nf(r.eas) + "本）" : " " + ptag(r.pair));
+  var F = r.fwd || null, since = (F && F.start) || r.since;
+  var days = F && F.years != null ? F.years * 365.25 : (r.since ? Math.max(1, (Date.now() - new Date(r.since + "T00:00:00+09:00").getTime()) / 86400000) : null);
+
+  var dN = days ? Math.round(days) : null, btSame = b && b.per_year != null && dN ? b.per_year * dN / 365.25 : null;
   var f2 = function (v, d) { return v === null || v === undefined ? "—" : nf(v, d === undefined ? 2 : d); };
   var rows = [
-    ["取引回数", b ? nf(b.trades) + "回（" + f2(b.years, 1) + "年）" : "—", nf(r.n) + "回（" + (r.since ? md(r.since) + "から" : "—") + "）", null],
-    ["年あたりの回数", b ? f2(b.per_year, 0) + "回" : "—", liveYear === null ? "—" : f2(liveYear, 0) + "回", null, b ? b.per_year : null, liveYear, 0],
+    ["取引回数", b ? nf(b.trades) + "回（" + f2(b.years, 1) + "年）" : "—", nf(r.n) + "回（" + (since ? md(since) + "から" : "—") + "）", null],
+    ["同じ日数の回数", btSame === null ? "—" : f2(btSame, 0) + "回", dN === null ? "—" : nf(r.n) + "回（" + nf(dN) + "日）", null],
     ["勝率", b ? f2(b.win_pct, 1) + "%" : "—", r.n ? f2(r.win, 1) + "%" : "—", 1, b ? b.win_pct : null, r.n ? r.win : null],
     ["PF（円）", b ? f2(b.pf) : "—", !r.n ? "—" : r.pf === null ? (r.win >= 100 ? "負けなし" : "—") : f2(r.pf), 1, b ? b.pf : null, r.pf],
-    ["1回の期待値（残高比）", b ? pct(b.expected_pct, 3) : "—", L ? pct(L.expected_pct, 3) : "—", 1, b ? b.expected_pct : null, L ? L.expected_pct : null],
+    ["1回の期待値（残高比）", b ? pct(b.expected_pct, 2) : "—", L ? pct(L.expected_pct, 2) : "—", 1, b ? b.expected_pct : null, L ? L.expected_pct : null],
     ["平均の勝ち", b ? pct(b.avg_win_pct) : "—", L ? pct(L.avg_win_pct) : "—", 1, b ? b.avg_win_pct : null, L ? L.avg_win_pct : null],
     ["平均の負け", b ? pct(b.avg_loss_pct) : "—", L ? pct(L.avg_loss_pct) : "—", 1, b ? b.avg_loss_pct : null, L ? L.avg_loss_pct : null],
     ["最良の1回", b ? pct(b.best_trade_pct) : "—", L ? pct(L.best_trade_pct) : "—", null],
     ["最悪の1回", b ? pct(b.worst_trade_pct) : "—", L ? pct(L.worst_trade_pct) : "—", 1, b ? b.worst_trade_pct : null, L ? L.worst_trade_pct : null],
     ["最大の連敗", b ? b.max_loss_streak + "回" : "—", L ? L.max_loss_streak + "回" : "—", -1, b ? b.max_loss_streak : null, L ? L.max_loss_streak : null],
     ["平均の保有", b ? hours(b.hold_avg_hours) : "—", hours(r.hold), null],
-    ["最大ドローダウン（決済）", b ? f2(b.max_dd_pct, 1) + "%" : "—", L ? f2(L.max_dd_pct, 2) + "%" : "—", null]
+    ["最大ドローダウン（決済）", b ? f2(b.max_dd_pct, 2) + "%" : "—", L ? f2(L.max_dd_pct, 2) + "%" : "—", null]
   ];
+
+  var PCT_ROWS = { "1回の期待値（残高比）": 1, "平均の勝ち": 1, "平均の負け": 1, "最悪の1回": 1 };
   var mark = function (row) {
+    if (PT && PCT_ROWS[row[0]]) return "<span class='mut'>—</span>";
     if (row[3] === null || row[3] === undefined || row[4] === null || row[4] === undefined || row[5] === null || row[5] === undefined || !r.n) return "";
     var d = (row[5] - row[4]) * row[3];
     if (Math.abs(row[5] - row[4]) < 1e-9) return "<span class='mut'>同じ</span>";
@@ -372,7 +382,7 @@ U.compare = function (name) {
 
   var MEMO = {
     "取引回数": "実運用は動かし始めてからの決済の数。少ないうちは下の比べが大きくぶれる",
-    "年あたりの回数": "実運用は2週間以上動かしてから年に直す。差は建てる回数の違い",
+    "同じ日数の回数": "実運用は動かし始めてからの回数そのまま。BT は年あたり" + (b && b.per_year != null ? " " + f2(b.per_year, 0) + "回" : "") + "をその日数に当てた回数",
     "勝率": "勝った決済の割合。5回未満では読めない",
     "PF（円）": "勝ちの合計÷負けの合計（円）。1 を超えれば黒字",
     "1回の期待値（残高比）": "1回で口座残高の何%増えたか（BT はリスク" + (r.bt ? r.bt.risk : "—") + "%の複利）",
@@ -384,6 +394,12 @@ U.compare = function (name) {
     "平均の保有": "建ててから決済までの平均",
     "最大ドローダウン（決済）": "決済だけで見た山からの落ち込み。期間の長さが違うので BT とは直接比べない"
   };
+  if (PT) {
+    MEMO["取引回数"] = "実運用は今の顔ぶれの決済だけ（外した本・手動は入れない）";
+    MEMO["1回の期待値（残高比）"] = "BT は100万円から上限あり（残高が増えると1回の%が小さい）。上・下は付けない";
+    MEMO["平均の勝ち"] = MEMO["平均の負け"] = MEMO["最悪の1回"] = "期待値の行と同じ理由で上・下は付けない";
+    MEMO["最大の連敗"] = "BT は全本の決済を時刻の順に並べて";
+  }
   $("u-cmp-table").innerHTML = "<colgroup><col class='c-k'><col class='c-n'><col class='c-n'><col class='c-m'><col class='c-memo'></colgroup>" +
     "<thead><tr><th>項目</th><th>バックテスト</th><th>実運用</th><th>実運用は</th><th class='memo'>メモ</th></tr></thead><tbody>" +
     rows.map(function (row) { return "<tr><td>" + row[0] + "</td><td>" + row[1] + "</td><td><b>" + row[2] + "</b></td><td>" + mark(row) + "</td><td class='memo'>" + esc(MEMO[row[0]] || "") + "</td></tr>"; }).join("") + "</tbody>";
@@ -391,10 +407,16 @@ U.compare = function (name) {
   if (!c) { v.innerHTML = "<span class='vb few'>比べられません</span> バックテストの1回ごとの記録がありません。"; $("u-cmp-fan").innerHTML = ""; }
   else {
     var txt = { "in": ["ok", "バックテストの範囲内"], high: ["ok", "バックテストより上振れ"], low: ["ng", "バックテストより下振れ"], few: ["few", "まだ判定しない（5回未満）"] }[c.verdict];
-    v.innerHTML = "<span class='vb " + txt[0] + "'>" + txt[1] + "</span> 実運用 " + nf(c.n) + "回の合計 <b class='" + cls(c.total_r) + "'>" + sgn(c.total_r, 2) + "R</b>" +
-      (c.rank !== null && c.rank !== undefined ? "・同じ回数のバックテストの中で下から <b>" + c.rank + "%</b>" : "");
+    var med = c.n && c.band && c.band[c.n - 1] ? c.band[c.n - 1][3] : null;
+    var dR = med === null ? null : Math.round((c.total_r - med) * 100) / 100, dP = dR === null ? null : Math.round(dR * c.risk_now * 100) / 100;
+    v.innerHTML = "<span class='vb " + txt[0] + "'>" + txt[1] + "</span> " +
+      (dR !== null ? "同じ回数のバックテストの中央より <b class='" + cls(dP) + "'>" + pct(dP, 2) + "</b>（" + sgn(dR, 2) + "R）・" : "") +
+      "実運用 " + nf(c.n) + "回の合計 <b class='" + cls(c.total_r) + "'>" + sgn(c.total_r, 2) + "R</b>" + (med !== null ? "（中央 " + sgn(med, 2) + "R）" : "") +
+      (c.rank !== null && c.rank !== undefined ? "・下から <b>" + c.rank + "%</b>" : "");
   }
-  $("u-cmp-note").textContent = "率は口座残高に対する割合（実運用は決済直前の残高・バックテストはリスク" + (r.bt ? r.bt.risk : "—") + "%の複利）。実運用は回数が少ないうちは大きくぶれます。帯は、バックテストで同じ回数だけ続けて取引したときの広がり（濃い帯 50%・薄い帯 90%）。";
+  $("u-cmp-note").textContent = PT
+    ? "率は口座残高に対する割合（実運用は決済直前の残高・バックテストは100万円からリスク" + (r.bt ? r.bt.risk : "—") + "%の複利）。帯は、バックテストの全本の決済を時刻の順に並べ、同じ回数だけ続けて取引したときの R の合計の広がり（濃い帯 50%・薄い帯 90%）。R は1回の損切り幅で数えるので口座の大きさに依らない（各本の見比べと同じ R）。帯と線の%は R × 今のリスク%で、100万円の口座の損益率ではない。"
+    : "率は口座残高に対する割合（実運用は決済直前の残高・バックテストはリスク" + (r.bt ? r.bt.risk : "—") + "%の複利）。実運用は回数が少ないうちは大きくぶれます。帯は、バックテストで同じ回数だけ続けて取引したときの広がり（濃い帯 50%・薄い帯 90%）。";
 
   if (c) {
     var fan = $("u-cmp-fan"), fc = fan.closest(".u-card"), tc = $("u-cmp-table").closest(".u-card"), fh = 230;

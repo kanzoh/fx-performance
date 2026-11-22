@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script>
+/* 公開用サンプル：配布版のポートフォリオモニターを、作りもののデータで動かしています（数字・値動きはすべて作りもの）。 */
+(function(){
+  var FROZEN=1794573000000, _D=Date;
+  function FD(){ var a=[].slice.call(arguments); if(!(this instanceof FD)) return new _D(FROZEN).toString();
+    return a.length? new (Function.prototype.bind.apply(_D,[null].concat(a)))() : new _D(FROZEN); }
+  FD.prototype=_D.prototype; FD.now=function(){return FROZEN}; FD.UTC=_D.UTC; FD.parse=_D.parse;
+  window.Date=FD;
+  var PAGES={"/": "index.html", "/analysis": "analysis.html", "/backtest": "backtest.html", "/ranking": "ranking.html", "/check": "check.html"};
+  var here=location.href.replace(/[^\/]*([?#].*)?$/,"");
+  var SIM=(function(){
+    var SK="pm_dist_sample_ops_v1";
+    function load(){var s={};try{s=JSON.parse(localStorage.getItem(SK)||"{}")||{}}catch(e){}
+      ["names","deleted","resets"].forEach(function(k){if(!s[k]||typeof s[k]!=="object")s[k]={}});return s;}
+    function save(s){try{localStorage.setItem(SK,JSON.stringify(s))}catch(e){}}
+    function J(o,st){return Promise.resolve(new Response(JSON.stringify(o),{status:st||200,headers:{"Content-Type":"application/json"}}));}
+    function nowIso(){return new _D(FROZEN).toISOString();}
+    function post(api,init){
+      var b={};try{b=JSON.parse((init&&init.body)||"{}")||{}}catch(e){}
+      var s=load(), mg=String(b.magic==null?"":b.magic).trim();
+      if(api==="ea-name"){ if(!mg) return J({ok:false,error:"magic is required"},400);
+        var nm=String(b.name||"").trim(); if(nm.length>40) return J({ok:false,error:"name is too long"},400);
+        s.names[mg]=nm; save(s); return J({ok:true,magic:mg,name:nm}); }
+      if(api==="ea-reset"){ if(!mg) return J({ok:false,error:"account_login and magic are required"},400);
+        if(b.action==="clear"){ delete s.resets[mg]; delete s.deleted[mg]; save(s); return J({ok:true,action:"clear"}); }
+        s.resets[mg]={account_login:String(b.account_login||""),reset_at:nowIso()}; save(s);
+        return J({ok:true,action:"reset",reset_at:s.resets[mg].reset_at,reset_after_ticket:null}); }
+      if(api==="ea-delete"){ if(!mg) return J({ok:false,error:"account_login and magic are required"},400);
+        s.deleted[mg]=1; s.resets[mg]={account_login:String(b.account_login||""),reset_at:nowIso()}; save(s);
+        return J({ok:true,account_login:String(b.account_login||""),magic:mg}); }
+      return J({ok:false,error:"公開用サンプルのため、この操作はできません（配布版では使えます）"});
+    }
+    function mOf(o){return o&&o.magic!=null?String(o.magic):null;}
+    function dropDeleted(a,s){return Array.isArray(a)?a.filter(function(o){var m=mOf(o);return !(m&&s.deleted[m]);}):a;}
+    function apply(api,d,s){
+      if(api==="summary"&&d){
+        var n=d.ea_names||(d.ea_names={});
+        Object.keys(s.names).forEach(function(m){ if(s.names[m]) n[m]=s.names[m]; else delete n[m]; });
+        d.ea_stats=dropDeleted(d.ea_stats,s);
+        var rs=(d.ea_resets||[]).filter(function(r){return !s.resets[String(r.magic)];});
+        Object.keys(s.resets).forEach(function(m){ var r=s.resets[m];
+          rs.push({account_login:r.account_login,magic:m,reset_at:r.reset_at,reset_after_ticket:null}); });
+        d.ea_resets=rs;
+        (d.ea_stats||[]).forEach(function(e){ var r=s.resets[String(e.magic)]; if(!r) return;
+          e.reset_at=r.reset_at; e.trades=0; e.wins=0; e.total_profit=0; });
+      }
+      if(api==="performance"&&d){ ["by_ea","by_account_ea"].forEach(function(k){ d[k]=dropDeleted(d[k],s); }); }
+      if((api==="trades"||api==="ea-history")&&Array.isArray(d)) d=dropDeleted(d,s);
+      return d;
+    }
+    function used(){var s=load();return Object.keys(s.names).length+Object.keys(s.deleted).length+Object.keys(s.resets).length;}
+    function patch(api,r){
+      if(!r.ok||!used()||["summary","performance","trades","ea-history"].indexOf(api)<0) return r;
+      var s=load();
+      return r.json().then(function(d){ return new Response(JSON.stringify(apply(api,d,s)),{status:200,headers:{"Content-Type":"application/json"}}); });
+    }
+    function reset(){try{localStorage.removeItem(SK)}catch(e){} location.reload();}
+    return {post:post,patch:patch,used:used,reset:reset};
+  })();
+  var _fetch=window.fetch.bind(window);
+  window.fetch=function(input,init){
+    var url=(typeof input==="string")?input:(input&&input.url)||"";
+    var m=String(url).match(/\/api\/([a-z0-9\-\/]+)/i);
+    if(!m) return _fetch(input,init);
+    var api=m[1].replace(/\//g,"_");
+    var method=((init&&init.method)||(input&&input.method)||"GET").toUpperCase();
+    if(method!=="GET") return SIM.post(api,init);
+    return _fetch(here+"api/"+api+".json",{cache:"no-cache"}).then(function(r){return SIM.patch(api,r);});
+  };
+  document.addEventListener("click",function(e){
+    var a=e.target&&e.target.closest&&e.target.closest("a[href]"); if(!a) return;
+    var h=a.getAttribute("href"); if(!h||h.charAt(0)!=="/"||h.indexOf("//")===0) return;
+    var p=h.split("#")[0].split("?")[0], hash=h.indexOf("#")>=0?h.slice(h.indexOf("#")):"";
+    if(PAGES[p]){ e.preventDefault(); location.href=here+PAGES[p]+hash; }
+  },true);
+  document.addEventListener("DOMContentLoaded",function(){
+    var b=document.createElement("div");
+    b.textContent="公開用サンプル：配布版のポートフォリオモニターと同じ画面を、作りもののデータで動かしています（数字・値動きはすべて作りもの・実在の口座や EA ではありません）。2026-11-13 21:30（日本時間）の時点で止めてあります。EA の名前の編集などの操作も試せます（このブラウザの中だけに残ります）。";
+    if(SIM.used()){var u=document.createElement("button");u.type="button";u.textContent="操作を元に戻す";
+      u.style.cssText="margin-left:12px;font:700 13px/1.4 sans-serif;padding:2px 10px;border-radius:5px;border:1px solid #fff;background:#fff;color:#1f2937;cursor:pointer";
+      u.onclick=SIM.reset;b.appendChild(u);}
+    b.style.cssText="position:sticky;top:0;z-index:99999;background:#1f2937;color:#fff;font:600 14px/1.5 sans-serif;padding:6px 16px;text-align:center";
+    document.body.insertBefore(b,document.body.firstChild);
+  });
+})();
+</script>
+
+<meta name="pm-token" content="sample">
+<meta name="pm-version" content="1.0.0">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ポートフォリオモニター｜点検</title>
+<link rel="stylesheet" href="static/style.css">
+<link rel="stylesheet" href="static/ui2.css">
+<link rel="stylesheet" href="static/readable.css">
+<style>
+a.tab-button{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+.ck p,.ck td,.ck th,.ck li,.ck label,.ck input,.ck select,.ck button{font-size:1rem;color:#14213d}
+.ck h2{font-size:1.2rem}
+.ck .lead{font-size:1rem;color:#334155;margin:4px 0 10px}
+.ck table{width:100%;border-collapse:collapse;margin:6px 0 4px}
+.ck th,.ck td{border-bottom:1px solid #cbd5e1;padding:8px 10px;text-align:left;vertical-align:top}
+.ck th{background:#eef2f7;font-weight:800;border-top:2px solid #94a3b8}
+.ck .ok{color:#166534;font-weight:800}
+.ck .warn{color:#9a3412;font-weight:800}
+.ck .bad{color:#b91c1c;font-weight:800}
+.ck .msg{border:2px solid #94a3b8;border-radius:8px;padding:12px 14px;margin:0 0 12px;background:#fff}
+.ck .msg.bad{border-color:#b91c1c;background:#fef2f2}
+.ck .msg.warn{border-color:#c2410c;background:#fff7ed}
+.ck .msg.ok{border-color:#15803d;background:#f0fdf4}
+.ck button{padding:6px 12px;border:2px solid #1e53ad;border-radius:6px;background:#1e53ad;color:#fff;font-weight:800;cursor:pointer}
+.ck button.sub{background:#fff;color:#1e53ad}
+.ck select,.ck input[type=text],.ck input[type=number]{padding:5px 8px;border:2px solid #94a3b8;border-radius:6px;background:#fff}
+.ck code{font-size:.95rem;background:#f1f5f9;padding:1px 5px;border-radius:4px;word-break:break-all}
+.ck ul{margin:4px 0 0 1.2em;padding:0}
+.ck .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.ck .reasons{margin:4px 0 0 1.2em;color:#9a3412}
+</style>
+</head>
+<body class="u2">
+<header class="page-header">
+  <div>
+    <h1>ポートフォリオモニター</h1>
+    <div class="subtitle">EA別リアルタイム監視・版 1.0.0</div>
+  </div>
+  <div id="status" class="status-pill status-live">点検</div>
+</header>
+<nav class="tab-bar" aria-label="表示切替">
+  <a class="tab-button" href="index.html#top">トップ</a>
+  <a class="tab-button" href="index.html#ea">EA別</a>
+  <a class="tab-button" href="analysis.html">市場分析</a>
+  <a class="tab-button" href="backtest.html">詳細データ</a>
+  <a class="tab-button" href="ranking.html">ランキング</a>
+  <a class="tab-button active" href="check.html" aria-current="page">点検</a>
+</nav>
+<details class="hx-bar" open><summary>このページでできること</summary><ul><li>口座が複数あるときは、「1. MT5 からの書き出し」で読む口座を選びます。ポータブル版の MT5 などは「ほかの置き場所を足す」で足せます。</li><li>「2. EA の見分け」で、チャートの EA と取引の番号を「決める」「結び付ける」で結び付けます。</li><li>「3. バックテストの報告書」の「フォルダを開く」で置き場所が開きます。置いた報告書がどの EA のものかを選びます（使わなくても動きます）。</li></ul></details>
+<main class="u-wrap ck">
+<div class="u-grid">
+  <section class="u-card s12" aria-label="まとめ">
+    <div class="u-h"><h2>まとめ</h2></div>
+    <div id="ck-summary"><p class="lead">読み込み中…</p></div>
+  </section>
+
+  <section class="u-card s12" aria-label="書き出し">
+    <div class="u-h"><h2>1. MT5 からの書き出し</h2></div>
+    <p class="lead">書き出し EA（PortfolioExporter）が書いたファイルです。口座が2つ以上あるときは、使う口座を選んでください。</p>
+    <div id="ck-exports"></div>
+    <div class="row">
+      <label for="ck-folder">ほかの置き場所を足す（ポータブル版の MT5 など）</label>
+      <input type="text" id="ck-folder" size="60" placeholder="例: D:\MT5\MQL5\Files">
+      <button type="button" id="ck-folder-add">足す</button>
+    </div>
+    <div id="ck-extra"></div>
+  </section>
+
+  <section class="u-card s12" aria-label="EA の見分け">
+    <div class="u-h"><h2>2. EA の見分け</h2></div>
+    <p class="lead">取引の番号（magic）と、チャートに付いている EA の名前を結び付けます。自動で決まらなかったものだけ、ここで1回選んでください。名前はトップの「EA別」でも変えられます。</p>
+    <div id="ck-unresolved"></div>
+    <div id="ck-eas"></div>
+    <div id="ck-waiting"></div>
+  </section>
+
+  <section class="u-card s12" aria-label="バックテストの報告書">
+    <div class="u-h"><h2>3. バックテストの報告書（使わなくても動きます）</h2></div>
+    <p class="lead">MT5 のストラテジーテスターの報告書（.htm）を、EA ごとに下のフォルダに置くと、1分以内に取り込みます。置くと「詳細データ」がメニューに出て、ランキングでバックテストの成績も見られます。</p>
+    <div class="row"><span>置き場所：<code id="ck-btdir"></code></span><button type="button" class="sub" data-open="backtests">フォルダを開く</button></div>
+    <div id="ck-bt"></div>
+  </section>
+
+  <section class="u-card s12" aria-label="データ">
+    <div class="u-h"><h2>4. データの置き場所</h2></div>
+    <div class="row"><span>設定と記録：<code id="ck-datadir"></code></span><button type="button" class="sub" data-open="data">フォルダを開く</button></div>
+    <p class="lead">新しい版の zip を上書きしても、ここにある設定と記録は残ります。毎日1回、記録の控え（7日分）を backups に作ります。</p>
+  </section>
+</div>
+</main>
+<script>
+(function () {
+  "use strict";
+  var TOKEN = (document.querySelector('meta[name="pm-token"]') || {}).content || "";
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function post(url, body) {
+    return fetch(url, {method: "POST", headers: {"Content-Type": "application/json", "X-PM-Token": TOKEN}, body: JSON.stringify(body)})
+      .then(function (r) { return r.json().catch(function () { return {ok: r.ok}; }).then(function (j) { if (!r.ok) throw new Error(j.error || ("失敗しました（" + r.status + "）")); return j; }); });
+  }
+  function msg(cls, html) { return "<div class='msg " + cls + "'>" + html + "</div>"; }
+  var HOW = {auto: "自動", chosen: "ここで選んだ", input: "報告書の入力の magic", name: "EA の名前"};
+
+  function render(d) {
+    var s = [];
+    if (d.last_error) s.push(msg("bad", "<b>" + esc(d.last_error) + "</b>"));
+    else if (d.account) s.push(msg("ok", "<b>書き出しが届いています。</b> 口座 " + esc(d.account.login) + "（" + esc(d.account.server) + "）・チャートの EA " + esc(d.account.charts) + " 本"));
+    if (d.market && d.market.closed) s.push(msg("warn", "いまは為替市場の時間外です（" + esc(d.market.label) + "）。書き出しが止まって見えても異常ではありません。"));
+    if (d.unresolved && d.unresolved.length) s.push(msg("warn", "<b>自動で決まらない EA が " + d.unresolved.length + " 本あります。</b> 下の「2. EA の見分け」で選んでください。"));
+    if (d.account && !d.history) s.push(msg("warn", "取引の全履歴（portfolio_history）がまだ届いていません。届くまでは、モニターを入れた後の取引だけで数えます。"));
+    if (d.history) s.push(msg("ok", "取引の全履歴：決済 " + esc(d.history.trades) + " 件・入出金 " + esc(d.history.cashflows) + " 件（" + esc(d.history.ago) + "に更新）"));
+    if (d.unclassified) s.push(msg("warn", "MT5 の履歴に、意味を決められない口座の操作（調整・ボーナスなど）が " + esc(d.unclassified.count) + " 件・合計 " + esc(Math.round(d.unclassified.amount).toLocaleString("ja-JP")) + " あります。損益率では入出金として扱い、損益に数えていません。"));
+    if (d.history_error) s.push(msg("bad", "取引の全履歴を読めません：" + esc(d.history_error)));
+    s.push("<p class='lead'>版 " + esc(d.version) + "</p>");
+    $("ck-summary").innerHTML = s.join("");
+
+    var e = d.exports || [];
+    if (!e.length) {
+      $("ck-exports").innerHTML = msg("bad", "<b>書き出しのファイルが見つかりません。</b><ol><li>MT5 を起動して、どれか1枚のチャートに PortfolioExporter を置いてください（README の手順1）。</li><li>チャートの右上に PortfolioExporter の名前が出ているか確かめてください（出ていなければ、置き直してください）。</li><li>置いてから数秒で、ここに出ます。</li></ol>探した所：<ul>" + (d.search_dirs || []).map(function (x) { return "<li><code>" + esc(x) + "</code></li>"; }).join("") + "</ul>");
+    } else {
+      var many = new Set(e.map(function (x) { return x.login + "@" + (x.server || ""); })).size > 1;
+      var h = "<table><thead><tr>" + (many ? "<th>使う</th>" : "") + "<th>口座</th><th>サーバー</th><th>最後に書いた時</th><th>状態</th><th>置き場所</th></tr></thead><tbody>";
+      e.forEach(function (x) {
+        var stt = x.error ? "<span class='bad'>" + esc(x.error) + "</span>" : x.fresh ? "<span class='ok'>届いています</span>" : "<span class='warn'>止まっています</span>";
+        if (x.exporter_version && x.exporter_version.indexOf("pm_dist") !== 0) stt += "<br><span class='warn'>古い版の書き出し EA です（同梱の版に置き換えると全履歴も届きます）</span>";
+        h += "<tr>" + (many ? "<td><input type='radio' name='acct' value='" + esc(x.login + "@" + (x.server || "")) + "'" + (x.chosen ? " checked" : "") + "></td>" : "") +
+          "<td>" + esc(x.login) + (x.chosen ? " <span class='ok'>（使っています）</span>" : "") + "</td><td>" + esc(x.server || "—") + "</td><td>" + esc(x.ago) + "</td><td>" + stt + "</td><td><code>" + esc(x.folder) + "</code></td></tr>";
+      });
+      h += "</tbody></table>";
+      if (many) h += "<div class='row'><button type='button' id='ck-acct-save'>この口座を使う</button>" + (d.selected_account ? "<button type='button' class='sub' id='ck-acct-auto'>選んだのをやめる</button>" : "") + "</div>";
+      $("ck-exports").innerHTML = h;
+      var sv = $("ck-acct-save");
+      if (sv) sv.onclick = function () { var r = document.querySelector("input[name=acct]:checked"); if (!r) return alert("口座を選んでください"); post("/api/check/select-account", {account: r.value}).then(load, fail); };
+      var au = $("ck-acct-auto");
+      if (au) au.onclick = function () { post("/api/check/select-account", {account: ""}).then(load, fail); };
+    }
+    $("ck-extra").innerHTML = (d.extra_dirs || []).length ? "<ul>" + d.extra_dirs.map(function (x) { return "<li><code>" + esc(x) + "</code> <button type='button' class='sub' data-rm='" + esc(x) + "'>外す</button></li>"; }).join("") + "</ul>" : "";
+
+    var u = d.unresolved || [];
+    $("ck-unresolved").innerHTML = u.length ? "<h3>選んでください</h3><table><thead><tr><th>magic</th><th>銘柄</th><th>取引</th><th>どのチャートの EA か</th><th></th></tr></thead><tbody>" +
+      u.map(function (x) {
+        return "<tr><td>" + esc(x.magic) + "</td><td>" + esc(x.symbols.join(", ")) + "</td><td>" + esc(x.trades) + " 件" + (x.open ? "・保有中" : "") + "</td><td><select data-link='" + esc(x.magic) + "'><option value=''>（選ぶ）</option>" +
+          x.candidates.map(function (c) { return "<option>" + esc(c) + "</option>"; }).join("") + "</select></td><td><button type='button' data-save-link='" + esc(x.magic) + "'>決める</button></td></tr>";
+      }).join("") + "</tbody></table>" : "";
+    var eas = d.eas || [];
+    $("ck-eas").innerHTML = eas.length ? "<h3>見つかった EA</h3><table><thead><tr><th>magic</th><th>表示の名前</th><th>チャートの EA</th><th>決め方</th><th>銘柄</th><th>取引</th><th>今の顔ぶれ</th><th></th></tr></thead><tbody>" +
+      eas.map(function (x) {
+        return "<tr><td>" + esc(x.magic) + "</td><td>" + esc(x.name) + "</td><td>" + esc(x.chart_name || "—") + "</td><td>" + esc(HOW[x.how] || "—") + "</td><td>" + esc(x.symbols.join(", ")) + "</td><td>" + esc(x.trades) + " 件" + (x.open ? "・保有中" : "") +
+          "</td><td>" + (x.in_lineup ? "<span class='ok'>入っている</span>" : "外れている") + "</td><td>" + (x.how === "chosen" ? "<button type='button' class='sub' data-unlink='" + esc(x.magic) + "'>選び直す</button>" : "") + "</td></tr>";
+      }).join("") + "</tbody></table><p class='lead'>今の顔ぶれ＝チャートに付いている EA・保有中・直近14日に決済した EA。外れた EA の成績は「今まで全部」で見られます。</p>" :
+      "<p class='lead'>まだ EA の取引がありません。</p>";
+    var w = d.waiting || [];
+    $("ck-waiting").innerHTML = w.length ? "<h3>まだ結び付いていない EA（チャートにあるが、最近の取引が無い）</h3><table><thead><tr><th>チャートの EA</th><th>銘柄</th><th>前の取引と結び付ける（任意）</th><th></th></tr></thead><tbody>" +
+      w.map(function (x, i) {
+        var c = x.candidates || [];
+        return "<tr><td>" + esc(x.expert) + "</td><td>" + esc(x.symbol) + "</td><td>" + (c.length ? "<select data-wait='" + i + "'><option value=''>（結び付けない）</option>" +
+          c.map(function (m) { return "<option value='" + esc(m.magic) + "'>magic " + esc(m.magic) + "（" + esc(m.trades) + " 件・最後 " + esc((m.last || "").slice(0, 10)) + "）</option>"; }).join("") + "</select>" : "—") +
+          "</td><td>" + (c.length ? "<button type='button' data-save-wait='" + i + "' data-expert='" + esc(x.expert) + "'>決める</button>" : "") + "</td></tr>";
+      }).join("") + "</tbody></table><p class='lead'>次に取引が出たら自動で結び付けます（同じ銘柄に2つ以上あるときは、上の表で選んでもらいます）。前の取引がこの EA のものなら、ここで選ぶと過去の成績もこの名前で出ます。</p>" : "";
+
+    $("ck-btdir").textContent = d.backtest_dir;
+    $("ck-datadir").textContent = d.data_dir;
+    var bt = (d.backtests && d.backtests.rows) || [];
+    function pairOf(sym) { return String(sym || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6); }
+    function magicOptions(sym) {
+      var same = eas.filter(function (x) { return x.symbols.some(function (s) { return pairOf(s) === pairOf(sym); }); });
+      return (same.length ? same : eas).map(function (x) { return "<option value='" + esc(x.magic) + "'>" + esc(x.magic) + "（" + esc(x.name) + "・" + esc(x.symbols.join(", ")) + "）</option>"; }).join("");
+    }
+    $("ck-bt").innerHTML = bt.length ? "<table><thead><tr><th>報告書</th><th>EA・銘柄</th><th>結び付け</th><th>確かさ</th><th>取引・期間</th></tr></thead><tbody>" +
+      bt.map(function (x) {
+        if (x.error) return "<tr><td>" + esc(x.file) + "</td><td colspan=4><span class='bad'>読めません：" + esc(x.error) + "</span></td></tr>";
+        var link = x.magic ? "magic " + esc(x.magic) + "（" + esc(HOW[x.how] || "") + "）" + (x.how === "chosen" ? " <button type='button' class='sub' data-btunlink='" + esc(x.sha256) + "'>外す</button>" : "") :
+          "<span class='warn'>" + esc(x.note || "未") + "</span><br><select data-bt='" + esc(x.sha256) + "'><option value=''>（どの EA か選ぶ）</option>" + magicOptions(x.symbol) + "</select> <button type='button' data-save-bt='" + esc(x.sha256) + "'>結び付ける</button>";
+        var tier = x.verified ? "<span class='ok'>確かめ済み</span>（リスク " + esc(x.risk) + "%・入力 " + esc(x.risk_key) + "）" :
+          "<span class='warn'>参考</span>：金額の成績だけ（R なし・実運用と見比べない）" + (x.reasons.length ? "<ul class='reasons'>" + x.reasons.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join("") + "</ul>" : "") +
+          (x.magic ? "<div class='row'>参考の計算に使うリスク%：<input type='number' step='0.1' min='0.1' max='20' data-risk='" + esc(x.magic) + "' style='width:6em'> <button type='button' class='sub' data-save-risk='" + esc(x.magic) + "'>入れる</button></div>" : "");
+        return "<tr><td>" + esc(x.file) + "</td><td>" + esc(x.expert) + "<br>" + esc(x.symbol) + "</td><td>" + link + "</td><td>" + tier + "</td><td>" + esc(x.trades) + " 件<br>" + esc(x.period || "") + "</td></tr>";
+      }).join("") + "</tbody></table>" : "<p class='lead'>報告書はまだありません。</p>";
+  }
+  function fail(e) { alert(e.message || e); }
+  function load() { fetch("/api/check?_=" + Date.now(), {cache: "no-store"}).then(function (r) { return r.json(); }).then(render).catch(function () { $("ck-summary").innerHTML = msg("bad", "モニターから返事がありません。"); }); }
+  document.addEventListener("click", function (ev) {
+    var t = ev.target, v;
+    if ((v = t.getAttribute("data-save-link"))) { var sel = document.querySelector("select[data-link='" + v + "']"); if (!sel.value) return alert("EA を選んでください"); post("/api/check/link-ea", {magic: v, expert: sel.value}).then(load, fail); }
+    else if ((v = t.getAttribute("data-unlink"))) post("/api/check/link-ea", {magic: v, expert: ""}).then(load, fail);
+    else if ((v = t.getAttribute("data-save-wait"))) { var sw = document.querySelector("select[data-wait='" + v + "']"); if (!sw.value) return alert("magic を選んでください"); post("/api/check/link-ea", {magic: sw.value, expert: t.getAttribute("data-expert")}).then(load, fail); }
+    else if ((v = t.getAttribute("data-save-bt"))) { var s2 = document.querySelector("select[data-bt='" + v + "']"); if (!s2.value) return alert("magic を選んでください"); post("/api/check/bt-link", {report: v, magic: s2.value}).then(function () { setTimeout(load, 800); }, fail); }
+    else if ((v = t.getAttribute("data-btunlink"))) post("/api/check/bt-link", {report: v, magic: ""}).then(function () { setTimeout(load, 800); }, fail);
+    else if ((v = t.getAttribute("data-save-risk"))) { var i = document.querySelector("input[data-risk='" + v + "']"); post("/api/check/bt-risk", {magic: v, risk: i.value}).then(load, fail); }
+    else if ((v = t.getAttribute("data-open"))) post("/api/check/open-folder", {which: v}).catch(fail);
+    else if ((v = t.getAttribute("data-rm"))) post("/api/check/folder", {path: v, action: "remove"}).then(load, fail);
+    else if (t.id === "ck-folder-add") post("/api/check/folder", {path: $("ck-folder").value, action: "add"}).then(function () { $("ck-folder").value = ""; setTimeout(load, 500); }, fail);
+  });
+  load();
+  setInterval(function () {
+    var busy = document.querySelector("select:focus,input:focus") ||
+      Array.prototype.some.call(document.querySelectorAll("select,input[type=number],#ck-folder"), function (x) { return x.value; });
+    if (!busy) load();
+  }, 10000);
+})();
+</script>
+<style id="pm-hints-v1">
+.hx-bar{margin:10px 20px 0;padding:9px 14px;border:1.5px solid #93b4e8;border-radius:8px;background:#eef4fd;color:#123a75;font-size:.98rem;line-height:1.6}
+.hx-bar summary{cursor:pointer;font-weight:900;list-style:none}
+.hx-bar summary::-webkit-details-marker{display:none}
+.hx-bar summary::after{content:"　閉じる ▲";font-weight:700;font-size:.85rem;color:#2557a7}
+.hx-bar:not([open]) summary::after{content:"　開く ▼"}
+.hx-bar ul{margin:6px 0 2px;padding-left:1.2em}
+.hx-bar li{margin:2px 0}
+@media (max-width:640px){.hx-bar{margin:8px 10px 0;font-size:.92rem}}
+[title*="クリックして名前を編集"]::after{content:" ✎";font-size:.85em;opacity:.8}
+a.ea-link{text-decoration:underline;text-underline-offset:3px}
+a.ea-link::after{content:" ↗";font-size:.8em;text-decoration:none;display:inline-block}
+#t-all tbody tr td:first-child::before{content:"▸ ";color:#2563eb;font-weight:900}
+#t-all tbody tr:hover td{background:rgba(37,99,235,.06)}
+.hx-i{display:inline-block;margin-left:3px;color:#2563eb;cursor:pointer;font-weight:900;font-style:normal;font-size:.9em;line-height:1}
+.hx-tip{position:absolute;z-index:9999;max-width:min(360px,90vw);padding:8px 11px;border-radius:7px;background:#1f2937;color:#fff;font-size:.9rem;font-weight:600;line-height:1.55;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.hx-cap{margin:4px 0 0;font-size:.9rem;color:#475467;font-weight:700}
+.mk-chart svg{touch-action:pan-y}
+</style>
+<script>
+(function(){
+  var KEY="pm_hints_closed:"+(location.pathname.replace(/\/+$/,"")||"/top");
+  var bar=document.querySelector(".hx-bar");
+  if(bar){ try{ if(localStorage.getItem(KEY)==="1") bar.removeAttribute("open"); }catch(e){}
+    bar.addEventListener("toggle",function(){ try{ localStorage.setItem(KEY,bar.open?"0":"1"); }catch(e){} }); }
+  var SKIP=["SECTION","BUTTON","A","TR","TD","INPUT","LABEL","P"];
+  function decorate(){
+    Array.prototype.forEach.call(document.querySelectorAll("[title]"),function(el){
+      if(el.dataset.hx) return; el.dataset.hx="1";
+      var t=el.getAttribute("title")||"";
+      if(t.length<8||SKIP.indexOf(el.tagName)>=0) return;
+      if(el.classList.contains("ea-badge")||el.classList.contains("posbar")||el.closest(".hx-bar,.tab-bar,button,a")) return;
+      if(!(el.textContent||"").trim()||/[🛈ⓘ]/.test(el.textContent||"")) return;
+      var i=document.createElement("span"); i.className="hx-i"; i.textContent="ⓘ"; i.setAttribute("role","button");
+      i.setAttribute("aria-label","説明を見る"); i.dataset.hx="1"; el.appendChild(i);
+    });
+  }
+  var tip=null;
+  function closeTip(){ if(tip){ tip.remove(); tip=null; } }
+  document.addEventListener("click",function(ev){
+    var t=ev.target, host=null;
+    if(t.classList&&t.classList.contains("hx-i")) host=t.parentElement;
+    else if(t.closest&&!t.closest("button,a,[data-ea-badge-magic],.ea-badge")){ var h=t.closest("[title]"); if(h&&/[🛈]/.test(h.textContent||"")) host=h; }
+    if(!host){ closeTip(); return; }
+    ev.preventDefault(); ev.stopPropagation(); closeTip();
+    tip=document.createElement("div"); tip.className="hx-tip"; tip.textContent=host.getAttribute("title");
+    document.body.appendChild(tip);
+    var r=host.getBoundingClientRect(), x=r.left+window.scrollX, w=tip.offsetWidth;
+    if(x+w>window.scrollX+document.documentElement.clientWidth-8) x=window.scrollX+document.documentElement.clientWidth-w-8;
+    tip.style.left=Math.max(window.scrollX+8,x)+"px"; tip.style.top=(r.bottom+window.scrollY+6)+"px";
+  },true);
+  function touchMove(ev){
+    var tg=ev.target.closest&&ev.target.closest(".mk-chart svg"); if(!tg||!ev.touches.length) return;
+    var p=ev.touches[0];
+    tg.dispatchEvent(new MouseEvent("mousemove",{clientX:p.clientX,clientY:p.clientY,bubbles:true}));
+  }
+  document.addEventListener("touchstart",touchMove,{passive:true});
+  document.addEventListener("touchmove",touchMove,{passive:true});
+  function caps(){
+    [["c-area","チャートにマウスを当てる（スマホは指でなぞる）と、その足の値が出ます。"]].forEach(function(c){
+      var el=document.getElementById(c[0]); if(!el||document.getElementById("hx-cap-"+c[0])) return;
+      var p=document.createElement("p"); p.className="hx-cap"; p.id="hx-cap-"+c[0]; p.textContent=c[1];
+      el.parentNode.insertBefore(p,el.nextSibling);
+    });
+  }
+  var mo=new MutationObserver(function(){ run(); });
+  function run(){ mo.disconnect(); try{ decorate(); caps(); } finally { mo.observe(document.body,{childList:true,subtree:true}); } }
+
+  run();
+})();
+</script>
+</body>
+</html>
