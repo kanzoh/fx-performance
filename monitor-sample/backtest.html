@@ -267,7 +267,8 @@ main.bt-main{padding:4px 24px 28px}
 .metric-label .kl{word-break:keep-all}
 @media (max-width:900px){main.bt-main{padding:4px 14px 24px}}
 
-.bt-export{margin-left:auto;padding:7px 16px;border:2px solid #1e53ad;border-radius:8px;background:#1e53ad;color:#fff;font:inherit;font-weight:800;cursor:pointer}
+.tab-bar .bt-export{margin-left:auto;align-self:center;white-space:nowrap}
+.bt-export{padding:7px 16px;border:2px solid #1e53ad;border-radius:8px;background:#1e53ad;color:#fff;font:inherit;font-weight:800;cursor:pointer}
 .bt-export:disabled{opacity:.6;cursor:wait}
 .pm-disclaimer{margin:18px 0 0;padding:10px 14px;border:1.5px solid #c9bfad;border-radius:8px;background:#fdfbf6;color:#344054;font-size:.95rem;font-weight:700;line-height:1.6}
 #mech-panel .mech-wrap{display:block}
@@ -296,13 +297,13 @@ main.bt-main{padding:4px 24px 28px}
   <a class="tab-button" href="ranking.html">ランキング</a>
   <a class="tab-button" href="check.html">点検</a>
 </nav>
-<details class="hx-bar" open><summary>このページでできること</summary><ul><li>上の EA の札（またはスマホでは選ぶ欄）で、見る EA を選びます（トップ・EA別・ランキングの EA 名 <b>↗</b> からも開きます）。</li><li>資産曲線の上のボタンで「複利／単利」「%／円」「ふつうの目盛り／対数目盛り」を切り替えます。曲線にマウスを当てる（スマホは指でなぞる）と、その時点の値が出ます。</li><li>右の「大きな落ち込み 上位5」の行 <b>▸</b> を押すと、曲線にその期間の帯が出ます（もう一度押すと消えます）。</li><li>「出力する」で、このページを画像（PNG）にして、保存する場所を選んで保存できます。</li><li>バックテストの報告書の置き場所と、どの EA の報告書かの選び直しは「点検」タブにあります。</li><li><b>ⓘ</b> を押すと、その項目の説明が出ます。</li></ul></details>
+<details class="hx-bar" open><summary>このページでできること</summary><ul><li>上の EA の札（またはスマホでは選ぶ欄）で、見る EA を選びます（トップ・EA別・ランキングの EA 名 <b>↗</b> からも開きます）。</li><li>資産曲線の上のボタンで「複利／単利」「%／円」「ふつうの目盛り／対数目盛り」を切り替えます。曲線にマウスを当てる（スマホは指でなぞる）と、その時点の値が出ます。</li><li>右の「大きな落ち込み 上位5」の行 <b>▸</b> を押すと、曲線にその期間の帯が出ます（もう一度押すと消えます）。</li><li>タブの右の「画像データで出力する」で、このページを画像（PNG）にして、保存する場所を選んで保存できます。</li><li>バックテストの報告書の置き場所と、どの EA の報告書かの選び直しは「点検」タブにあります。</li><li><b>ⓘ</b> を押すと、その項目の説明が出ます。</li></ul></details>
 
 <main class="bt-main">
   
   <div class="toggles" style="margin:0 0 10px">
     <span class="src-note" id="src-note" style="margin:0"></span>
-    <button type="button" class="bt-export" id="bt-export" title="このページを画像（PNG）にして、保存する場所を選んで保存します">出力する</button>
+    <button type="button" class="bt-export" id="bt-export" title="このページを画像（PNG）にして、保存する場所を選んで保存します">画像データで出力する</button>
     
     <div class="zoom-ctl" id="zoom-ctl" tabindex="0" role="group" aria-label="画面全体の表示倍率（左右の矢印で調整）">
       <label>表示倍率</label>
@@ -1122,6 +1123,8 @@ load();
 
 (function(){
   const btn=document.getElementById("bt-export"); if(!btn) return;
+
+  { const nav=document.querySelector("nav.tab-bar"); if(nav) nav.appendChild(btn); }
   async function fontCss(){
     try{ const r=await fetch("static/Murecho-wght.ttf",{cache:"force-cache"}); if(!r.ok) return "";
       const b=await r.blob(); const u=await new Promise((ok,ng)=>{const f=new FileReader(); f.onload=()=>ok(f.result); f.onerror=ng; f.readAsDataURL(b);});
