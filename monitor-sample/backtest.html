@@ -1114,7 +1114,7 @@ let rt=null; window.addEventListener("resize",()=>{clearTimeout(rt); rt=setTimeo
 window.addEventListener("hashchange",()=>{ if(!DATA) return; const h=decodeURIComponent(location.hash.slice(1)); if(CUR&&h!==CUR.name&&hasName(h)) select(h); });
 load();
 </script>
-<script src="static/ui2.js?v=8ba019791e"></script>
+<script src="static/ui2.js?v=e7572e205e"></script>
 <script>
 (function(){var orig=select;select=function(n){orig(n);if(window.UI2&&CUR)UI2.compare(CUR.name);};if(CUR&&window.UI2)UI2.compare(CUR.name);if(window.UI2){var od=UI2.onData;UI2.onData=function(d){if(od)od(d);if(CUR)renderMonthSide(CUR);};}})();
 </script>
