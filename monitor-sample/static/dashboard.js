@@ -365,9 +365,11 @@ function fmtRf(row) {
 
 function fmtTime(value) {
   if (!value) return "-";
-  const d = new Date(value);
+  const jst = liveJstMs(value);
+  const d = jst !== null ? new Date(jst) : new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -381,6 +383,7 @@ function fmtTimeMs(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
   const base = d.toLocaleTimeString("ja-JP", {
+    timeZone: "Asia/Tokyo",
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
@@ -393,6 +396,7 @@ function fmtResetTime(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -1400,6 +1404,14 @@ function setHtml(id, value, className) {
 }
 
 function fxServerOffsetHours(ms) {
+  const ny = nyServerOffsetHours(ms);
+  const acc = latestSummary && Array.isArray(latestSummary.accounts) ? latestSummary.accounts[0] : null;
+  const sec = acc ? Number(acc.gmt_offset_seconds) : NaN;
+  if (!Number.isFinite(sec)) return ny;
+  const b = Math.round(sec / 1800) / 2;
+  return b === nyServerOffsetHours(Date.now()) ? ny : b;
+}
+function nyServerOffsetHours(ms) {
   const y = new Date(ms).getUTCFullYear();
   const nthSunday = (month, n) => {
     const first = new Date(Date.UTC(y, month, 1)).getUTCDay();
@@ -1748,8 +1760,8 @@ async function buildEaChartSeries() {
       .sort((a, b) => (parseTradeTime(a.close_time)?.getTime() ?? 0) - (parseTradeTime(b.close_time)?.getTime() ?? 0));
     const points = magicRows
       .map((r) => {
-        const t = parseTradeTime(r.close_time);
-        return t ? { x: t.getTime(), y: Number(r.cumulative_profit) } : null;
+        const t = liveJstMs(r.close_time);
+        return t !== null ? { x: t, y: Number(r.cumulative_profit) } : null;
       })
       .filter(Boolean);
 
@@ -1997,13 +2009,14 @@ function renderChartSeries(chartEl, series, options) {
       return (crossesYear ? local.getUTCFullYear() + "/" : "") + (local.getUTCMonth() + 1) + "/" + local.getUTCDate()
         + (periodUnit === "week" ? "週" : "");
     }
-    if (spanDays >= 400) return d.toLocaleDateString("ja-JP", { year: "numeric", month: "numeric" });
-    if (spanDays >= 2) return d.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+    const TZ = "Asia/Tokyo";
+    if (spanDays >= 400) return d.toLocaleDateString("ja-JP", { timeZone: TZ, year: "numeric", month: "numeric" });
+    if (spanDays >= 2) return d.toLocaleDateString("ja-JP", { timeZone: TZ, month: "numeric", day: "numeric" });
     if (spanDays >= 1) {
-      return d.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }) + " "
-           + d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleDateString("ja-JP", { timeZone: TZ, month: "numeric", day: "numeric" }) + " "
+           + d.toLocaleTimeString("ja-JP", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
     }
-    return d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString("ja-JP", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
   };
   const xValues = periodUnit
     ? buildAccountPeriodTicks(minX, maxX, periodUnit, Math.max(2, Math.floor(plotW / 90)))
@@ -2533,7 +2546,7 @@ function fmtOrderType(row) {
 }
 
 function fmtExpiry(value) {
-  return value ? fmtTime(value) : "-";
+  return value && !String(value).startsWith("1970.") ? fmtTime(value) : "-";
 }
 
 function setPositionHeaders(table, options = {}) {

@@ -2354,3 +2354,8 @@ h2 {
 
 body #health-card .hl-top b { font-size: .86rem !important; padding: 1px 5px !important; }
 body #health-card .hl-top { gap: 5px !important; }
+
+@media (max-width: 640px) {
+  body .tab-bar { flex-wrap: wrap !important; gap: 6px !important; padding: 10px 10px 0 !important; max-width: 100% !important; }
+  body .tab-bar .tab-button { min-width: 0 !important; flex: 1 1 30% !important; box-sizing: border-box; padding: 8px 4px !important; text-align: center; border-radius: 6px !important; }
+}
