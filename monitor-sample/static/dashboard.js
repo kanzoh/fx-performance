@@ -2369,11 +2369,11 @@ async function refreshPerformance() {
   renderAlerts();
 }
 
-function populateSelect(select, options, allLabel) {
+function populateSelect(select, options, allLabel, labelOf) {
   if (!select) return;
   const current = select.value || "all";
   const html = [`<option value="all">${allLabel}</option>`]
-    .concat(options.map((value) => `<option value="${value}">${value}</option>`))
+    .concat(options.map((value) => `<option value="${value}">${escapeHtml(labelOf ? labelOf(value) : value)}</option>`))
     .join("");
   if (select.dataset.html !== html) {
     select.innerHTML = html;
@@ -2426,7 +2426,7 @@ function renderTradeTables() {
 
   const eaFilter = document.getElementById("ea-trade-filter");
   const accountFilter = document.getElementById("account-trade-filter");
-  populateSelect(eaFilter, eaOptions, "すべて");
+  populateSelect(eaFilter, eaOptions, "すべて", (magic) => eaNames.get(String(magic)) || String(magic));
   populateSelect(accountFilter, accountOptions, "すべて");
 
   const selectedEa = eaFilter?.value || "all";
