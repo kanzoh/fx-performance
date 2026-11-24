@@ -427,6 +427,8 @@ main.bt-main{padding:4px 24px 28px}
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const isNum=v=>typeof v==="number"&&Number.isFinite(v);
 
+function rpct(x){return isFinite(+x)?String(+(+x).toFixed(2)):"—";}
+
 const sci=v=>{const a=Math.abs(v), e=Math.floor(Math.log10(a)), m=a/Math.pow(10,e), r=Math.round(m*10)/10;
   return (v<0?"−":"")+(r===1?"":(r>=10?"10":r.toFixed(1))+"×")+"10の"+(r>=10?e+1:e)+"乗";};
 const JPU=[[1e16,"京"],[1e12,"兆"],[1e8,"億"],[1e4,"万"]];
@@ -499,7 +501,7 @@ function checkShape(j){
 function RISKSET(e,j){ j=j||DATA; if(!e||!j) return;
   j.live_risk_percent=e._noR?100:(isNum(e.risk_percent)&&e.risk_percent>0?e.risk_percent:1);
   j.initial_balance=isNum(e.initial_balance)&&e.initial_balance>0?e.initial_balance:1000000; }
-const RKT=()=>(CUR&&CUR._noR)?"報告書の金額どおり":"リスク"+DATA.live_risk_percent.toFixed(1)+"%";
+const RKT=()=>(CUR&&CUR._noR)?"報告書の金額どおり":"リスク"+rpct(DATA.live_risk_percent)+"%";
 async function getJson(url,ms){
   const ac=new AbortController();const t=setTimeout(()=>ac.abort(),ms);
   try{const r=await fetch(url,{credentials:"same-origin",signal:ac.signal});
@@ -652,7 +654,7 @@ function renderMonths(e){
 
   const mn=document.getElementById("month-note");
   if(mn){ if(mn.dataset.orig==null) mn.dataset.orig=mn.innerHTML;
-    mn.innerHTML=PS?`単利で、<b>その月（その年）の全本の損益の合計を最初の残高に対する%</b>にしたもの（R の合計 × リスク${DATA.live_risk_percent.toFixed(1)}%）。件数は決済した取引の数（全本の合計）。※ は報告書の期間の端で途中の月・年。上の「複利／単利」で切り替わる。`
+    mn.innerHTML=PS?`単利で、<b>その月（その年）の全本の損益の合計を最初の残高に対する%</b>にしたもの（R の合計 × リスク${rpct(DATA.live_risk_percent)}%）。件数は決済した取引の数（全本の合計）。※ は報告書の期間の端で途中の月・年。上の「複利／単利」で切り替わる。`
       :isPort(e)?mn.dataset.orig+" 全本をまとめた口座の値。上の「複利／単利」で切り替わる。":mn.dataset.orig; }
   document.getElementById("month-sub").textContent=`${RKT()}・${PS?"単利":"複利"}・${e.judge_period[0]}〜${e.judge_period[1]}`;
 }
@@ -663,7 +665,7 @@ function kv(rows){return `<thead><tr><th>項目</th><th>値</th><th>メモ</th><
 function renderStatsPort(e){}
 function renderStats(e){
   if(isPort(e)) return renderStatsPort(e);
-  const s=e.stats, rk=DATA.live_risk_percent.toFixed(1), bd=isFwdPort(e)?(e.breakdown||{}):null;
+  const s=e.stats, rk=rpct(DATA.live_risk_percent), bd=isFwdPort(e)?(e.breakdown||{}):null;
   document.getElementById("stats-table").innerHTML=kv([
     ...(bd?[["顔ぶれ",`${nf(bd.lineup_n||0)}本`,`今の顔ぶれだけ（バックテストの全体と同じ）。損益 ${signYen((bd.now||{}).yen)}`],
             ["入れていない決済",`${nf(((bd.out||{}).trades||0)+((bd.manual||{}).trades||0))}件`,`外した本 ${nf((bd.out||{}).trades||0)}件 ${signYen((bd.out||{}).yen)}`+((bd.manual||{}).trades?`・手動 ${nf(bd.manual.trades)}件 ${signYen(bd.manual.yen)}`:"")+`（参考）`]]:[]),
@@ -758,8 +760,8 @@ function renderMetrics(e){
       mm('<span class="kl">取引<wbr>（年あたり）</span>',(isFwd()&&isNum(s.years)&&s.years*365.25<14)?"—":`${nf(s.per_year,0)}件`,"purple")+
       mm('<span class="kl">黒字の月</span>',`${s.positive_months}／${s.months_full}`,"amber");
     document.getElementById("metrics-note").innerHTML=
-      `<b>今の顔ぶれ ${(e.members||[]).length}本を1つの口座で同時に動かした</b>ときのバックテスト（全本がそろう期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}・リスク${DATA.live_risk_percent.toFixed(1)}%・手数料控除後・受取スワップは0・決済だけ）。`+
-      `年利（複利）は毎回そのときの残高の${DATA.live_risk_percent.toFixed(1)}%を賭けて積んだ値で、全本で年 ${nf(s.per_year,0)}件ある。始めの残高は100万円で、ロットは建てた時点の残高から決め、1注文の上限（FX 100・金 50 ロット）で切る（証拠金・約定の厚みは入っていない）。単利は最初の残高に対する%を足した値。`+
+      `<b>今の顔ぶれ ${(e.members||[]).length}本を1つの口座で同時に動かした</b>ときのバックテスト（全本がそろう期間 ${esc(e.judge_period[0])}〜${esc(e.judge_period[1])}・リスク${rpct(DATA.live_risk_percent)}%・手数料控除後・受取スワップは0・決済だけ）。`+
+      `年利（複利）は毎回そのときの残高の${rpct(DATA.live_risk_percent)}%を賭けて積んだ値で、全本で年 ${nf(s.per_year,0)}件ある。始めの残高は100万円で、ロットは建てた時点の残高から決め、1注文の上限（FX 100・金 50 ロット）で切る（証拠金・約定の厚みは入っていない）。単利は最初の残高に対する%を足した値。`+
       `含み損込みの値は MT5 の報告書が本ごとにしか無いので出していない。`;
     return;
   }
@@ -792,7 +794,7 @@ function srcNote(t){return String(t);}
 function capText(e){return ""; const s=e.stats;
   if(isPort(e)) return `1注文の上限（FX 100・金 50 ロット）で切った ${s.lot_cap_trades.toLocaleString("ja-JP")}件を入れてある`;
   if(!isNum(s.lot_cap)) return "ロットは実口座の記録に無いので、上限に張り付いた取引は数えていない";
-  return s.lot_cap_trades?`ロット上限 ${s.lot_cap}ロットに張り付いた ${s.lot_cap_trades}件は実際のリスクが${DATA.live_risk_percent.toFixed(1)}%より低く、その縮んだ損益のまま`:`ロット上限 ${s.lot_cap}ロットに届いた取引は無い`;}
+  return s.lot_cap_trades?`ロット上限 ${s.lot_cap}ロットに張り付いた ${s.lot_cap_trades}件は実際のリスクが${rpct(DATA.live_risk_percent)}%より低く、その縮んだ損益のまま`:`ロット上限 ${s.lot_cap}ロットに届いた取引は無い`;}
 const fmtInit=()=>IB()%10000===0?`${(IB()/10000).toLocaleString("ja-JP")}万円`:fmtYen(IB());
 
 let EQ_HL=null;
@@ -825,7 +827,7 @@ function renderEqSide(e){
   let uw=0, longest=null;
   out.forEach(o=>{const end=o.rec===null?x1:x[o.rec], len=end-x[o.pk]; uw+=end-x[o.pk+1]; if(!longest||len>longest.len) longest={o,len};});
 
-  const rows=[], rk=DATA.live_risk_percent.toFixed(1), init=fmtInit();
+  const rows=[], rk=rpct(DATA.live_risk_percent), init=fmtInit();
 
   const FD=(e&&e.stats&&isNum(e.stats.years))?nf(Math.round(e.stats.years*365.25)):nf(Math.round(yrs*365.25));
   const ann=yrs<1?null:(comp&&last>0?(Math.pow(last,1/yrs)-1)*100:(last-1)*100/yrs);
@@ -871,7 +873,7 @@ function renderEqSide(e){
   document.getElementById("eq-side-note").textContent=`左の曲線と同じ列（${comp?"複利":"単利"}・${RKT()}・決済ベース）から数えた。行を押すと左の曲線にその期間の帯が出る（もう一度押すと消える）。`;
 }
 function drawAll(){ if(!SERIES) return; drawEquity(); drawDD(); renderEqSide(CUR);
-  const S=SERIES, e=CUR, rk=DATA.live_risk_percent.toFixed(1);
+  const S=SERIES, e=CUR, rk=rpct(DATA.live_risk_percent);
   const last=(MODE==="comp"?S.comp:S.simple)[S.comp.length-1];
   if(isFwdPort(e)){
     document.getElementById("chart-sub").textContent=`今の顔ぶれ ${e.symbol}・${MODE==="comp"?"複利":"単利"}・${e.judge_period[0]}〜${e.judge_period[1]}`;
@@ -1077,7 +1079,7 @@ let rt=null; window.addEventListener("resize",()=>{clearTimeout(rt); rt=setTimeo
 window.addEventListener("hashchange",()=>{ if(!DATA) return; const h=decodeURIComponent(location.hash.slice(1)); if(CUR&&h!==CUR.name&&hasName(h)) select(h); });
 load();
 </script>
-<script src="static/ui2.js?v=b8b6b766a3"></script>
+<script src="static/ui2.js?v=c501254a76"></script>
 <script>
 (function(){var orig=select;select=function(n){orig(n);if(window.UI2&&CUR)UI2.compare(CUR.name,CUR.magic);};if(CUR&&window.UI2)UI2.compare(CUR.name,CUR.magic);if(window.UI2){var od=UI2.onData;UI2.onData=function(d){if(od)od(d);if(CUR)renderMonthSide(CUR);};}})();
 </script>

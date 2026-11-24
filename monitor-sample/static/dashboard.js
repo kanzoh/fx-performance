@@ -1485,7 +1485,9 @@ async function refreshSummary() {
   });
   reconcileRows(eaBody, eaRows, (row) => row.key, (row) => row.html);
 
-  const realizedTotal = visibleEaRealizedTotal;
+  window.__visibleRealizedTotal = visibleEaRealizedTotal;
+  window.__floatingTotal = floatingTotal;
+  const realizedTotal = scopedRealizedTotal();
 
   setText("metric-ea-count", fmt(data.ea_stats.length));
   setText("metric-open-count", fmt(openCount));
@@ -1493,6 +1495,19 @@ async function refreshSummary() {
   setText("metric-realized", fmtSignedYen(realizedTotal), `metric-value ${profitClass(realizedTotal)}`);
   setText("metric-total", fmtSignedYen(floatingTotal + realizedTotal), `metric-value ${profitClass(floatingTotal + realizedTotal)}`);
   renderAlerts();
+}
+
+function scopedRealizedTotal() {
+  const rows = (latestPerformance && latestPerformance.by_account) || [];
+  if (perfScope === "all" && rows.length === 1 && rows[0].profit != null) return Number(rows[0].profit);
+  return Number(window.__visibleRealizedTotal || 0);
+}
+
+function paintScopedRealized() {
+  if (window.__visibleRealizedTotal === undefined) return;
+  const realized = scopedRealizedTotal(), floating = Number(window.__floatingTotal || 0);
+  setText("metric-realized", fmtSignedYen(realized), `metric-value ${profitClass(realized)}`);
+  setText("metric-total", fmtSignedYen(floating + realized), `metric-value ${profitClass(floating + realized)}`);
 }
 
 function renderTopPerformance(data) {
@@ -1530,6 +1545,7 @@ function renderTopPerformance(data) {
   setText("top-win-rate", fmtPlainPct(total.win_rate), `rate-pill ${winRateClass(total.win_rate)}`);
   setText("top-expectancy", fmtSignedYen(total.expectancy), profitClass(total.expectancy));
   setText("top-annual", fmtPct(total.annual_return), profitClass(total.annual_return));
+  paintScopedRealized();
 }
 
 function renderAccountOverview(accounts) {
@@ -2198,8 +2214,8 @@ const PERFORMANCE_METRIC_GROUPS = [
   { text: "勝", group: "count", col: "col-small-count" },
   { text: "負", group: "count", col: "col-small-count", end: true },
   { text: "PF（円）", group: "ratio", col: "col-pf" },
-  { text: "RF", group: "ratio", col: "col-rf" },
-  { text: "SR", group: "ratio", col: "col-ratio", end: true },
+  { text: "RF（円）", group: "ratio", col: "col-rf" },
+  { text: "SR（円）", group: "ratio", col: "col-ratio", end: true },
   { text: "総利益", group: "money", col: "col-money" },
   { text: "総損失", group: "money", col: "col-money" },
   { text: "損益", group: "money", col: "col-money" },
@@ -2261,6 +2277,7 @@ function fmtLossYen(n) {
 }
 
 function performanceMemo(row) {
+  if (row.__detached) return memoHtml(["今の顔ぶれから外した本と手動の決済（口座合計に入っている分）"]);
   const notes = [];
   const trades = Number(row.trades || 0);
   const ddPct = Number(row.dd_pct || 0);
@@ -2279,7 +2296,9 @@ function performanceHtml(row, options = {}) {
     const idParts = [];
     if (options.account) idParts.push({ html: row.account_login, className: "" });
     if (options.ea) {
-      idParts.push({ html: "\u53e3\u5ea7\u5408\u8a08", className: " account-subtotal-label" });
+      idParts.push(options.detached
+        ? { html: "外した本・手動", className: "" }
+        : { html: "\u53e3\u5ea7\u5408\u8a08", className: " account-subtotal-label" });
       idParts.push({ html: "-", className: "" });
     }
     if (options.symbols) idParts.push({ html: "-", className: "" });
@@ -2354,15 +2373,30 @@ async function refreshPerformance() {
       const pairsAcct = symbolByMagicMap();
       combinedRows.push(...rows.slice().sort((a, b) => comparePairThenName(a.magic, b.magic, pairsAcct)));
       const totalRow = totalsByAccount.get(acct);
-      if (totalRow) combinedRows.push({ ...totalRow, __subtotal: true });
+
+      if (totalRow) {
+        const sum = (k) => rows.reduce((t, r) => t + Number(r[k] || 0), 0);
+        const dTrades = Number(totalRow.trades || 0) - sum("trades");
+        const dProfit = Number(totalRow.profit || 0) - sum("profit");
+        if (dTrades !== 0 || Math.abs(dProfit) >= 0.5) {
+          const dWins = Number(totalRow.wins || 0) - sum("wins"), dLosses = Number(totalRow.losses || 0) - sum("losses");
+          const gp = Number(totalRow.gross_profit || 0) - sum("gross_profit"), gl = Number(totalRow.gross_loss || 0) - sum("gross_loss");
+          const fl = Number(totalRow.floating_profit || 0) - sum("floating_profit");
+          combinedRows.push({ account_login: acct, __detached: true, trades: dTrades, wins: dWins, losses: dLosses,
+            gross_profit: gp, gross_loss: gl, profit: dProfit, floating_profit: fl, live_profit: dProfit + fl,
+            pf: gl > 0 ? gp / gl : null, rf: null, sr: null, dd: null, dd_pct: null,
+            expectancy: dTrades ? dProfit / dTrades : null, win_rate: dTrades ? (dWins / dTrades) * 100 : null, annual_return: null });
+        }
+        combinedRows.push({ ...totalRow, __subtotal: true });
+      }
     }
     reconcileRows(
       accountEaBody,
       combinedRows,
-      (row) => (row.__subtotal ? `${row.account_login}:total` : `${row.account_login}:${row.magic}`),
+      (row) => (row.__subtotal ? `${row.account_login}:total` : row.__detached ? `${row.account_login}:detached` : `${row.account_login}:${row.magic}`),
       (row) =>
-        row.__subtotal
-          ? performanceHtml(row, { account: true, ea: true, symbols: true, subtotal: true })
+        row.__subtotal || row.__detached
+          ? performanceHtml(row, { account: true, ea: true, symbols: true, subtotal: true, detached: !!row.__detached })
           : performanceHtml(row, { account: true, ea: true, symbols: true }),
     );
   }

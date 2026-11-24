@@ -220,18 +220,19 @@ function drawTop() {
   var sub = $("u-gain-d"); if (sub) { sub.textContent = ""; sub.style.display = "none"; }
   setv("u-maxdd", v.maxdd.toFixed(2) + "%", "neg");
   var ddk = $("u-maxdd-k"); if (ddk) ddk.textContent = "最大ドローダウン（" + (v.equity_dd ? "含み損込み" : "決済で測定") + "）";
-  var dd = $("u-maxdd-d"); if (dd) dd.textContent = "いま −" + S.cur_dd.toFixed(2) + "%";
+
+  var dd = $("u-maxdd-d"); if (dd) dd.textContent = "いま −" + S.cur_dd.toFixed(2) + "%" + (v.equity_dd && v.closed_maxdd != null ? "・決済だけなら " + v.closed_maxdd.toFixed(2) + "%" : "");
   setv("u-month", pct(S.month), cls(S.month)); var ml = $("u-month-k"); if (ml) ml.textContent = "今月（" + (+S.month_label.slice(5)) + "月）";
   var g7 = $("u-g7"); if (g7) { g7.textContent = pct(S.g7); g7.className = cls(S.g7); }
   var g30 = $("u-g30"); if (g30) { g30.textContent = pct(S.g30); g30.className = cls(S.g30); }
   var mini = function (k, val, c, d) { return "<div class='m'><div class='k'>" + k + "</div><div class='v " + (c || "") + "'>" + val + "</div>" + (d ? "<div class='d'>" + d + "</div>" : "") + "</div>"; };
   if ($("u-risk")) $("u-risk").innerHTML =
     mini("最大の連敗", R.loss_streak + "回") +
-    mini("勝った月", R.win_months + " / " + R.months) +
+    mini("勝った月（終わった月）", R.win_months + " / " + R.months) +
     mini("最高値の更新なし", R.under_now_days + "日", R.under_now_days ? "" : "pos", "最長 " + R.longest_under_days + "日") +
     mini("1回の最大の負け（残高比）", pct(R.worst_trade), cls(R.worst_trade)) +
-    mini("最悪の月", pct(R.worst_month), cls(R.worst_month)) +
-    mini("最良の月", pct(R.best_month), cls(R.best_month));
+    mini("最悪の月（終わった月）", pct(R.worst_month), cls(R.worst_month)) +
+    mini("最良の月（終わった月）", pct(R.best_month), cls(R.best_month));
   var G = aggregate(v.days, period);
 
   var views = { growth: ["損益率の推移", "入金・出金の影響を除いた損益率（時間加重）"], month: ["月ごとの損益率", "その月に決済した取引による損益率（緑はプラス・赤はマイナス）"],
@@ -306,7 +307,7 @@ function drawEA() {
     var pv = ((U.data.views.now || U.data.views.all).pairs || []).filter(function (x) { return x.pair === p; })[0]; if (pv) c = pv.contrib;
     return "<article class='pcard' style='" + pvars(p) + "'>" +
       "<div class='pcard-h'><h3><i></i>" + esc(p) + "</h3><div class='meta'>" + g.length + "本・" + nf(n) + "回・<b class='" + cls(y) + "'>" + syen(y) + "</b><br>寄与 <b class='" + cls(c) + "'>" + (n ? pct(c) : "—") + "</b>・プラス " + plus + " / " + tr + "</div></div>" +
-      "<div class='u-tbl-wrap'><table class='u-tbl'><thead><tr><th>EA</th><th>回数</th><th>勝率</th><th>PF（円）</th><th>損益</th><th>寄与</th><th>BT比</th><th>推移</th></tr></thead><tbody>" +
+      "<div class='u-tbl-wrap'><table class='u-tbl'><thead><tr><th>EA</th><th>回数</th><th>勝率</th><th>PF（円）</th><th>損益</th><th title='取引ごとの損益率の足し算（口座全体への貢献）。EA別概要の「合計」は複利なので少し違う'>寄与（足し算）</th><th>BT比</th><th>推移</th></tr></thead><tbody>" +
       g.map(function (r) {
         return "<tr><td>" + eaLink(r) + "</td><td>" + nf(r.n) + "</td><td>" + (r.n ? r.win.toFixed(1) + "%" : "—") + "</td><td>" + pfText(r) + "</td>" +
           "<td class='" + cls(r.yen) + "'>" + (r.n ? syen(r.yen) : "—") + "</td><td class='" + cls(r.contrib) + "'>" + (r.n ? pct(r.contrib) : "—") + "</td>" +
