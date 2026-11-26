@@ -774,7 +774,7 @@ function renderMetrics(e){
     m("勝率",fmtPct(s.win_pct,1,false),"teal")+
     (isFwd()?m("取引",`${nf(s.trades)}件`,"purple",isNum(s.years)?`${nf(Math.round(s.years*365.25))}日`:"")
             :m('<span class="kl">取引<wbr>（年あたり）</span>',`${nf(s.per_year,0)}件`,"purple"))+
-    m('<span class="kl">黒字の月</span>',(()=>{const mo=e.monthly||{},pm=new Set(e.partial_months||[]);const ks=Object.keys(mo).filter(k=>!pm.has(k)&&isNum(mo[k]));return ks.length?`${ks.filter(k=>mo[k]>0).length}／${ks.length}`:"—";})(),"amber");
+    m('<span class="kl">黒字の月</span>',(()=>{ if(isFwd()&&isNum(e.win_months))return e.months?`${e.win_months}／${e.months}`:"—";const mo=e.monthly||{},pm=new Set(e.partial_months||[]);const ks=Object.keys(mo).filter(k=>!pm.has(k)&&isNum(mo[k]));return ks.length?`${ks.filter(k=>mo[k]>0).length}／${ks.length}`:"—";})(),"amber");
   if(isFwdPort(e)){ const b=e.breakdown||{}, bn=b.now||{}, bo=b.out||{}, bm=b.manual||{};
     document.getElementById("metrics-note").innerHTML=
       `<b>今の顔ぶれ ${nf(b.lineup_n||0)}本の実口座の決済 ${nf(s.trades)}件だけ</b>（${esc(e.judge_period[0])} から・${signYen(bn.yen)}）を決済の順に並べ、<b>決済前の残高に対する損益率</b>で積んだ値。`+
@@ -1079,7 +1079,7 @@ let rt=null; window.addEventListener("resize",()=>{clearTimeout(rt); rt=setTimeo
 window.addEventListener("hashchange",()=>{ if(!DATA) return; const h=decodeURIComponent(location.hash.slice(1)); if(CUR&&h!==CUR.name&&hasName(h)) select(h); });
 load();
 </script>
-<script src="static/ui2.js?v=c501254a76"></script>
+<script src="static/ui2.js?v=66d844444e"></script>
 <script>
 (function(){var orig=select;select=function(n){orig(n);if(window.UI2&&CUR)UI2.compare(CUR.name,CUR.magic);};if(CUR&&window.UI2)UI2.compare(CUR.name,CUR.magic);if(window.UI2){var od=UI2.onData;UI2.onData=function(d){if(od)od(d);if(CUR)renderMonthSide(CUR);};}})();
 </script>

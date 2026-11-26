@@ -228,11 +228,11 @@ function drawTop() {
   var mini = function (k, val, c, d) { return "<div class='m'><div class='k'>" + k + "</div><div class='v " + (c || "") + "'>" + val + "</div>" + (d ? "<div class='d'>" + d + "</div>" : "") + "</div>"; };
   if ($("u-risk")) $("u-risk").innerHTML =
     mini("最大の連敗", R.loss_streak + "回") +
-    mini("勝った月（終わった月）", R.win_months + " / " + R.months) +
+    mini("黒字の月", R.win_months + "/" + R.months) +
     mini("最高値の更新なし", R.under_now_days + "日", R.under_now_days ? "" : "pos", "最長 " + R.longest_under_days + "日") +
     mini("1回の最大の負け（残高比）", pct(R.worst_trade), cls(R.worst_trade)) +
-    mini("最悪の月（終わった月）", pct(R.worst_month), cls(R.worst_month)) +
-    mini("最良の月（終わった月）", pct(R.best_month), cls(R.best_month));
+    mini("最悪の月", pct(R.worst_month), cls(R.worst_month)) +
+    mini("最良の月", pct(R.best_month), cls(R.best_month));
   var G = aggregate(v.days, period);
 
   var views = { growth: ["損益率の推移", "入金・出金の影響を除いた損益率（時間加重）"], month: ["月ごとの損益率", "その月に決済した取引による損益率（緑はプラス・赤はマイナス）"],
